@@ -11,7 +11,9 @@ const demoMovie: Movie = {
   type: "T13",
   episode: "Tập 10",
   tags: ["Cổ Trang", "Bí Ẩn", "Lãng Mạn"],
-  description: "Phim cực hay"
+  description: "Phim cực hay",
+  duration: "45 phút",
+  views: 1234567
 }
 
 export default function Page() {

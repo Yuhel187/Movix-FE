@@ -12,4 +12,5 @@ export interface Movie {
   rating?: number
   duration?: string
   country?: string
+  views?: number        
 }

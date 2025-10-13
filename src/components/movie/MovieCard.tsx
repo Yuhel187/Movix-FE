@@ -4,7 +4,7 @@ import Image from "next/image"
 import { useRef, useState } from "react"
 import { motion, AnimatePresence, hover } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Heart, Info, Play } from "lucide-react"
+import { Heart, Info, Play, Eye, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Movie } from "@/types/movie"
 
@@ -25,27 +25,31 @@ export function MovieCard({
 }: MovieCardProps) {
     const [hovered, setHovered] = useState(false)
     const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-    const { title, subTitle, posterUrl, year, type, episode, tags = [], description } = movie
+    const { title, subTitle, posterUrl, year, type, episode, tags = [], description, duration, views } = movie
     const handleMouseEnter = () => {
         if (hoverTimeoutRef.current) {
             clearTimeout(hoverTimeoutRef.current)
         }
         hoverTimeoutRef.current = setTimeout(() => {
             setHovered(true)
-        }, 500) 
+        }, 500)
     }
     const handleMouseLeave = () => {
-        // Xóa timeout để ngăn preview hiện ra nếu người dùng rời chuột trước khi trễ kết thúc
         if (hoverTimeoutRef.current) {
             clearTimeout(hoverTimeoutRef.current)
         }
         setHovered(false)
     }
+    function formatViews(n?: number) {
+        if (typeof n !== "number") return ""
+        if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1).replace(/\.0$/, "") + "B"
+        if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M"
+        if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K"
+        return String(n)
+    }
     return (
         <div
             className="relative"
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
         >
             {/* Poster gốc */}
             <div
@@ -53,6 +57,8 @@ export function MovieCard({
                     "relative aspect-[2/3] overflow-hidden rounded-md bg-card shadow-sm transition-all hover:z-20 hover:shadow-lg",
                     className
                 )}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
             >
                 <Image
                     src={posterUrl}
@@ -61,6 +67,24 @@ export function MovieCard({
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                     sizes="(max-width: 300px) 50vw, 20vw"
                 />
+            </div>
+            {/* Footer info */}
+            <div className="mt-2 px-0.5">
+                <p className="text-sm font-semibold text-foreground line-clamp-1">{title}</p>
+                <div className="mt-1 flex items-center gap-3 text-xs text-muted">
+                    {duration && (
+                        <span className="inline-flex items-center gap-1">
+                            <Clock className="size-3" />
+                            {duration}
+                        </span>
+                    )}
+                    {typeof views === "number" && (
+                        <span className="inline-flex items-center gap-1">
+                            <Eye className="size-3" />
+                            {formatViews(views)} lượt xem
+                        </span>
+                    )}
+                </div>
             </div>
 
             {/* Preview to hơn, hiện khi hover */}
@@ -72,7 +96,7 @@ export function MovieCard({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute left-1/2 top-0 z-50 w-[350px] h-[400px] -translate-x-1/2 -translate-y-[5%] rounded-xl overflow-hidden bg-card text-card-foreground shadow-2xl"
+                        className="pointer-events-none absolute left-1/2 top-0 z-50 w-[350px] h-[400px] -translate-x-1/2 -translate-y-[5%] rounded-xl overflow-hidden bg-card text-card-foreground shadow-2xl"
                     >
                         {/* Nửa trên: ảnh */}
                         <div className="relative h-1/2 w-full">
