@@ -249,7 +249,8 @@ export default function HomeView() {
           đặc sắc — miễn phí, tốc độ cao, không giới hạn.
         </p>
         <Button className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full w-35 text-md">
-          Xem ngay
+         <a  href="/movies">
+        ▶ Xem ngay</a>
         </Button>
       </div>
       
