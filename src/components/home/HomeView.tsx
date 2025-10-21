@@ -331,7 +331,7 @@ export default function HomeView() {
       className="overflow-x-auto no-scrollbar px-4"
     >
   <div
-    className="grid grid-flow-col auto-cols-[minmax(220px,1fr)] gap-6 items-start"
+    className="grid grid-flow-col auto-cols-[minmax(220px,1fr)] gap-6 items-start dark text-center"
   >
     {mockMovies.map((movie) => (
       <MovieCard
