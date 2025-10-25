@@ -316,7 +316,7 @@ export default function HomeView() {
   </div>
 
   {/* === 3. Phim thịnh hành === */}
-  <div className="relative w-full min-h-[60vh] overflow-hidden bg-black px-4 sm:px-8 lg:px-20">
+  <div className="relative w-full min-h-[60vh] overflow-visible dark px-4 sm:px-8 lg:px-20">
     <div className="flex flex-col sm:flex-row items-center justify-between mb-10 gap-4">
       <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center sm:text-left">
         Phim đang thịnh hành
@@ -329,10 +329,10 @@ export default function HomeView() {
 
     <section
       ref={scrollRefTrending}
-      className="overflow-x-auto no-scrollbar px-4"
+      className="overflow-visible no-scrollbar px-4"
     >
   <div
-    className="grid grid-flow-col auto-cols-[minmax(220px,1fr)] gap-6 items-start"
+    className="grid grid-flow-col auto-cols-[minmax(220px,1fr)] gap-6 items-start dark"
   >
     {mockMovies.map((movie) => (
       <MovieCard
@@ -348,7 +348,7 @@ export default function HomeView() {
   </div>
 
   {/* === 4. Chương trình truyền hình === */}
-  <div className="relative w-full min-h-[60vh] overflow-hidden bg-black px-4 sm:px-8 lg:px-20">
+  <div className="relative w-full min-h-[60vh] overflow-visible bg-black px-4 sm:px-8 lg:px-20">
     <div className="flex flex-col sm:flex-row items-center justify-between mb-10 gap-4">
       <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center sm:text-left">
         Chương trình truyền hình đáng xem nhất
@@ -362,9 +362,9 @@ export default function HomeView() {
 
     <section
       ref={scrollRefShows}
-      className="overflow-x-auto no-scrollbar px-4"
+      className="overflow-visible no-scrollbar px-4"
     >
-      <div className="grid grid-flow-col auto-cols-[minmax(220px,1fr)] gap-6 items-start">
+      <div className="grid grid-flow-col auto-cols-[minmax(220px,1fr)] gap-6 items-start dark">
         {mockMovies.map((movie) => (
           <MovieCard
             key={movie.id}

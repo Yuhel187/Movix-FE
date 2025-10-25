@@ -19,7 +19,7 @@ const castData: Actor[] = [
     { id: 3, name: "Michael Caine", character: "Professor Brand", profileUrl: "https://media.themoviedb.org/t/p/w600_and_h900_bestv2/lCySuYjhXix3FzQdS4oceDDrXKI.jpg" },
     { id: 4, name: "Casey Affleck", character: "Tom Cooper", profileUrl: "https://media.themoviedb.org/t/p/w600_and_h900_bestv2/lCySuYjhXix3FzQdS4oceDDrXKI.jpg" },
     { id: 5, name: "Matt Damon", character: "Dr. Mann", profileUrl: "https://media.themoviedb.org/t/p/w600_and_h900_bestv2/lCySuYjhXix3FzQdS4oceDDrXKI.jpg" },
-    { id: 6, name: "John Lithgow", character: "Donald", profileUrl: "https://image.tmdb.org/t/p/w185/h65Zq5fD2f2T3a4zgd3O7sJ2XSU.jpg" },
+    { id: 6, name: "John Lithgow", character: "Donald", profileUrl: "https://media.themoviedb.org/t/p/w600_and_h900_bestv2/lCySuYjhXix3FzQdS4oceDDrXKI.jpg" },
     { id: 7, name: "Mackenzie Foy", character: "Young Murph", profileUrl: "https://media.themoviedb.org/t/p/w600_and_h900_bestv2/lCySuYjhXix3FzQdS4oceDDrXKI.jpg" },
     { id: 8, name: "Jessica Chastain", character: "Murphy Cooper", profileUrl: "https://media.themoviedb.org/t/p/w600_and_h900_bestv2/lCySuYjhXix3FzQdS4oceDDrXKI.jpg" },
 ];
@@ -32,14 +32,14 @@ export default function MovieDetailPage() {
     return (
         <main className="dark min-h-screen bg-black text-white">
             <div className="absolute top-0 left-0 w-full z-20">
-              <Navbar />
+                <Navbar />
             </div>
             <MovieHero movie={movie} />
-            <div className="relative z-10 bg-black">
+            <div className="relative z-10 bg-black flex justify-start pl-[7rem]">
                 <MovieCast cast={castData} />
-                {/* Ở đây bạn sẽ thêm các component khác như: */}
-                {/* <MovieComments comments={movie.comments} /> */}
             </div>
+
+
             {/* <MovieCast cast={movie.cast} /> */}
             {/* <MovieComments comments={movie.comments} /> */}
         </main>
