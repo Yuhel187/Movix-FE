@@ -16,7 +16,7 @@ interface MovieCastProps {
 
 export default function MovieCast({ cast }: MovieCastProps) {
     return (
-        <div className="w-full max-w-[700px] ml-16 mt-4 bg-card rounded-lg p-4">
+        <div className="w-full max-w-[700px] mt-4 bg-card rounded-lg p-4">
             <Carousel
                 opts={{
                     align: "start",
