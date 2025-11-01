@@ -14,6 +14,7 @@ interface MovieCardProps {
     onLike?: (movie: Movie) => void
     onDetail?: (movie: Movie) => void
     className?: string
+    disablePreview?: boolean
 }
 
 export function MovieCard({
@@ -22,6 +23,7 @@ export function MovieCard({
     onLike,
     onDetail,
     className,
+    disablePreview,
 }: MovieCardProps) {
     const [hovered, setHovered] = useState(false)
     const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -70,16 +72,19 @@ export function MovieCard({
             </div>
             {/* Footer info */}
             <div className="mt-2 px-0.5">
-                <p className="text-sm font-semibold text-foreground line-clamp-1">{title}</p>
-                <div className="mt-1 flex items-center gap-3 text-xs text-muted">
+                <p className="text-sm font-semibold text-foreground line-clamp-1">
+                    {title}
+                </p>
+                <div className="mt-1 flex items-center justify-between text-xs text-muted">
                     {duration && (
-                        <span className="inline-flex items-center gap-1">
+                        <span className="inline-flex items-center gap-1 text-primary-foreground">
                             <Clock className="size-3" />
                             {duration}
                         </span>
                     )}
+
                     {typeof views === "number" && (
-                        <span className="inline-flex items-center gap-1">
+                        <span className="inline-flex items-center gap-1 text-primary-foreground">
                             <Eye className="size-3" />
                             {formatViews(views)} lượt xem
                         </span>
@@ -87,9 +92,10 @@ export function MovieCard({
                 </div>
             </div>
 
+
             {/* Preview to hơn, hiện khi hover */}
             <AnimatePresence>
-                {hovered && (
+                {!disablePreview && hovered && (
                     <motion.div
                         key="preview"
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
