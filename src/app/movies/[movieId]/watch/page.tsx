@@ -3,6 +3,7 @@ import Navbar from "@/components/layout/NavBar";
 import VideoPlayer from "@/components/movie/VideoPlayer";
 import MovieCast from "@/components/movie/MovieCast";
 import type { Actor } from "@/types/actor";
+import Footer from "@/components/layout/Footer";
 
 const castData: Actor[] = [
   { id: 1, name: "Matthew McConaughey", character: "Cooper", profileUrl: "https://media.themoviedb.org/t/p/w600_and_h900_bestv2/lCySuYjhXix3FzQdS4oceDDrXKI.jpg" },
@@ -31,6 +32,7 @@ export default function MovieWatchPage() {
         <h2 className="text-2xl font-semibold mb-4">Diễn viên</h2>
         <MovieCast cast={castData} />
       </section>
+      <Footer/>
     </main>
   );
 }

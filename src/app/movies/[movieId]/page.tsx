@@ -3,6 +3,8 @@ import Navbar from "@/components/layout/NavBar";
 import type { Movie } from "@/types/movie";
 import type { Actor } from "@/types/actor";
 import MovieCast from "@/components/movie/MovieCast";
+import  {MovieCommentSection}  from "@/components/comment/MovieCommentSection";
+import Footer from "@/components/layout/Footer";
 
 const movieData: Movie = {
     id: "interstellar",
@@ -41,7 +43,10 @@ export default function MovieDetailPage() {
 
 
             {/* <MovieCast cast={movie.cast} /> */}
-            {/* <MovieComments comments={movie.comments} /> */}
+            <div className="py-12 md:py-16 pl-[7rem]">
+              <MovieCommentSection />
+            </div>
+            <Footer/>
         </main>
     );
 }
