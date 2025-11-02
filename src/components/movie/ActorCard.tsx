@@ -6,9 +6,10 @@ interface ActorCardProps {
   imageUrl: string
   layout?: "vertical" | "horizontal"
   onRemove?: () => void
+  character?: string
 }
 
-export function ActorCard({ name, imageUrl, layout = "vertical", onRemove }: ActorCardProps) {
+export function ActorCard({ name, imageUrl, layout = "vertical", onRemove, character }: ActorCardProps) {
   const isHorizontal = layout === "horizontal"
 
   return (
@@ -38,6 +39,13 @@ export function ActorCard({ name, imageUrl, layout = "vertical", onRemove }: Act
           </button>
         )}
       </div>
+      <span
+        className={`text-sm text-gray-200 ${
+          isHorizontal ? "text-left" : "text-center mt-1"
+        }`}
+      >
+        {character}
+      </span>
       <span
         className={`text-sm text-gray-200 ${
           isHorizontal ? "text-left" : "text-center mt-1"

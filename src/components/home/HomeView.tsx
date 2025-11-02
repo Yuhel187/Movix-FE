@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-html-link-for-pages */
 "use client";
 
 import React, { useCallback, useRef } from "react";
@@ -249,7 +250,7 @@ export default function HomeView() {
           đặc sắc — miễn phí, tốc độ cao, không giới hạn.
         </p>
         <Button className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full w-35 text-md">
-         <a  href="/movies">
+         <a href="/movies">
         ▶ Xem ngay</a>
         </Button>
       </div>
