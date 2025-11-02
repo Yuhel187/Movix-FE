@@ -5,7 +5,7 @@ import type { Actor } from "@/types/actor";
 import MovieCast from "@/components/movie/MovieCast";
 import  {MovieCommentSection}  from "@/components/comment/MovieCommentSection";
 import Footer from "@/components/layout/Footer";
-
+import { MovieDetailSidebar } from "@/components/movie/MovieDetailSlidebar";
 const movieData: Movie = {
     id: "interstellar",
     title: "Giữa Các Vì Sao",
@@ -25,10 +25,23 @@ const castData: Actor[] = [
     { id: 7, name: "Mackenzie Foy", character: "Young Murph", profileUrl: "https://media.themoviedb.org/t/p/w600_and_h900_bestv2/lCySuYjhXix3FzQdS4oceDDrXKI.jpg" },
     { id: 8, name: "Jessica Chastain", character: "Murphy Cooper", profileUrl: "https://media.themoviedb.org/t/p/w600_and_h900_bestv2/lCySuYjhXix3FzQdS4oceDDrXKI.jpg" },
 ];
+const sidebarData = {
+  releaseYear: 2022,
+  languages: ["English", "Hindi", "Tamil", "Telegu", "Kannada"],
+  ratings: {
+    imdb: 4.5,
+    movix: 4.0,
+  },
+  genres: ["Gây cấn", "Hành động"],
+  director: {
+    name: "Rishab Shetty",
+    avatarUrl: "https://i.pravatar.cc/150?u=rishab", // Thay bằng ảnh thật
+    origin: "From India",
+  },
+};
 
 // params: { movieId: string } 
 export default function MovieDetailPage() {
-    // const movie = await getMovieById(params.movieId);
     const movie = movieData;
 
     return (
@@ -37,16 +50,26 @@ export default function MovieDetailPage() {
                 <Navbar />
             </div>
             <MovieHero movie={movie} />
-            <div className="relative z-10 bg-black flex justify-start pl-[7rem]">
-                <MovieCast cast={castData} />
-            </div>
 
+            {/* Bố cục nội dung chính + Sidebar */}
+            <div className="relative z-10 bg-black px-[7rem] py-12">
+              
+              {/* SỬA DÒNG NÀY: Thêm "lg:items-start" */}
+              <div className="flex flex-col lg:flex-row gap-12 lg:items-start">
+                
+                {/* Cột chính (Nội dung) */}
+                <div className="flex flex-1 flex-col gap-12">
+                  <MovieCast cast={castData} />
+                  <MovieCommentSection />
+                </div>
+                
+                {/* Cột phụ (Sidebar) */}
+                <div className="w-full lg:w-auto">
+                  <MovieDetailSidebar {...sidebarData} />
+                </div>
 
-            {/* <MovieCast cast={movie.cast} /> */}
-            <div className="py-12 md:py-16 pl-[7rem]">
-              <MovieCommentSection />
+              </div>
             </div>
-            <Footer/>
         </main>
     );
 }

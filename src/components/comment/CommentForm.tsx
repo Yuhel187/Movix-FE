@@ -60,7 +60,7 @@ export function CommentForm({ onSubmit }: CommentFormProps) {
               className="data-[state=checked]:bg-red-600"
             />
             <Label htmlFor="spoiler-toggle" className="text-gray-400 font-normal">
-              Tiết lộ?
+              Có tiết lộ nội dung?
             </Label>
           </div>
           <Button

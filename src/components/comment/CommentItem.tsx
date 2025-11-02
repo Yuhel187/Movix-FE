@@ -9,9 +9,7 @@ interface CommentItemProps {
   comment: Comment;
 }
 
-// Hàm giả lập để format thời gian (bạn có thể thay bằng thư viện date-fns hoặc moment)
 function formatTimeAgo(dateString: string) {
-  // Logic format thời gian... (ví dụ: "5 phút trước")
   return "5 phút trước"; 
 }
 
