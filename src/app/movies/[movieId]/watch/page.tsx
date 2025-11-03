@@ -24,8 +24,8 @@ export default function MovieWatchPage() {
       </div>
 
       <section className="pt-20 w-full max-w-6xl px-4">
-        <VideoPlayer src="https://snowbreeze49.live/hls/tDPJMmlwUUojbJJGg9k98s+uuk+AnuH77sKyNyZcHvlvlnoaKBV8sTdX2q6ZqFkL1didNA35B16dI+W7gAvQ1g==/aW5kZXgtZjEtdjEtYTEubTN1OA==.m3u8"
-          poster="https://image.tmdb.org/t/p/original/wIW7PQ0vNeBC4lvBTo6Yc6126HU.jpg" />
+        <VideoPlayer src="https://vip.opstream14.com/20220317/1358_f3937aa0/index.m3u8"
+          poster="https://image.tmdb.org/t/p/original/yoPpzmjijprmzikLvHhPAzxUMMw.jpg" />
       </section>
 
       <section className="w-full max-w-6xl px-6 mt-10 mb-20">
