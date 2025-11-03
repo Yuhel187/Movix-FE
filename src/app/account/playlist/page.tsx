@@ -1,47 +1,19 @@
 'use client';
-
-import Navbar from "@/components/layout/NavBar";
-import HeroBanner from "@/components/movie/HeroBanner";
+import { useState } from "react";
+import { MovieCard } from "@/components/movie/MovieCard";
+import { PlaylistItemCard } from "@/components/account/PlaylistItem";
 import type { Movie } from "@/types/movie";
-import { MovieCarousel } from "@/components/movie/MovieCarousel"; // <-- Import
-import Footer from "@/components/layout/Footer";
+import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
 
-export default function MoviesPage() {
-  const featuredMovies: Movie[] = [
-    {
-      id: "breaking-bad",
-      title: "Breaking Bad",
-      description:
-        "Walter White, giáo viên hóa học bị ung thư, bắt đầu hành trình sản xuất ma túy để lo cho gia đình.",
-      posterUrl:
-        "https://image.tmdb.org/t/p/original/ggFHVNu6YYI5L9pCfOacjizRGt.jpg",
-      backdropUrl:
-        "https://image.tmdb.org/t/p/original/9faGSFi5jam6pDWGNd0p8JcJgXQ.jpg",
-      tags: ["T18", "Hình sự", "Khoa học", "Tâm lý"],
-    },
-    {
-      id: "interstellar",
-      title: "Giữa Các Vì Sao",
-      subTitle: "Interstellar",
-      description: "A fiery young man clashes with an unflinching forest officer in a south Indian village where spirituality, fate and folklore rule the lands.",
-      posterUrl: "https://image.tmdb.org/t/p/original/if4TI9LbqNIrzkoOgWjX5PZYDYe.jpg",
-      backdropUrl: "https://image.tmdb.org/t/p/original/9REO1DLpmwhrBJY3mYW5eVxkXFM.jpg",
-      tags: ["T18", "Hình sự", "Khoa học", "Tâm lý"],
-    },
-    {
-      id: "the-dark-knight",
-      title: "Kỵ Sĩ Bóng Đêm",
-      subTitle: "The Dark Knight",
-      description:
-        "Joker gieo rắc hỗn loạn ở Gotham, buộc Batman phải đối mặt với giới hạn đạo đức của chính mình.",
-      posterUrl:
-        "https://image.tmdb.org/t/p/original/qJ2tW6WMUDux911r6m7haRef0WH.jpg",
-      backdropUrl:
-        "https://image.tmdb.org/t/p/original/orKrjonvMHiGFjuDNKnQGkXfGe8.jpg",
-      tags: ["Chính kịch", "Hành động", "Tội phạm"],
-    },
-  ];
-const horrorMovies: Movie[] = [
+const mockPlaylists = [
+  { id: 1, title: "PlayList1", movieCount: 8 },
+  { id: 2, title: "Phim Hành Động", movieCount: 12 },
+  { id: 3, title: "Xem Sau", movieCount: 5 },
+  { id: 4, title: "Kinh Dị", movieCount: 20 },
+];
+
+const mockMovies: Movie[] = [
   {
     id: 1,
     title: "Avengers: Endgame",
@@ -172,22 +144,38 @@ const horrorMovies: Movie[] = [
     country: "Mỹ",
     views: 8900000,
   },
-]
+];
 
-  return (
-    <main className="dark min-h-screen bg-black">
-      <Navbar />
-      <section className="w-full h-screen">
-        <HeroBanner movies={featuredMovies} />
-      </section>
-      <MovieCarousel 
-        title="Top 10 phim đáng xem nhất" 
-        movies={horrorMovies} 
-      />
-      <MovieCarousel title="Phim Hành Động" movies={horrorMovies} />
-      <MovieCarousel title="Mới Cập Nhật" movies={horrorMovies} />
-
-      <Footer />
-    </main>
-  );
+export default function PlaylistPage() {
+    const [activePlaylistId, setActivePlaylistId] = useState(mockPlaylists[0].id);
+    return (
+        <div className=" max-w-6xl space-y-8">
+            <h1 className="text-3xl font-bold text-white">Danh sách phát</h1>
+            <div className="flex items-center gap-4">
+              <div className="flex-1 flex gap-4 overflow-x-auto no-scrollbar pb-2">
+                {mockPlaylists.map((playlist) => (
+                  <PlaylistItemCard
+                    key={playlist.id}
+                    title={playlist.title}
+                    movieCount={playlist.movieCount}
+                    isActive={playlist.id === activePlaylistId}
+                    onClick={() => setActivePlaylistId(playlist.id)}
+                  />
+                ))}
+              </div>
+              <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white flex-shrink-0">
+                <ArrowRight className="h-6 w-6" />
+              </Button>
+            </div>
+            {mockMovies.length === 0 ? (
+                <p className="text-gray-400">Playlist này trống.</p>
+            ) : (
+                <div className="dark grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                    {mockMovies.map((movie) => (
+                        <MovieCard key={movie.id} movie={movie} />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 }
