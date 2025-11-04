@@ -17,11 +17,15 @@ import Footer from "../layout/Footer";
 type FilterPageProps = {
     searchParams?: {
         type?: string;
+        genre?: string;
+        country?: string;
     };
 };
 
 export default function FilterPage({ searchParams }: FilterPageProps) {
     const type = searchParams?.type || "Tất cả";
+    const genre = searchParams?.genre || "Tất cả";
+    const country = searchParams?.country || "Tất cả";
       const mockMovies: Movie[] = [
       {
         id: 1,
