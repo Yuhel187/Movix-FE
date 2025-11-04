@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from "next/link";
 import { Search, Bell, ChevronDown, X } from 'lucide-react';
@@ -16,10 +16,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { SearchResultDropdown, ApiSearchResult } from '@/components/common/SearchResultDropdown';
+import api from '@/lib/apiClient'; 
+
 type Genre = { id: string; name: string };
 type Country = { id: string; name: string | null };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+// Custom hook để debounce giá trị
+const useDebounce = (value: string, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  return debouncedValue;
+};
+
 
 const Navbar = () => {
   const router = useRouter();
@@ -28,6 +46,12 @@ const Navbar = () => {
   const [searchText, setSearchText] = useState("");
   const [genres, setGenres] = useState<Genre[]>([]);
   const [countries, setCountries] = useState<Country[]>([]);
+
+  const [searchResults, setSearchResults] = useState<ApiSearchResult>({ movies: [], people: [] });
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const debouncedSearchText = useDebounce(searchText, 300);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const navItems = ['Chủ đề', 'Phim hay', 'Thể loại', 'Phim lẻ', 'Phim bộ', 'Quốc gia', 'Diễn viên'];
 
@@ -42,19 +66,68 @@ const Navbar = () => {
     });
   }, []);
 
+  useEffect(() => {
+    if (debouncedSearchText) {
+      setIsSearchLoading(true);
+      setIsDropdownOpen(true);
+
+      api.get(`/movies/search?q=${debouncedSearchText}`)
+        .then(res => {
+          setSearchResults(res.data);
+        })
+        .catch(err => {
+          console.error("Lỗi tìm kiếm:", err);
+          setSearchResults({ movies: [], people: [] });
+        })
+        .finally(() => {
+          setIsSearchLoading(false);
+        });
+
+    } else {
+      setIsDropdownOpen(false);
+      setSearchResults({ movies: [], people: [] });
+      setIsSearchLoading(false);
+    }
+  }, [debouncedSearchText]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const handleNavigate = (type: 'genre' | 'country', value: string) => {
     router.push(`/filter?${type}=${encodeURIComponent(value)}`);
     setIsMenuOpen(false);
   };
+
   const handleClickNavItem = (item: string) => {
     setActiveItem(item);
-
     if (item === 'Phim lẻ') {
       router.push('/filter?type=phim-le');
     } else if (item === 'Phim bộ') {
       router.push('/filter?type=phim-bo');
     }
   };
+
+  const handleMovieResultClick = (slug: string) => {
+    router.push(`/movies/${slug}`);
+    setIsDropdownOpen(false);
+    setSearchText("");
+  };
+
+  const handlePersonResultClick = (personId: string | number) => {
+    alert(`Đã click vào Person ID: ${personId}. (Cài đặt trang chi tiết sau)`);
+    setIsDropdownOpen(false);
+    setSearchText("");
+  };
+
 
   const renderDropdownItems = (item: string) => {
     if (item === 'Thể loại') {
@@ -126,7 +199,6 @@ const Navbar = () => {
             <span className="text-xl md:text-2xl font-bold">Movix</span>
           </Link>
 
-
           {/* Navigation Links  */}
           <div className="hidden md:flex items-center bg-[#1A1A1A] rounded-lg px-2 py-1">
             {navItems.map(item => renderNavItem(item))}
@@ -135,24 +207,38 @@ const Navbar = () => {
 
         {/* Right Section  */}
         <div className="hidden md:flex items-center space-x-4">
-          <div className="relative flex items-center">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <div className="relative flex items-center" ref={searchContainerRef}>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
             <Input
               type="text"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
+              onFocus={() => setIsDropdownOpen(true)}
               placeholder="Tìm kiếm phim, diễn viên..."
-              className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-md pl-11 pr-9 h-10 w-72 text-sm font-normal text-gray-300 placeholder-gray-500 focus:ring-2 focus:ring-red-500 focus:border-transparent appearance-none"
+              className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-md pl-11 pr-9 h-10 w-72 text-sm font-normal text-gray-300 placeholder-gray-500 focus:ring-2 focus:ring-red-500 focus:border-transparent appearance-none relative z-0"
             />
             {searchText && (
               <button
                 onClick={() => setSearchText("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 z-10"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
+
+            {/* Hiển thị Dropdown kết quả */}
+            {isDropdownOpen && (searchText.length > 0) && (
+              <SearchResultDropdown
+                results={searchResults}
+                isLoading={isSearchLoading}
+                onClose={() => setIsDropdownOpen(false)}
+                onMovieClick={handleMovieResultClick}
+                onPersonClick={handlePersonResultClick}
+              />
+            )}
           </div>
+          {/* === KẾT THÚC KHUNG TÌM KIẾM === */}
+
 
           <Button variant="ghost" size="icon">
             <Bell className="h-6 w-6" />
@@ -172,7 +258,7 @@ const Navbar = () => {
               <DropdownMenuLabel> Tài khoản của tôi</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-gray-700" />
               <DropdownMenuItem><a href='/account/profile'>Hồ sơ</a></DropdownMenuItem>
-              <DropdownMenuItem><a href='/account/favorite'>Yêu thích</a></DropdownMenuItem>
+              <DropdownMenuItem><a href='/account/favorites'>Yêu thích</a></DropdownMenuItem>
               <DropdownMenuItem><a href='/account/history'>Lịch sử</a></DropdownMenuItem>
               <DropdownMenuItem><a href='/account/playlist'>Danh sách</a></DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-700" />
