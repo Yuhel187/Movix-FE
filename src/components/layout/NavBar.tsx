@@ -120,10 +120,12 @@ const Navbar = () => {
               </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-[#1A1A1A] text-white border-gray-700">
-              <DropdownMenuLabel>Tài khoản của tôi</DropdownMenuLabel>
+              <DropdownMenuLabel> Tài khoản của tôi</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-gray-700" />
-              <DropdownMenuItem>Hồ sơ</DropdownMenuItem>
-              <DropdownMenuItem>Cài đặt</DropdownMenuItem>
+              <DropdownMenuItem> <a href='/account/profile'>Hồ sơ</a></DropdownMenuItem>
+              <DropdownMenuItem> <a href='/account/favorite'>Yêu thích</a></DropdownMenuItem>
+              <DropdownMenuItem> <a href='/account/history'>Lịch sử</a></DropdownMenuItem>
+              <DropdownMenuItem> <a href='/account/playlist'>Danh sách</a></DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-700" />
               <DropdownMenuItem>Đăng xuất</DropdownMenuItem>
             </DropdownMenuContent>
