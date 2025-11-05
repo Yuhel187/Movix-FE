@@ -6,6 +6,7 @@ export interface Movie {
   posterUrl: string
   backdropUrl?: string
   description?: string
+  videoUrl?: string
   year?: number
   type?: string
   episode?: string

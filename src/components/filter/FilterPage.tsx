@@ -182,7 +182,7 @@ export default function FilterPage({ searchParams }: FilterPageProps) {
   return (
     <>
     <main>
-        <div className="bg-black">
+        <div className="bg-black dark">
             <Navbar/>
             <section className="relative w-full flex overflow-hidden bg-black flex-wrap justify-between">
                     <div className="p-6 w-full">
