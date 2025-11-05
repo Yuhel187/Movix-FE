@@ -42,7 +42,7 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-56 sm:h-64 bg-gradient-to-r from-slate-800 to-slate-900 rounded-md p-4"></div>
+            <div className="h-56 sm:h-64 from-slate-800 to-slate-900 rounded-md p-4"></div>
           </CardContent>
         </Card>
 

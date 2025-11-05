@@ -11,9 +11,9 @@ interface AuthUser {
 
 interface AuthContextType {
   user: AuthUser | null;
-  token: string | null;
+  token: string | null; 
   isLoading: boolean;
-  login: (user: AuthUser, token: string) => void;
+  login: (user: AuthUser, token: string, refreshToken: string) => void;
   logout: () => void;
 }
 
@@ -21,7 +21,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null); 
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -40,21 +40,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   }, []);
 
-  // 2. Hàm Login
-  const login = (user: AuthUser, token: string) => {
+  const login = (user: AuthUser, token: string, refreshToken: string) => {
     setUser(user);
-    setToken(token);
+    setToken(token); 
     localStorage.setItem("accessToken", token);
     localStorage.setItem("user", JSON.stringify(user));
+    localStorage.setItem("refreshToken", refreshToken); 
   };
 
-  // 3. Hàm Logout
   const logout = () => {
     setUser(null);
     setToken(null);
     localStorage.removeItem("accessToken");
     localStorage.removeItem("user");
-    router.push("/"); 
+    localStorage.removeItem("refreshToken");
+    router.push("/");
   };
 
   return (
@@ -64,7 +64,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// 4. Hook để dễ dàng sử dụng context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
