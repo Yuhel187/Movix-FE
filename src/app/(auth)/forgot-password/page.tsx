@@ -7,19 +7,34 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import Image from "next/image";
 import ResetPasswordModal from '@/components/auth/ResetPasswordModal';
+import apiClient from '@/lib/apiClient'; 
+import { toast } from 'sonner';
 
 export default function ForgotPassword() {
     const [email, setEmail] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        const emailExists = true;  
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
 
-        if (emailExists) {
-            setIsModalOpen(true); 
-        } else {
-            alert('Email not found');  
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setIsLoading(true);
+
+        try {
+            await apiClient.post('/auth/forgot-password', { email });
+            toast.success("Đã gửi link, vui lòng kiểm tra email của bạn.");
+            setIsModalOpen(true);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (err: any) {
+            if (err.response && err.response.data && err.response.data.message) {
+                setError(err.response.data.message);
+            } else {
+                setError("Đã xảy ra lỗi. Vui lòng thử lại.");
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -30,6 +45,7 @@ export default function ForgotPassword() {
                 src="https://image.tmdb.org/t/p/original/vVpEOvdxVBP2aV166j5Xlvb5Cdc.jpg"
                 alt="Background"
                 fill
+                sizes="100vw"
                 className="absolute inset-0 -z-10 object-cover opacity-30"
             />
             <div className="absolute inset-0 bg-black/70 -z-10" />
@@ -43,6 +59,7 @@ export default function ForgotPassword() {
                             src="https://image.tmdb.org/t/p/original/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg"
                             alt="Poster"
                             fill
+                            sizes="40vw"
                             className="absolute inset-0 object-cover brightness-75"
                         />
                     </div>
@@ -59,7 +76,7 @@ export default function ForgotPassword() {
 
                         <form className="space-y-5" onSubmit={handleSubmit}>
                             <div>
-                                <Label htmlFor="email" className="text-zinc-200 text-base">
+                                <Label htmlFor="email" className="text-zinc-200 text-base mb-2">
                                     Email
                                 </Label>
                                 <Input
@@ -67,13 +84,18 @@ export default function ForgotPassword() {
                                     type="email"
                                     placeholder="Nhập email"
                                     value={email}
+                                    disabled={isLoading}
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="bg-zinc-800/80 border-zinc-700 placeholder:text-zinc-600 text-base py-5"
                                 />
                             </div>
 
-                            <Button className="bg-red-600 hover:bg-red-700 text-white w-full py-5 text-base font-semibold rounded-lg">
-                                Gửi yêu cầu
+                            <Button 
+                                type="submit"
+                                disabled={isLoading} 
+                                className="bg-red-600 hover:bg-red-700 text-white w-full py-5 text-base font-semibold rounded-lg"
+                            >
+                                {isLoading ? "Đang gửi..." : "Gửi yêu cầu"}
                             </Button>
                         </form>
                     </div>

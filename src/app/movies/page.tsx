@@ -3,7 +3,7 @@
 import Navbar from "@/components/layout/NavBar";
 import HeroBanner from "@/components/movie/HeroBanner";
 import type { Movie } from "@/types/movie";
-import { MovieCarousel } from "@/components/movie/MovieCarousel"; // <-- Import
+import { MovieCarousel } from "@/components/movie/MovieCarousel"; 
 import Footer from "@/components/layout/Footer";
 
 export default function MoviesPage() {
