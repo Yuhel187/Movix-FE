@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'; 
 import Link from "next/link";
 import { Search, Bell, ChevronDown, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -18,13 +18,13 @@ import {
 
 import { SearchResultDropdown, ApiSearchResult } from '@/components/common/SearchResultDropdown';
 import api from '@/lib/apiClient'; 
+import { useAuth } from '@/contexts/AuthContext'; 
 
 type Genre = { id: string; name: string };
 type Country = { id: string; name: string | null };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// Custom hook để debounce giá trị
 const useDebounce = (value: string, delay: number) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
@@ -41,12 +41,16 @@ const useDebounce = (value: string, delay: number) => {
 
 const Navbar = () => {
   const router = useRouter();
-  const [activeItem, setActiveItem] = useState('Phim hay');
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [genres, setGenres] = useState<Genre[]>([]);
   const [countries, setCountries] = useState<Country[]>([]);
-
+  
+  const { user, isLoggedIn, isLoading, logout } = useAuth();
+  
   const [searchResults, setSearchResults] = useState<ApiSearchResult>({ movies: [], people: [] });
   const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -106,10 +110,11 @@ const Navbar = () => {
     router.push(`/filter?${type}=${encodeURIComponent(value)}`);
     setIsMenuOpen(false);
   };
-
+  
   const handleClickNavItem = (item: string) => {
-    setActiveItem(item);
-    if (item === 'Phim lẻ') {
+    if (item === 'Phim hay') {
+      router.push('/movies');
+    } else if (item === 'Phim lẻ') {
       router.push('/filter?type=phim-le');
     } else if (item === 'Phim bộ') {
       router.push('/filter?type=phim-bo');
@@ -127,7 +132,6 @@ const Navbar = () => {
     setIsDropdownOpen(false);
     setSearchText("");
   };
-
 
   const renderDropdownItems = (item: string) => {
     if (item === 'Thể loại') {
@@ -149,8 +153,29 @@ const Navbar = () => {
     return null;
   };
 
+  const getActiveItem = () => {
+    const type = searchParams.get('type');
+    const genre = searchParams.get('genre');
+    const country = searchParams.get('country');
+
+    if (pathname === '/movies' || pathname === '/') {
+      return 'Phim hay';
+    }
+    if (pathname === '/filter') {
+      if (type === 'phim-le') return 'Phim lẻ';
+      if (type === 'phim-bo') return 'Phim bộ';
+      if (genre) return 'Thể loại';
+      if (country) return 'Quốc gia';
+    }
+
+    return ''; 
+  };
+  
+  const activeItem = getActiveItem();
+
   const renderNavItem = (item: string) => {
-    const isActive = activeItem === item;
+    const isActive = (item === activeItem);
+
     const commonClasses = "px-4 py-2 text-sm rounded-md transition-colors duration-200";
     const activeClasses = "bg-black text-white";
     const inactiveClasses = "text-gray-400 hover:text-white hover:bg-transparent";
@@ -162,7 +187,6 @@ const Navbar = () => {
             <Button
               variant="ghost"
               className={`${commonClasses} ${isActive ? activeClasses : inactiveClasses}`}
-              onClick={() => setActiveItem(item)}
             >
               {item} <ChevronDown className="w-4 h-4 ml-1" />
             </Button>
@@ -184,12 +208,18 @@ const Navbar = () => {
       </button>
     );
   };
+  if (isLoading) {
+    return (
+      <nav className="bg-[#0F0F0F] text-white flex items-center justify-between px-4 md:px-6 py-3 h-[68px]">
+      </nav>
+    );
+  }
 
   return (
     <>
       <nav className="bg-[#0F0F0F] text-white flex items-center justify-between px-4 md:px-6 py-3">
+        {/* (Logo giữ nguyên) */}
         <div className="flex items-center space-x-4 md:space-x-8">
-          {/* Logo */}
           <Link href="/movies" className="flex items-center space-x-2 hover:opacity-80 transition">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6.34292 21.7071C5.56187 22.4882 4.29521 22.4882 3.51416 21.7071C2.73311 20.9261 2.73311 19.6594 3.51416 18.8784L12.0001 10.3924L20.4859 18.8784C21.267 19.6594 21.267 20.9261 20.4859 21.7071C19.7049 22.4882 18.4382 22.4882 17.6572 21.7071L12.0001 16.05L6.34292 21.7071Z" fill="#E50914" />
@@ -205,7 +235,6 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Right Section  */}
         <div className="hidden md:flex items-center space-x-4">
           <div className="relative flex items-center" ref={searchContainerRef}>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
@@ -225,8 +254,6 @@ const Navbar = () => {
                 <X className="w-4 h-4" />
               </button>
             )}
-
-            {/* Hiển thị Dropdown kết quả */}
             {isDropdownOpen && (searchText.length > 0) && (
               <SearchResultDropdown
                 results={searchResults}
@@ -237,79 +264,117 @@ const Navbar = () => {
               />
             )}
           </div>
-          {/* === KẾT THÚC KHUNG TÌM KIẾM === */}
 
-
-          <Button variant="ghost" size="icon">
-            <Bell className="h-6 w-6" />
-          </Button>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <div className="flex items-center cursor-pointer">
-                <Avatar>
-                  <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="User avatar" />
-                  <AvatarFallback>U</AvatarFallback>
-                </Avatar>
-                <ChevronDown className="w-4 h-4 ml-1 text-gray-400" />
-              </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-[#1A1A1A] text-white border-gray-700">
-              <DropdownMenuLabel> Tài khoản của tôi</DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-gray-700" />
-              <DropdownMenuItem><a href='/account/profile'>Hồ sơ</a></DropdownMenuItem>
-              <DropdownMenuItem><a href='/account/favorites'>Yêu thích</a></DropdownMenuItem>
-              <DropdownMenuItem><a href='/account/history'>Lịch sử</a></DropdownMenuItem>
-              <DropdownMenuItem><a href='/account/playlist'>Danh sách</a></DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-gray-700" />
-              <DropdownMenuItem>Đăng xuất</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {isLoggedIn ? (
+            <>
+              <Button variant="ghost" size="icon">
+                <Bell className="h-6 w-6" />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <div className="flex items-center cursor-pointer">
+                    <Avatar>
+                      <AvatarImage src={user?.avatarUrl || "https://i.pravatar.cc/150?u=a042581f4e29026704d"} alt={user?.username} />
+                      <AvatarFallback>{user?.username?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <ChevronDown className="w-4 h-4 ml-1 text-gray-400" />
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-[#1A1A1A] text-white border-gray-700">
+                  <DropdownMenuLabel>{user?.name || user?.username || 'Tài khoản'}</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-gray-700" />
+                  <DropdownMenuItem><a href='/account/profile'>Hồ sơ</a></DropdownMenuItem>
+                  <DropdownMenuItem><a href='/account/favorites'>Yêu thích</a></DropdownMenuItem>
+                  <DropdownMenuItem><a href='/account/history'>Lịch sử</a></DropdownMenuItem>
+                  <DropdownMenuItem><a href='/account/playlist'>Danh sách</a></DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-gray-700" />
+                  <DropdownMenuItem onClick={logout}>Đăng xuất</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : (
+            <Button
+              onClick={() => router.push('/login')}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+            >
+              Đăng nhập
+            </Button>
+          )}
         </div>
 
-        {/* Mobile Menu Button */}
+        {/* (Mobile Menu Button) */}
         <div className="md:hidden">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none"
-              viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </Button>
+          <div className="flex items-center gap-2">
+             <Button variant="ghost" size="icon">
+                <Search className="h-6 w-6" />
+             </Button>
+            {isLoggedIn ? (
+               <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <div className="flex items-center cursor-pointer">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.avatarUrl || "https://i.pravatar.cc/150?u=a042581f4e29026704d"} alt={user?.username} />
+                      <AvatarFallback>{user?.username?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+                    </Avatar>
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-[#1A1A1A] text-white border-gray-700">
+                  <DropdownMenuLabel>{user?.name || user?.username || 'Tài khoản'}</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-gray-700" />
+                  <DropdownMenuItem><a href='/account/profile'>Hồ sơ</a></DropdownMenuItem>
+                  <DropdownMenuItem><a href='/account/favorites'>Yêu thích</a></DropdownMenuItem>
+                  <DropdownMenuItem><a href='/account/history'>Lịch sử</a></DropdownMenuItem>
+                  <DropdownMenuItem><a href='/account/playlist'>Danh sách</a></DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-gray-700" />
+                  <DropdownMenuItem onClick={logout}>Đăng xuất</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+               <Button
+                  onClick={() => router.push('/login')}
+                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md text-sm font-medium"
+                >
+                  Đăng nhập
+                </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </Button>
+          </div>
         </div>
       </nav>
 
       {/* Mobile Dropdown Menu */}
       {isMenuOpen && (
         <div className="md:hidden bg-[#1A1A1A] px-4 py-3 space-y-2 border-t border-gray-800">
-          {navItems.map(item => (
-            <div
-              key={item}
-              onClick={() => {
-                setActiveItem(item);
-                setIsMenuOpen(false);
-              }}
-              className={`block text-sm px-3 py-2 rounded-md ${activeItem === item
-                ? 'bg-red-600 text-white'
-                : 'text-gray-300 hover:bg-[#2A2A2A]'
+          {navItems.map(item => {
+            const isActive = (item === activeItem);
+            
+            return (
+              <div
+                key={item}
+                onClick={() => {
+                  handleClickNavItem(item); 
+                  setIsMenuOpen(false);
+                }}
+                className={`block text-sm px-3 py-2 rounded-md ${
+                  isActive
+                    ? 'bg-red-600 text-white'
+                    : 'text-gray-300 hover:bg-[#2A2A2A]'
                 }`}
-            >
-              {item}
-            </div>
-          ))}
-
-          <div className="relative mt-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <Input
-              type="search"
-              placeholder="Tìm kiếm phim..."
-              className="bg-[#2A2A2A] border-none rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-red-500"
-            />
-          </div>
+              >
+                {item}
+              </div>
+            );
+          })}
         </div>
       )}
     </>

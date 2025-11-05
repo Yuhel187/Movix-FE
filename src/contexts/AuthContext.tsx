@@ -8,12 +8,15 @@ interface AuthUser {
   username: string;
   email: string;
   role: string;
+  avatarUrl?: string; 
+  name?: string; 
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   token: string | null; 
   isLoading: boolean;
+  isLoggedIn: boolean; 
   login: (user: AuthUser, token: string, refreshToken: string) => void;
   logout: () => void;
 }
@@ -57,9 +60,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem("refreshToken");
     router.push("/");
   };
+  const isLoggedIn = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout, isLoggedIn }}>
       {children}
     </AuthContext.Provider>
   );
