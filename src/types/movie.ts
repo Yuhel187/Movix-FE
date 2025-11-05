@@ -1,5 +1,6 @@
 export interface Movie {
   id: string | number
+  slug?: string //tạm thời để null để không lỗi
   title: string
   subTitle?: string
   posterUrl: string

@@ -1,7 +1,10 @@
 import axios from 'axios';
-console.log('API Base URL từ .env:', process.env.NEXT_PUBLIC_API_URL);
+const isServer = typeof window === 'undefined';
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: isServer
+    ? process.env.API_URL               
+    : process.env.NEXT_PUBLIC_API_URL,  
 });
 
 export default api;

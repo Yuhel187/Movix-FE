@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useCallback } from "react";
+import React, { useRef } from "react";
 import type { Movie } from "@/types/movie";
 import { MovieCard } from "./MovieCard";
 import { ArrowNavigation } from "./ArrowNavigation";
@@ -26,25 +26,14 @@ export function MovieCarousel({
   const handleScroll = (direction: "left" | "right") => {
     const container = scrollRef.current;
     if (!container) return;
+
     const scrollAmount = (container.firstElementChild?.clientWidth || 220) + 24;
-    
-    container.scrollBy({ 
-      left: direction === "left" ? -scrollAmount : scrollAmount, 
-      behavior: "smooth" 
+
+    container.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth",
     });
   };
-  
-  const handleWatch = useCallback((movie: Movie) => {
-    onCardWatch ? onCardWatch(movie) : alert(`Watch: ${movie.title}`);
-  }, [onCardWatch]);
-
-  const handleLike = useCallback((movie: Movie) => {
-    onCardLike ? onCardLike(movie) : alert(`Like: ${movie.title}`);
-  }, [onCardLike]);
-
-  const handleDetail = useCallback((movie: Movie) => {
-    onCardDetail ? onCardDetail(movie) : alert(`Detail: ${movie.title}`);
-  }, [onCardDetail]);
 
   return (
     <div className="relative w-full overflow-visible dark py-6">
@@ -67,16 +56,14 @@ export function MovieCarousel({
         ref={scrollRef}
         className="overflow-visible no-scrollbar px-4 sm:px-8 lg:px-12"
       >
-        <div
-          className="grid grid-flow-col auto-cols-[minmax(180px,1fr)] sm:auto-cols-[minmax(220px,1fr)] gap-6 items-start"
-        >
+        <div className="grid grid-flow-col auto-cols-[minmax(180px,1fr)] sm:auto-cols-[minmax(220px,1fr)] gap-6 items-start">
           {movies.map((movie) => (
             <MovieCard
               key={movie.id}
               movie={movie}
-              onWatch={handleWatch}
-              onLike={handleLike}
-              onDetail={handleDetail}
+              onWatch={onCardWatch}
+              onLike={onCardLike}
+              onDetail={onCardDetail}
             />
           ))}
         </div>

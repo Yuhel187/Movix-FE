@@ -3,13 +3,14 @@
 import Navbar from "@/components/layout/NavBar";
 import HeroBanner from "@/components/movie/HeroBanner";
 import type { Movie } from "@/types/movie";
-import { MovieCarousel } from "@/components/movie/MovieCarousel"; // <-- Import
+import { MovieCarousel } from "@/components/movie/MovieCarousel"; 
 import Footer from "@/components/layout/Footer";
 
 export default function MoviesPage() {
   const featuredMovies: Movie[] = [
     {
       id: "breaking-bad",
+      slug: "breaking-bad",
       title: "Breaking Bad",
       description:
         "Walter White, giáo viên hóa học bị ung thư, bắt đầu hành trình sản xuất ma túy để lo cho gia đình.",
@@ -21,6 +22,7 @@ export default function MoviesPage() {
     },
     {
       id: "interstellar",
+      slug: "interstellar",
       title: "Giữa Các Vì Sao",
       subTitle: "Interstellar",
       description: "A fiery young man clashes with an unflinching forest officer in a south Indian village where spirituality, fate and folklore rule the lands.",
@@ -30,6 +32,7 @@ export default function MoviesPage() {
     },
     {
       id: "the-dark-knight",
+      slug: "the-dark-knight",
       title: "Kỵ Sĩ Bóng Đêm",
       subTitle: "The Dark Knight",
       description:
@@ -44,6 +47,7 @@ export default function MoviesPage() {
 const horrorMovies: Movie[] = [
   {
     id: 1,
+    slug: "inception",
     title: "Avengers: Endgame",
     subTitle: "Hồi kết của Avengers",
     posterUrl: "https://image.tmdb.org/t/p/w500/ulzhLuWrPK07P1YkdWQLZnQh1JL.jpg",
@@ -61,6 +65,7 @@ const horrorMovies: Movie[] = [
   },
   {
     id: 2,
+    slug: "john-wick-4",
     title: "John Wick 4",
     subTitle: "Chương cuối của sát thủ huyền thoại",
     posterUrl: "https://image.tmdb.org/t/p/w500/vZloFAK7NmvMGKE7VkF5UHaz0I.jpg",
@@ -77,6 +82,7 @@ const horrorMovies: Movie[] = [
   },
   {
     id: 3,
+    slug: "demon-slayer-mugen-train",
     title: "Demon Slayer: Mugen Train",
     subTitle: "Thanh gươm diệt quỷ - Chuyến tàu vô tận",
     posterUrl: "https://image.tmdb.org/t/p/w500/h8Rb9gBr48ODIwYUttZNYeMWeUU.jpg",
@@ -93,6 +99,7 @@ const horrorMovies: Movie[] = [
   },
   {
     id: 4,
+    slug: "interstellar",
     title: "Interstellar",
     subTitle: "Cuộc du hành xuyên không gian",
     posterUrl: "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
@@ -158,6 +165,7 @@ const horrorMovies: Movie[] = [
   },
   {
     id: 8,
+    slug: "inception",
     title: "John Wick 4",
     subTitle: "Chương cuối của sát thủ huyền thoại",
     posterUrl: "https://image.tmdb.org/t/p/w500/vZloFAK7NmvMGKE7VkF5UHaz0I.jpg",

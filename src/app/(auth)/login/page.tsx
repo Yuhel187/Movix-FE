@@ -39,7 +39,11 @@ export default function LoginPage() {
 
       toast.success("Đăng nhập thành công!");
       
-      router.push("/");
+      if (user.role === "Admin") {
+        router.push("/admin"); 
+      } else {
+        router.push("/movies");
+      }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {

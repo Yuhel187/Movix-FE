@@ -15,11 +15,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import Footer from "../layout/Footer";
 
 type FilterPageProps = {
-    searchParams?: {
-        type?: string;
-        genre?: string;
-        country?: string;
-    };
+  searchParams?: {
+    type?: string;
+    genre?: string;
+    country?: string;
+  };
 };
 
 export default function FilterPage({ searchParams }: FilterPageProps) {
