@@ -1,13 +1,16 @@
 "use client"
 
 import Image from "next/image"
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect, MouseEvent } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Heart, Info, Play, Eye, Clock } from "lucide-react"
+import { Heart, Info, Play, Eye, Clock,Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Movie } from "@/types/movie"
+import { useAuth } from "@/contexts/AuthContext"
+import { checkFavoriteStatus, toggleFavorite } from "@/services/interaction.service"
+import { toast } from "sonner"
 
 interface MovieCardProps {
     movie: Movie
@@ -29,6 +32,9 @@ export function MovieCard({
     const router = useRouter()
     const [hovered, setHovered] = useState(false)
     const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const { isLoggedIn } = useAuth()
+    const [isFavorite, setIsFavorite] = useState(false)
+    const [isLoadingFav, setIsLoadingFav] = useState(true)
     const {
         title,
         subTitle,
@@ -66,6 +72,38 @@ export function MovieCard({
             onWatch(movie)
         } else if (slug) {
             router.push(`/movies/${slug}/watch`)
+        }
+    }
+    useEffect(() => {
+        if (isLoggedIn) {
+            checkFavoriteStatus(movie.id.toString())
+                .then((data) => setIsFavorite(data.isFavorite))
+                .catch(() => {})
+                .finally(() => setIsLoadingFav(false))
+        } else {
+            setIsFavorite(false)
+            setIsLoadingFav(false)
+        }
+    }, [isLoggedIn, movie.id])
+
+    const handleToggleFavorite = async (e: MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault()
+        e.stopPropagation()
+
+        if (!isLoggedIn) {
+            toast.error("Bạn cần đăng nhập để thực hiện việc này.")
+            return
+        }
+
+        const oldState = isFavorite
+        setIsFavorite(!oldState) 
+
+        try {
+            const { message } = await toggleFavorite(movie.id.toString())
+            toast.success(message)
+        } catch (error) {
+            setIsFavorite(oldState) 
+            toast.error("Có lỗi xảy ra, vui lòng thử lại.")
         }
     }
 
@@ -137,13 +175,21 @@ export function MovieCard({
                                         >
                                             <Play className="size-4 mr-1" /> Xem
                                         </Button>
-
                                         <Button
                                             size="icon-sm"
                                             variant="ghost"
-                                            onClick={() => onLike?.(movie)}
+                                            onClick={handleToggleFavorite}
+                                            disabled={isLoadingFav}
                                         >
-                                            <Heart className="size-4" />
+                                            {isLoadingFav ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <Heart 
+                                                    className={cn("h-4 w-4 transition-colors", 
+                                                        isFavorite ? "fill-red-500 text-red-500" : "text-white"
+                                                    )} 
+                                                />
+                                            )}
                                         </Button>
 
                                         <Button

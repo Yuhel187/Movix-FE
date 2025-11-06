@@ -46,7 +46,7 @@ export default function MoviesPage() {
   ];
 const horrorMovies: Movie[] = [
   {
-    id: 1,
+    id: '74af397a-0b08-4816-a941-9cfa8b8fc3a9',
     slug: "inception",
     title: "Avengers: Endgame",
     subTitle: "Hồi kết của Avengers",

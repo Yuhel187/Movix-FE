@@ -9,14 +9,69 @@ import {
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Heart, Info } from "lucide-react";
+import { Play, Heart, Info, Loader2 } from "lucide-react";
 import Image from "next/image";
 import type { Movie } from "@/types/movie";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { checkFavoriteStatus, toggleFavorite } from "../../services/interaction.service";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export default function HeroBanner({ movies }: { movies: Movie[] }) {
   const [selectedIndex, setSelectedIndex] = React.useState(0);
   const [carouselApi, setCarouselApi] = React.useState<any>(null);
+  const router = useRouter();
+  const { isLoggedIn } = useAuth();
+  const [isFavorite, setIsFavorite] = React.useState(false);
+  const [isLoadingFav, setIsLoadingFav] = React.useState(false);
+
+
+  const currentMovie = movies[selectedIndex];
+
+  React.useEffect(() => {
+    if (isLoggedIn && currentMovie) {
+      checkFavoriteStatus(currentMovie.id.toString())
+        .then((data) => setIsFavorite(data.isFavorite))
+        .catch(() => {})
+        .finally(() => setIsLoadingFav(false));
+    } else {
+      setIsFavorite(false);
+      setIsLoadingFav(false);
+    }
+  }, [isLoggedIn, currentMovie?.id]); 
+
+  const handleWatch = () => {
+    if (currentMovie?.slug) {
+      router.push(`/movies/${currentMovie.slug}/watch`);
+    }
+  };
+
+  const handleDetail = () => {
+    if (currentMovie?.slug) {
+      router.push(`/movies/${currentMovie.slug}`);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!isLoggedIn) {
+      toast.error("Bạn cần đăng nhập để thực hiện việc này.");
+      return;
+    }
+    if (!currentMovie) return;
+
+    const oldState = isFavorite;
+    setIsFavorite(!oldState); 
+
+    try {
+      const { message } = await toggleFavorite(currentMovie.id.toString());
+      toast.success(message);
+    } catch (error) {
+      setIsFavorite(oldState); 
+      toast.error("Có lỗi xảy ra, vui lòng thử lại.");
+    }
+  };
 
   React.useEffect(() => {
     if (!carouselApi) return;
@@ -92,18 +147,30 @@ export default function HeroBanner({ movies }: { movies: Movie[] }) {
                       </p>
 
                       <div className="flex items-center gap-4">
-                        <Button className="bg-primary hover:bg-primary/80 text-white rounded-full px-6 py-6 text-lg flex items-center gap-2">
+                        <Button
+                          onClick={handleWatch}
+                          className="bg-primary hover:bg-primary/80 text-white rounded-full px-6 py-6 text-lg flex items-center gap-2"
+                        >
                           <Play className="w-5 h-5" /> Xem ngay
                         </Button>
+
                         <Button
                           variant="outline"
-                          className="rounded-full border-white/30 bg-white/10 hover:bg-white/20 text-white"
+                          onClick={handleToggleFavorite}
+                          disabled={isLoadingFav}
+                          className="rounded-full border-white/30 bg-white/10 hover:bg-white/20 text-white w-12 h-12 p-0 flex items-center justify-center"
                         >
-                          <Heart className="w-5 h-5" />
+                           {isLoadingFav ? (
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                              <Heart className={cn("w-5 h-5", isFavorite ? "fill-red-500 text-red-500" : "text-white")} />
+                            )}
                         </Button>
+
                         <Button
                           variant="outline"
-                          className="rounded-full border-white/30 bg-white/10 hover:bg-white/20 text-white"
+                          onClick={handleDetail}
+                          className="rounded-full border-white/30 bg-white/10 hover:bg-white/20 text-white w-12 h-12 p-0 flex items-center justify-center"
                         >
                           <Info className="w-5 h-5" />
                         </Button>
