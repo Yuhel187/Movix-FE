@@ -1,14 +1,42 @@
 "use client";
 
-import React, { useState } from "react";
 import clsx from "clsx";
 import { Menu } from "lucide-react";
+import React, { useState, useEffect } from "react"; 
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AdminTopbar from "@/components/layout/AdminTopbar";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { user, isLoading } = useAuth(); 
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    if (user.role !== "Admin") {
+      router.push("/movies");
+    }
+
+  }, [user, isLoading, router]); 
+
+  if (isLoading || !user || user.role !== "Admin") {
+    return (
+      <div className="flex min-h-screen bg-[#141414] text-white items-center justify-center">
+        <p className="text-md italic">Đang tải...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-[#141414] text-white overflow-hidden">

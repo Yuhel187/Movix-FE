@@ -14,8 +14,7 @@ import type { Movie } from "@/types/movie"
 import Footer from "../layout/Footer";
 import { Skeleton } from "../ui/skeleton";
 import { mapTmdbToMovie } from "@/lib/tmdb";
-
-const API_BASE_URL = "http://localhost:5000/api/v1";
+import apiClient from "@/lib/apiClient";
 
 interface Genre {
   id: number;
@@ -60,11 +59,10 @@ export default function LandingView() {
 
   useEffect(() => {
     // Lấy phim thịnh hành
-    fetch(`${API_BASE_URL}/movies/trending`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setTrendingMovies(data.map(mapTmdbToMovie));
+    apiClient.get("/movies/trendingtmdb") 
+      .then((res) => {
+        if (Array.isArray(res.data)) {
+          setTrendingMovies(res.data.map(mapTmdbToMovie));
         }
         setIsLoadingTrending(false);
       })
@@ -74,11 +72,10 @@ export default function LandingView() {
       });
 
     // Lấy TV shows phổ biến
-    fetch(`${API_BASE_URL}/movies/popular-shows`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setPopularShows(data.map(mapTmdbToMovie));
+    apiClient.get("/movies/popular-showstmdb") 
+      .then((res) => { 
+        if (Array.isArray(res.data)) {
+          setPopularShows(res.data.map(mapTmdbToMovie));
         }
         setIsLoadingShows(false);
       })
@@ -92,10 +89,10 @@ export default function LandingView() {
         await Promise.all(
           genresList.map(async (genre) => {
             try {
-              const res = await fetch(`${API_BASE_URL}/movies/by-genre/${genre.id}`);
-              if (!res.ok) return;
+              const res = await apiClient.get(`/movies/by-genre/${genre.id}`);
+              if (res.status !== 200) return;
               
-              const data = await res.json();
+              const data = res.data;
               if (Array.isArray(data)) {
                 movieMap.set(genre.id, data.map(mapTmdbToMovie));
               }
