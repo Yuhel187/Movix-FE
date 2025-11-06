@@ -16,6 +16,9 @@ import {
   ChevronRight,
 } from "lucide-react";
 import clsx from "clsx";
+import { useAuth } from "@/contexts/AuthContext";
+import apiClient from "@/lib/apiClient";
+import { toast } from "sonner";
 
 type NavItem = {
   id: string;
@@ -37,8 +40,8 @@ interface AdminSidebarProps {
   avatarUrl?: string;
   userName?: string;
   defaultActive?: string;
-  defaultOpen?: boolean; // only used when uncontrolled
-  open?: boolean; // controlled prop: if present, component controlled by parent
+  defaultOpen?: boolean;
+  open?: boolean; 
   onToggle?: (open: boolean) => void;
   onSelect?: (id: string) => void;
 }
@@ -46,7 +49,7 @@ interface AdminSidebarProps {
 export default function AdminSidebar({
   className = "",
   avatarUrl = "/avatar.jpg",
-  userName = "Nguyễn Quang Khải",
+  userName = "Administrator",
   defaultActive = "dashboard",
   defaultOpen = true,
   open: openProp,
@@ -60,6 +63,7 @@ export default function AdminSidebar({
   const [active, setActive] = useState<string>(defaultActive);
   const pathname = usePathname();
 
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     if (!pathname) return;
@@ -97,6 +101,26 @@ export default function AdminSidebar({
     setActive(id);
     onSelect?.(id);
   };
+
+  const handleLogout = async () => {
+    try {
+      const refreshToken = localStorage.getItem("refreshToken");
+
+      if (refreshToken) {
+        await apiClient.post("/auth/logout", { refreshToken });
+      }
+    } catch (error) {
+      console.error("Lỗi khi gọi API đăng xuất:", error);
+    } finally {
+      logout();
+      toast.success("Đăng xuất thành công!");
+    }
+  };
+
+  const currentUserName = user?.username || userName;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const currentUserAvatar = (user as any)?.avatarUrl || avatarUrl; 
+  const userFallback = currentUserName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   return (
     <aside
@@ -165,7 +189,7 @@ export default function AdminSidebar({
         <Button
           variant="ghost"
           className="w-full justify-start gap-3 text-white hover:bg-red-600 hover:text-white"
-          onClick={() => console.log("logout")}
+          onClick={handleLogout}
         >
           <LogOut className="h-4 w-4" />
           {showLabels && <span>Đăng xuất</span>}
