@@ -1,279 +1,299 @@
 "use client";
 
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/layout/NavBar";
-import { MovieCategoryCard } from "../movie/MovieCategoryCardProps";
-import { ArrowNavigation } from "../movie/ArrowNavigation";
-import { FaRobot, FaUsers, FaLock, FaSearch, FaGamepad, FaTv, FaFilter } from "react-icons/fa";
 import AIChatWidget from "../ai/AIChatWidget";
 import { MovieCard } from "../movie/MovieCard";
-import type { Movie } from "@/types/movie"
-import FilterPanel from "@/components/filter/FilterPanel"
+import type { Movie } from "@/types/movie";
+import FilterPanel, { FilterState } from "@/components/filter/FilterPanel"; 
 import { Pagination } from "../common/pagination";
 import { AnimatePresence, motion } from "framer-motion";
 import Footer from "../layout/Footer";
+import { FaFilter, FaSearch } from "react-icons/fa";
+import apiClient from "@/lib/apiClient"; 
+import { Skeleton } from "@/components/ui/skeleton"; 
+
+
+type Genre = {
+  id: string;
+  name: string;
+};
+type Country = {
+  id: string;
+  name: string | null;
+  
+};
 
 type FilterPageProps = {
   searchParams?: {
+    q?: string;
     type?: string;
     genre?: string;
     country?: string;
+    year?: string;
   };
 };
 
-export default function FilterPage({ searchParams }: FilterPageProps) {
-    const type = searchParams?.type || "Tất cả";
-    const genre = searchParams?.genre || "Tất cả";
-    const country = searchParams?.country || "Tất cả";
-      const mockMovies: Movie[] = [
-      {
-        id: 1,
-        title: "Avengers: Endgame",
-        subTitle: "Hồi kết của Avengers",
-        posterUrl: "https://image.tmdb.org/t/p/w500/ulzhLuWrPK07P1YkdWQLZnQh1JL.jpg",
-        backdropUrl: "https://image.tmdb.org/t/p/original/or06FN3Dka5tukK1e9sl16pB3iy.jpg",
-        description:
-          "Sau khi Thanos xóa sổ nửa vũ trụ, những anh hùng còn lại phải tìm cách đảo ngược thảm họa và cứu lấy thế giới.",
-        year: 2019,
-        type: "Phim chiếu rạp",
-        episode: "Full HD",
-        tags: ["Hành động", "Khoa học viễn tưởng", "Siêu anh hùng"],
-        rating: 9.0,
-        duration: "3h 2m",
-        country: "Mỹ",
-        views: 12000000,
-      },
-      {
-        id: 2,
-        title: "John Wick 4",
-        subTitle: "Chương cuối của sát thủ huyền thoại",
-        posterUrl: "https://image.tmdb.org/t/p/w500/vZloFAK7NmvMGKE7VkF5UHaz0I.jpg",
-        description:
-          "John Wick đối đầu với Hội Bàn Tròn trong trận chiến sinh tử để giành lại tự do của mình.",
-        year: 2023,
-        type: "Phim chiếu rạp",
-        episode: "Full HD",
-        tags: ["Hành động", "Tội phạm", "Hồi hộp"],
-        rating: 8.7,
-        duration: "2h 49m",
-        country: "Mỹ",
-        views: 8900000,
-      },
-      {
-        id: 3,
-        title: "Demon Slayer: Mugen Train",
-        subTitle: "Thanh gươm diệt quỷ - Chuyến tàu vô tận",
-        posterUrl: "https://image.tmdb.org/t/p/w500/h8Rb9gBr48ODIwYUttZNYeMWeUU.jpg",
-        description:
-          "Tanjiro và đồng đội cùng Rengoku điều tra một chuỗi vụ mất tích bí ẩn trên chuyến tàu vô tận.",
-        year: 2020,
-        type: "Anime Movie",
-        episode: "Full HD",
-        tags: ["Anime", "Hành động", "Phiêu lưu"],
-        rating: 8.6,
-        duration: "1h 57m",
-        country: "Nhật Bản",
-        views: 7600000,
-      },
-      {
-        id: 4,
-        title: "Interstellar",
-        subTitle: "Cuộc du hành xuyên không gian",
-        posterUrl: "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
-        description:
-          "Một nhóm phi hành gia vượt qua lỗ sâu để tìm kiếm hành tinh có thể sinh sống cho loài người.",
-        year: 2014,
-        type: "Phim khoa học viễn tưởng",
-        episode: "Full HD",
-        tags: ["Sci-Fi", "Phiêu lưu", "Tâm lý"],
-        rating: 8.9,
-        duration: "2h 49m",
-        country: "Mỹ",
-        views: 10400000,
-      },
-      {
-        id: 5,
-        title: "Demon Slayer: Mugen Train",
-        subTitle: "Thanh gươm diệt quỷ - Chuyến tàu vô tận",
-        posterUrl: "https://image.tmdb.org/t/p/w500/h8Rb9gBr48ODIwYUttZNYeMWeUU.jpg",
-        description:
-          "Tanjiro và đồng đội cùng Rengoku điều tra một chuỗi vụ mất tích bí ẩn trên chuyến tàu vô tận.",
-        year: 2020,
-        type: "Anime Movie",
-        episode: "Full HD",
-        tags: ["Anime", "Hành động", "Phiêu lưu"],
-        rating: 8.6,
-        duration: "1h 57m",
-        country: "Nhật Bản",
-        views: 7600000,
-      },
-      {
-        id: 6,
-        title: "Interstellar",
-        subTitle: "Cuộc du hành xuyên không gian",
-        posterUrl: "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
-        description:
-          "Một nhóm phi hành gia vượt qua lỗ sâu để tìm kiếm hành tinh có thể sinh sống cho loài người.",
-        year: 2014,
-        type: "Phim khoa học viễn tưởng",
-        episode: "Full HD",
-        tags: ["Sci-Fi", "Phiêu lưu", "Tâm lý"],
-        rating: 8.9,
-        duration: "2h 49m",
-        country: "Mỹ",
-        views: 10400000,
-      },
-       {
-        id: 7,
-        title: "Avengers: Endgame",
-        subTitle: "Hồi kết của Avengers",
-        posterUrl: "https://image.tmdb.org/t/p/w500/ulzhLuWrPK07P1YkdWQLZnQh1JL.jpg",
-        backdropUrl: "https://image.tmdb.org/t/p/original/or06FN3Dka5tukK1e9sl16pB3iy.jpg",
-        description:
-          "Sau khi Thanos xóa sổ nửa vũ trụ, những anh hùng còn lại phải tìm cách đảo ngược thảm họa và cứu lấy thế giới.",
-        year: 2019,
-        type: "Phim chiếu rạp",
-        episode: "Full HD",
-        tags: ["Hành động", "Khoa học viễn tưởng", "Siêu anh hùng"],
-        rating: 9.0,
-        duration: "3h 2m",
-        country: "Mỹ",
-        views: 12000000,
-      },
-      {
-        id: 8,
-        title: "John Wick 4",
-        subTitle: "Chương cuối của sát thủ huyền thoại",
-        posterUrl: "https://image.tmdb.org/t/p/w500/vZloFAK7NmvMGKE7VkF5UHaz0I.jpg",
-        description:
-          "John Wick đối đầu với Hội Bàn Tròn trong trận chiến sinh tử để giành lại tự do của mình.",
-        year: 2023,
-        type: "Phim chiếu rạp",
-        episode: "Full HD",
-        tags: ["Hành động", "Tội phạm", "Hồi hộp"],
-        rating: 8.7,
-        duration: "2h 49m",
-        country: "Mỹ",
-        views: 8900000,
-      },
-    ]
-    const handleWatch = useCallback((movie: Movie) => {
-        alert(`🎬 Xem phim: ${movie.title}`)
-      }, [])
-    
-      const handleLike = useCallback((movie: Movie) => {
-        alert(`❤️ Đã thích: ${movie.title}`)
-      }, [])
-    
-      const handleDetail = useCallback((movie: Movie) => {
-        alert(`ℹ️ Chi tiết phim: ${movie.title}`)
-      }, [])
-    const [showFilter, setShowFilter] = useState(false);
-    const toggleFilter = () => setShowFilter(!showFilter);
-    const moviesPerPage = 35;
-    const [currentPage, setCurrentPage] = useState(1);
+const defaultFilters: FilterState = {
+  country: "Tất cả",
+  type: "Tất cả",
+  rating: "Tất cả",
+  genre: "Tất cả",
+  language: "Tất cả",
+  year: "Tất cả",
+  q: "",
+};
 
-    const indexOfLastMovie = currentPage * moviesPerPage;
-    const indexOfFirstMovie = indexOfLastMovie - moviesPerPage;
-    const currentMovies = mockMovies.slice(indexOfFirstMovie, indexOfLastMovie);
-    const [selectedTab, setSelectedTab] = useState<"phim" | "dienvien">("phim");
+export default function FilterPage({ searchParams }: FilterPageProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const clientSearchParams = useSearchParams();
+
+  const [showFilter, setShowFilter] = useState(false);
+  
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [isLoadingFilterData, setIsLoadingFilterData] = useState(true);
+
+ const [filters, setFilters] = useState<FilterState>(() => {
+    const initialUrlType = searchParams?.type;
+    let initialDisplayType = "Tất cả";
+    if (initialUrlType === "phim-le") {
+      initialDisplayType = "Phim lẻ";
+    } else if (initialUrlType === "phim-bo") {
+      initialDisplayType = "Phim bộ";
+    }
+
+    return {
+      ...defaultFilters,
+      q: searchParams?.q || "",
+      type: initialDisplayType,
+      genre: searchParams?.genre || "Tất cả",
+      country: searchParams?.country || "Tất cả",
+      year: searchParams?.year || "Tất cả",
+    };
+  });
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const moviesPerPage = 35; 
+
+  useEffect(() => {
+    const fetchFilterData = async () => {
+      try {
+        setIsLoadingFilterData(true);
+        const [genresRes, countriesRes] = await Promise.all([
+          apiClient.get('/movies/genres'),
+          apiClient.get('/movies/countries')
+        ]);
+        setGenres(genresRes.data || []);
+        setCountries(countriesRes.data || []);
+      } catch (err) {
+        console.error("Lỗi khi tải dữ liệu filter:", err);
+      } finally {
+        setIsLoadingFilterData(false);
+      }
+    };
+    fetchFilterData();
+  }, []);
+
+  const fetchMovies = useCallback(async (currentFilters: FilterState, page: number) => {
+    setIsLoading(true);
+    setError(null);
+    const params = new URLSearchParams();
+    
+    if (currentFilters.q) params.append("q", currentFilters.q);
+    if (currentFilters.type && currentFilters.type !== "Tất cả") {
+      const typeValue = currentFilters.type === 'Phim lẻ' ? 'phim-le' : (currentFilters.type === 'Phim bộ' ? 'phim-bo' : currentFilters.type);
+      params.append("type", typeValue);
+    }
+    if (currentFilters.genre && currentFilters.genre !== "Tất cả") params.append("genre", currentFilters.genre);
+    if (currentFilters.country && currentFilters.country !== "Tất cả") params.append("country", currentFilters.country);
+    if (currentFilters.year && currentFilters.year !== "Tất cả") params.append("year", currentFilters.year);
+
+    try {
+      const res = await apiClient.get(`/movies/filter?${params.toString()}`);
+      const allMovies: Movie[] = res.data;
+      const total = allMovies.length;
+      setTotalPages(Math.ceil(total / moviesPerPage));
+      
+      const paginatedMovies = allMovies.slice(
+        (page - 1) * moviesPerPage,
+        page * moviesPerPage
+      );
+      setMovies(paginatedMovies);
+    } catch (err) {
+      console.error("Lỗi khi lọc phim:", err);
+      setError("Không thể tải kết quả lọc. Vui lòng thử lại.");
+      setMovies([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [moviesPerPage]); 
+
+  useEffect(() => {
+    const urlType = clientSearchParams.get("type");
+    let displayType = "Tất cả";
+    if (urlType === "phim-le") {
+      displayType = "Phim lẻ";
+    } else if (urlType === "phim-bo") {
+      displayType = "Phim bộ"; 
+    }
+
+    const newFilters: FilterState = {
+      ...defaultFilters,
+      q: clientSearchParams.get("q") || "",
+      type: displayType,
+      genre: clientSearchParams.get("genre") || "Tất cả",
+      country: clientSearchParams.get("country") || "Tất cả",
+      year: clientSearchParams.get("year") || "Tất cả",
+    };
+    setFilters(newFilters);
+    fetchMovies(newFilters, currentPage);
+  }, [clientSearchParams, currentPage, fetchMovies]);
+
+  const updateURL = (newFilters: FilterState) => {
+    const params = new URLSearchParams();
+    if (newFilters.q) params.set("q", newFilters.q);
+    if (newFilters.type && newFilters.type !== "Tất cả") {
+      const typeValue = newFilters.type === 'Phim lẻ' ? 'phim-le' : (newFilters.type === 'Phim bộ' ? 'phim-bo' : newFilters.type);
+      params.set("type", typeValue);
+    }
+    if (newFilters.genre && newFilters.genre !== "Tất cả") params.set("genre", newFilters.genre);
+    if (newFilters.country && newFilters.country !== "Tất cả") params.set("country", newFilters.country);
+    if (newFilters.year && newFilters.year !== "Tất cả") params.set("year", newFilters.year);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const handleFilterChange = (key: keyof FilterState, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleSubmit = () => {
+    setCurrentPage(1); 
+    updateURL(filters); 
+  };
+
+  const handleReset = () => {
+    setCurrentPage(1);
+    setFilters(defaultFilters);
+    updateURL(defaultFilters); 
+  };
+
+  const handleWatch = useCallback((movie: Movie) => {
+      router.push(movie.slug ? `/movies/${movie.slug}/watch` : '#');
+  }, [router]);
+  const handleDetail = useCallback((movie: Movie) => {
+      router.push(movie.slug ? `/movies/${movie.slug}` : '#');
+  }, [router]);
+
+  const renderSkeletons = () => (
+    Array.from({ length: 12 }).map((_, i) => (
+      <div key={i} className="group relative">
+        <Skeleton className="aspect-[2/3] w-full rounded-md bg-slate-800" />
+        <div className="mt-2 px-0.5">
+          <Skeleton className="h-4 w-3/4 bg-slate-800" />
+          <div className="mt-1 flex items-center gap-3">
+            <Skeleton className="h-3 w-16 bg-slate-800" />
+            <Skeleton className="h-3 w-20 bg-slate-800" />
+          </div>
+        </div>
+      </div>
+    ))
+  );
 
   return (
     <>
-    <main>
+      <main>
         <div className="bg-black dark">
-            <Navbar/>
-            <section className="relative w-full flex overflow-hidden bg-black flex-wrap justify-between">
-                    <div className="p-6 w-full">
-                        <div className="flex gap-4 mb-5 mt-5 ml-5">
-                            <FaSearch className="text-red-500 text-3xl" />
-                            <h1 className="text-2xl text-white mb-4 font-semibold">Kết quả tìm kiếm</h1>
-                            <Button
-                                onClick={toggleFilter}
-                                className="ml-auto bg-yellow-600 hover:bg-yellow-700 text-white flex items-center gap-2"
-                                >
-                                <FaFilter />
-                            Bộ lọc
-                            </Button>
-                        </div>       
-                        <div className="flex items-center gap-3 ml-5 mb-5">
-                          <button
-                            onClick={() => setSelectedTab("phim")}
-                            className={`px-6 py-2 rounded-full font-medium transition ${
-                              selectedTab === "phim"
-                                ? "bg-white text-black"
-                                : "bg-[#252733] text-gray-300"
-                            }`}
-                          >
-                            Phim
-                          </button>
-                          <button
-                            onClick={() => setSelectedTab("dienvien")}
-                            className={`px-6 py-2 rounded-full font-medium transition ${
-                              selectedTab === "dienvien"
-                                ? "bg-white text-black"
-                                : "bg-[#252733] text-gray-300"
-                            }`}
-                          >
-                            Diễn viên
-                          </button>
-                        </div>
-                        <AnimatePresence>
-                            {showFilter && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.3 }}
-                            >
-                                <div className="flex justify-between items-center mb-3">
-                               
-                                </div>
-                                <FilterPanel defaultType={type} />
-                                <div className="flex justify-end mt-4">
-                                </div>
-                            </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-            </section>
-            <section
-          className={`transition-all duration-300 px-4 pb-20 ${
-            showFilter ? "mt-0" : "-mt-3"
-          }`}
-        >
-          <div
-            className="
-              grid 
-              grid-cols-2
-              sm:grid-cols-3
-              md:grid-cols-4
-              lg:grid-cols-5
-              xl:grid-cols-6
-              gap-4
-            "
+          <Navbar />
+          <section className="relative w-full flex overflow-hidden bg-black flex-wrap justify-between">
+            <div className="p-6 w-full">
+              <div className="flex gap-4 mb-5 mt-5 ml-5">
+                <FaSearch className="text-red-500 text-3xl" />
+                <h1 className="text-2xl text-white mb-4 font-semibold">
+                  {filters.q ? `Kết quả cho: "${filters.q}"` : "Bộ Lọc Phim"}
+                </h1>
+                <Button
+                  onClick={() => setShowFilter(!showFilter)}
+                  className="ml-auto bg-yellow-600 hover:bg-yellow-700 text-white flex items-center gap-2"
+                >
+                  <FaFilter />
+                  {showFilter ? "Ẩn bộ lọc" : "Hiện bộ lọc"}
+                </Button>
+              </div>
+              
+              <AnimatePresence>
+                {showFilter && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
+                  >
+                    <FilterPanel
+                      filters={filters}
+                      onFilterChange={handleFilterChange}
+                      onSubmit={handleSubmit}
+                      onReset={handleReset}
+                      genres={genres}
+                      countries={countries}
+                      isLoadingGenres={isLoadingFilterData}
+                      isLoadingCountries={isLoadingFilterData}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </section>
+
+          <section
+            className={`transition-all duration-300 px-4 pb-20 ${
+              showFilter ? "mt-6" : "mt-0"
+            }`}
           >
-            {currentMovies.map((movie) => (
-              <MovieCard
-                key={movie.id}
-                movie={movie}
-                onWatch={handleWatch}
-                onLike={handleLike}
-                onDetail={handleDetail}
-              />
-            ))}
-          </div>
-        </section>
-            <Pagination
-                totalPages={Math.ceil(mockMovies.length / moviesPerPage)}
+            {isLoading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                {renderSkeletons()}
+              </div>
+            ) : error ? (
+              <div className="text-center text-red-400">{error}</div>
+            ) : movies.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-gray-400 min-h-[40vh] text-lg">
+                Không tìm thấy phim nào khớp với bộ lọc của bạn.
+              </div>  
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                {movies.map((movie) => (
+                  <MovieCard
+                    key={movie.id}
+                    movie={movie}
+                    onWatch={handleWatch}
+                    onDetail={handleDetail}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {!isLoading && !error && movies.length > 0 && (
+             <Pagination
+                totalPages={totalPages}
                 currentPage={currentPage}
                 onPageChange={setCurrentPage}
-                />
-        </div>      
-        <Footer/>
-    </main>
-    <AIChatWidget />
+             />
+          )}
+        </div>
+        <Footer />
+      </main>
+      <AIChatWidget />
     </>
   );
 }

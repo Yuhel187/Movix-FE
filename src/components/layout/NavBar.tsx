@@ -106,7 +106,7 @@ const Navbar = () => {
     };
   }, []);
 
-  const handleNavigate = (type: 'genre' | 'country', value: string) => {
+  const handleNavigate = (type: 'genre' | 'country'| 'q', value: string) => {
     router.push(`/filter?${type}=${encodeURIComponent(value)}`);
     setIsMenuOpen(false);
   };
@@ -120,6 +120,13 @@ const Navbar = () => {
       router.push('/filter?type=phim-bo');
     }
   };
+
+  const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  if (e.key === 'Enter' && searchText.trim()) {
+    handleNavigate('q', searchText.trim());
+    setIsDropdownOpen(false);
+  }
+};
 
   const handleMovieResultClick = (slug: string) => {
     router.push(`/movies/${slug}`);
@@ -243,6 +250,7 @@ const Navbar = () => {
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               onFocus={() => setIsDropdownOpen(true)}
+              onKeyDown={handleSearchSubmit}
               placeholder="Tìm kiếm phim, diễn viên..."
               className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-md pl-11 pr-9 h-10 w-72 text-sm font-normal text-gray-300 placeholder-gray-500 focus:ring-2 focus:ring-red-500 focus:border-transparent appearance-none relative z-0"
             />
