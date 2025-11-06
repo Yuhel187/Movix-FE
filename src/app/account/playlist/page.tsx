@@ -1,17 +1,12 @@
 'use client';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MovieCard } from "@/components/movie/MovieCard";
 import { PlaylistItemCard } from "@/components/account/PlaylistItem";
 import type { Movie } from "@/types/movie";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
-
-const mockPlaylists = [
-  { id: 1, title: "PlayList1", movieCount: 8 },
-  { id: 2, title: "Phim Hành Động", movieCount: 12 },
-  { id: 3, title: "Xem Sau", movieCount: 5 },
-  { id: 4, title: "Kinh Dị", movieCount: 20 },
-];
+import { ArrowRight, List } from "lucide-react";
+import { getPlaylists, Playlist } from "@/services/interaction.service";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const mockMovies: Movie[] = [
   {
@@ -111,7 +106,7 @@ const mockMovies: Movie[] = [
     country: "Mỹ",
     views: 10400000,
   },
-   {
+  {
     id: 7,
     title: "Avengers: Endgame",
     subTitle: "Hồi kết của Avengers",
@@ -147,35 +142,86 @@ const mockMovies: Movie[] = [
 ];
 
 export default function PlaylistPage() {
-    const [activePlaylistId, setActivePlaylistId] = useState(mockPlaylists[0].id);
-    return (
-        <div className=" max-w-6xl space-y-8">
-            <h1 className="text-3xl font-bold text-white">Danh sách phát</h1>
-            <div className="flex items-center gap-4">
-              <div className="flex-1 flex gap-4 overflow-x-auto no-scrollbar pb-2">
-                {mockPlaylists.map((playlist) => (
-                  <PlaylistItemCard
-                    key={playlist.id}
-                    title={playlist.title}
-                    movieCount={playlist.movieCount}
-                    isActive={playlist.id === activePlaylistId}
-                    onClick={() => setActivePlaylistId(playlist.id)}
-                  />
-                ))}
-              </div>
-              <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white flex-shrink-0">
-                <ArrowRight className="h-6 w-6" />
-              </Button>
-            </div>
-            {mockMovies.length === 0 ? (
-                <p className="text-gray-400">Playlist này trống.</p>
-            ) : (
-                <div className="dark grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                    {mockMovies.map((movie) => (
-                        <MovieCard key={movie.id} movie={movie} />
-                    ))}
-                </div>
-            )}
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsLoading(true);
+    getPlaylists()
+      .then((data) => {
+        setPlaylists(data);
+        if (data.length > 0) {
+          setActivePlaylistId(data[0].id);
+        }
+      })
+      .catch((err) => {
+        console.error("Lỗi khi tải playlists:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
+
+  const LoadingSkeleton = () => (
+    <div className="flex items-center gap-4">
+      <div className="flex-1 flex gap-4 overflow-x-auto no-scrollbar pb-2">
+        {[...Array(3)].map((_, i) => (
+          <Skeleton key={i} className="h-[76px] w-48 rounded-lg flex-shrink-0" />
+        ))}
+      </div>
+    </div>
+  );
+
+  const EmptyState = () => (
+    <div className="flex flex-col items-center justify-center text-center text-gray-400 h-40">
+      <List className="w-16 h-16" />
+      <h3 className="mt-4 text-lg font-semibold text-white">
+        Chưa có playlist nào
+      </h3>
+      <p className="mt-1 text-sm">
+        Hãy tạo playlist mới ở trang chi tiết phim.
+      </p>
+    </div>
+  );
+
+  return (
+    <div className=" max-w-6xl space-y-8">
+      <h1 className="text-3xl font-bold text-white">Danh sách phát</h1>
+
+      {isLoading ? (
+        <LoadingSkeleton />
+      ) : playlists.length === 0 ? (
+        <EmptyState />
+      ) : (
+
+        <div className="dark flex items-center gap-4">
+          <div className="flex-1 flex gap-4 overflow-x-auto no-scrollbar pb-2">
+            {playlists.map((playlist) => (
+              <PlaylistItemCard
+                key={playlist.id}
+                title={playlist.name} 
+                movieCount={playlist._count?.playlist_movies || 0} 
+                isActive={playlist.id === activePlaylistId}
+                onClick={() => setActivePlaylistId(playlist.id)}
+              />
+            ))}
+          </div>
+          <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white flex-shrink-0">
+            <ArrowRight className="h-6 w-6" />
+          </Button>
         </div>
-    );
+      )}
+
+      {mockMovies.length === 0 ? (
+        <p className="text-gray-400">Playlist này trống.</p>
+      ) : (
+        <div className="dark grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+          {mockMovies.map((movie) => (
+            <MovieCard key={movie.id} movie={movie} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }

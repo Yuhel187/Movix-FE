@@ -1,35 +1,48 @@
 'use client';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MovieCard } from "@/components/movie/MovieCard";
-import type { Movie } from "@/types/movie";
+import type { Movie } from "@/types/movie"; //
+import { getFavoriteMovies } from "@/services/interaction.service";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Heart } from "lucide-react";
 
 export default function FavoritesPage() {
-    const [favorites] = useState<Movie[]>([
-        {
-            id: 1,
-            title: "Inception",
-            subTitle: "Giấc mơ trong mơ",
-            posterUrl: "https://image.tmdb.org/t/p/original/ljsZTbVsrQSqZgWeep2B1QiDKuh.jpg",
-            year: 2010,
-            duration: "2h 28m",
-            views: 2500000,
-            type: "Movie",
-            tags: ["Sci-Fi", "Thriller"],
-            description: "Một tay trộm chuyên xâm nhập giấc mơ để đánh cắp bí mật.",
-        },
-        {
-            id: 2,
-            title: "Interstellar",
-            subTitle: "Du hành giữa các vì sao",
-            posterUrl: "https://image.tmdb.org/t/p/original/if4TI9LbqNIrzkoOgWjX5PZYDYe.jpg",
-            year: 2014,
-            duration: "2h 49m",
-            views: 4000000,
-            type: "Movie",
-            tags: ["Adventure", "Drama", "Sci-Fi"],
-            description: "Một nhóm phi hành gia tìm kiếm hành tinh mới cho nhân loại.",
-        },
-    ]);
+    const [favorites, setFavorites] = useState<Movie[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        setIsLoading(true);
+        getFavoriteMovies()
+            .then((data) => {
+                setFavorites(data);
+            })
+            .catch((err) => {
+                console.error("Lỗi khi tải danh sách yêu thích:", err);
+            })
+            .finally(() => {
+                setIsLoading(false);
+            });
+    }, []);
+
+    const LoadingSkeleton = () => (
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-12">
+            {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="aspect-[2/3] rounded-lg" />
+            ))}
+        </div>
+    );
+
+    const EmptyState = () => (
+        <div className="flex flex-col items-center justify-center text-center text-gray-400 h-60">
+            <Heart className="w-16 h-16" />
+            <h3 className="mt-4 text-lg font-semibold text-white">
+                Chưa có phim yêu thích
+            </h3>
+            <p className="mt-1 text-sm">
+                Hãy nhấn trái tim ở trang phim để thêm vào đây.
+            </p>
+        </div>
+    );
 
     return (
         <div className="max-w-4xl">
@@ -37,9 +50,14 @@ export default function FavoritesPage() {
             <p className="mt-1 text-gray-400">
                 Danh sách phim bạn đã thêm vào yêu thích.
             </p>
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-12"></div>
-            {favorites.length === 0 ? (
-                <p className="text-gray-400">Bạn chưa thêm phim nào vào danh sách yêu thích.</p>
+
+            {/* Logic render mới */}
+            {isLoading ? (
+                <LoadingSkeleton />
+            ) : favorites.length === 0 ? (
+                <div className="mt-8">
+                    <EmptyState />
+                </div>
             ) : (
                 <div className="dark grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
                     {favorites.map((movie) => (
