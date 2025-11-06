@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Heart, List, History, Bell, User, LogOut } from "lucide-react";
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext"; 
 
 const navItems = [
   { href: "/account/favorites", label: "Yêu thích", icon: Heart },
@@ -24,8 +25,10 @@ const navItems = [
 export function AccountNavigation() {
   const pathname = usePathname();
   const router = useRouter();
+  
+  const { user, logout } = useAuth(); 
 
-  const currentItem = navItems.find(item => item.href === pathname);
+  const currentItem = navItems.find((item) => item.href === pathname);
 
   const handleNavigate = (value: string) => {
     router.push(value);
@@ -34,23 +37,31 @@ export function AccountNavigation() {
   const UserProfile = () => (
     <div className="flex items-center gap-3">
       <Avatar className="h-10 w-10">
-        <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="Huy Lê" />
-        <AvatarFallback>HL</AvatarFallback>
+        <AvatarImage src={user?.avatarUrl || ''} alt={user?.username} />
+        <AvatarFallback>
+          {user?.display_name?.[0] || user?.username?.[0] || 'U'}
+        </AvatarFallback>
       </Avatar>
-      <div className="text-sm">
-        <p className="font-semibold text-white">Huy Lê</p>
-        <p className="text-gray-400">huymynhonabcd@gmail.com</p>
+      <div className="text-sm overflow-hidden">
+        <p className="font-semibold text-white truncate">
+          {user?.display_name || user?.username}
+        </p>
+        <p className="text-gray-400 truncate">{user?.email}</p>
       </div>
     </div>
   );
 
   const LogoutButton = () => (
-     <Button variant="ghost" className="w-full justify-start text-gray-400 hover:bg-zinc-800 hover:text-white">
-       <LogOut className="w-4 h-4 mr-2" />
-       Thoát
-     </Button>
+    <Button
+      variant="ghost"
+      className="w-full justify-start text-gray-400 hover:bg-zinc-800 hover:text-white"
+      onClick={logout} 
+    >
+      <LogOut className="w-4 h-4 mr-2" />
+      Thoát
+    </Button>
   );
-  
+
   return (
     <>
       {/* desktop */}
@@ -58,7 +69,7 @@ export function AccountNavigation() {
         <h2 className="text-xl font-semibold text-white mb-6">
           Quản lý tài khoản
         </h2>
-        
+
         {/* Nav Links Desktop */}
         <nav className="flex flex-col space-y-2">
           {navItems.map((item) => (
@@ -69,7 +80,7 @@ export function AccountNavigation() {
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 pathname === item.href
                   ? "bg-zinc-800 text-white" // Active
-                  : "text-gray-400 hover:bg-zinc-800 hover:text-white"
+                  : "text-gray-400 hover:bg-zinc-800 hover:text-white",
               )}
             >
               <item.icon className="w-4 h-4" />
@@ -92,14 +103,16 @@ export function AccountNavigation() {
             <SelectValue placeholder="Chọn trang..." asChild>
               <div className="flex items-center gap-3">
                 {currentItem?.icon && <currentItem.icon className="w-4 h-4" />}
-                <span className="text-white">{currentItem?.label || "Quản lý tài khoản"}</span>
+                <span className="text-white">
+                  {currentItem?.label || "Quản lý tài khoản"}
+                </span>
               </div>
             </SelectValue>
           </SelectTrigger>
           <SelectContent className="bg-zinc-900 text-white border-zinc-700">
             {navItems.map((item) => (
-              <SelectItem 
-                key={item.href} 
+              <SelectItem
+                key={item.href}
                 value={item.href}
                 className="focus:color-mute-foreground"
               >

@@ -8,24 +8,26 @@ interface AuthUser {
   username: string;
   email: string;
   role: string;
-  avatarUrl?: string; 
-  name?: string; 
+  avatarUrl?: string | null;
+  display_name?: string; 
 }
 
 interface AuthContextType {
   user: AuthUser | null;
-  token: string | null; 
+  token: string | null;
   isLoading: boolean;
-  isLoggedIn: boolean; 
+  isLoggedIn: boolean;
   login: (user: AuthUser, token: string, refreshToken: string) => void;
   logout: () => void;
+  setUser: (user: AuthUser | null) => void;
+  setToken: (token: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null); 
+  const [user, _setUser] = useState<AuthUser | null>(null);
+  const [token, _setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -35,8 +37,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const storedUser = localStorage.getItem("user");
 
       if (storedToken && storedUser) {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        _setToken(storedToken); 
+        _setUser(JSON.parse(storedUser));
       }
     } catch (error) {
       console.error("Failed to load auth state from localStorage", error);
@@ -44,26 +46,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   }, []);
 
+  const setUser = (newUser: AuthUser | null) => {
+    _setUser(newUser);
+    if (typeof window !== 'undefined') {
+      if (newUser) {
+        localStorage.setItem("user", JSON.stringify(newUser));
+      } else {
+        localStorage.removeItem("user");
+      }
+    }
+  };
+
+  const setToken = (newToken: string | null) => {
+    _setToken(newToken);
+    if (typeof window !== 'undefined') {
+      if (newToken) {
+        localStorage.setItem("accessToken", newToken);
+      } else {
+        localStorage.removeItem("accessToken");
+      }
+    }
+  };
+
   const login = (user: AuthUser, token: string, refreshToken: string) => {
-    setUser(user);
+    setUser(user);   
     setToken(token); 
-    localStorage.setItem("accessToken", token);
-    localStorage.setItem("user", JSON.stringify(user));
-    localStorage.setItem("refreshToken", refreshToken); 
+    localStorage.setItem("refreshToken", refreshToken);
   };
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
+    setUser(null);   
+    setToken(null); 
     localStorage.removeItem("refreshToken");
     router.push("/");
   };
   const isLoggedIn = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout, isLoggedIn }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token, 
+      isLoading, 
+      login, 
+      logout, 
+      isLoggedIn, 
+      setUser, 
+      setToken 
+    }}>
       {children}
     </AuthContext.Provider>
   );
