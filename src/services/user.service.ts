@@ -30,3 +30,7 @@ export const updateMyProfile = async (
   const response = await apiClient.put('/profile/me', data);
   return response.data;
 };
+export const changePassword = async (data: { oldPassword: string, newPassword: string }) => {
+  const response = await apiClient.post('/profile/change-password', data);
+  return response.data;
+};
