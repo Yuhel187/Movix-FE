@@ -33,6 +33,7 @@ import {
     Info, 
     Pencil, 
     Check, 
+    Download,
     ChevronsUpDown, 
     X,
     FileVideo,
@@ -57,8 +58,56 @@ import {
     CommandList,
 } from "@/components/ui/command";
 
+import { 
+    InputGroup, 
+    InputGroupButton, 
+    InputGroupInput 
+} from "@/components/ui/input-group"; 
+
+import apiClient from '@/lib/apiClient'; 
+import { toast } from 'sonner';
+import { CountrySelect } from "@/components/movie/CountrySelect"; 
+import { GenreCombobox, Genre } from "@/components/movie/GenreCombobox";
+
 import { cn } from "@/lib/utils";
 import { AddActorDialog } from '@/components/movie/AddActorDialog';
+
+const countryIsoMap: { [key: string]: string } = {
+  "US": "mỹ",
+  "KR": "hàn quốc",
+  "JP": "nhật bản",
+  "GB": "anh",
+  "CN": "trung quốc",
+  "FR": "pháp",
+  "TH": "thái lan",
+  "DE": "đức",
+  "AU": "úc",
+  "CA": "canada",
+  "HK": "hồng kông",
+  "TW": "đài loan",
+  "VN": "việt nam"
+};
+
+const countryMap: { [key: string]: string } = {
+  "United States of America": "mỹ",
+  "South Korea": "hàn quốc",
+  "Japan": "nhật bản",
+  "United Kingdom": "anh",
+  "China": "trung quốc",
+  "France": "pháp",
+  "Thailand": "thái lan",
+  "Germany": "đức",
+  "Australia": "úc",
+  "Canada": "canada",
+  "Hong Kong": "hồng kông",
+  "Taiwan": "đài loan",
+  "Vietnam": "việt nam"
+};
+
+const MOCK_GENRES_DB: Genre[] = [
+  { id: "g1", name: "Hành động" },
+  { id: "g2", name: "Phiêu lưu" },
+];
 
 const steps = [
     { id: 1, title: 'Thông tin phim' },
@@ -96,7 +145,7 @@ type Person = {
     role: 'actor' | 'director';
 };
 
-// --- (MỚI) Mock Data cho Step 3 ---
+// --- Mock Data cho Step 3 ---
 const mockPeople: Person[] = [
     { 
         id: 'person-1', 
@@ -134,14 +183,21 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     const [currentStep, setCurrentStep] = useState(1);
     
     // --- State Step 1 ---
-    const [movieTitle, setMovieTitle] = useState("Dr. Stone");
+    const [tmdbId, setTmdbId] = useState("");
+    const [isFetching, setIsFetching] = useState(false);
+    const [movieTitle, setMovieTitle] = useState("");
+    const [originalTitle, setOriginalTitle] = useState("");
+    const [selectedCountry, setSelectedCountry] = useState<string | undefined>();
     const [releaseDate, setReleaseDate] = useState<Date | undefined>();
     const [overview, setOverview] = useState("");
-    const [selectedMovieType, setSelectedMovieType] = useState<'single' | 'series'>('series');
+    const [selectedMovieType, setSelectedMovieType] = useState<'single' | 'series' | null>(null);
     const posterInputRef = useRef<HTMLInputElement>(null);
     const backdropInputRef = useRef<HTMLInputElement>(null);
-    const [posterPreview, setPosterPreview] = useState<string | null>("https://image.tmdb.org/t/p/w500/6JjfSchsU6daXk2AKX8EEBjO3Fm.jpg");
+    const [posterPreview, setPosterPreview] = useState<string | null>(null);
     const [backdropPreview, setBackdropPreview] = useState<string | null>(null);
+    const [allGenres, setAllGenres] = useState<Genre[]>(MOCK_GENRES_DB);
+    const [selectedGenres, setSelectedGenres] = useState<Genre[]>([]);
+    const [isTmdbDataLoaded, setIsTmdbDataLoaded] = useState(false);
 
     // --- State Step 2 ---
     const [singleMovieFile, setSingleMovieFile] = useState<File | null>(null);
@@ -169,13 +225,195 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     const [selectedSeasonId, setSelectedSeasonId] = useState('client-id-1');
     const episodeFileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-    // --- (MỚI) State Step 3 ---
-    const [people, setPeople] = useState<Person[]>(mockPeople);
+    // --- State Step 3 ---
+    const [people, setPeople] = useState<Person[]>([]);
     const [isAddPersonOpen, setAddPersonOpen] = useState(false);
+
+    const handleFetchTmdbData = async () => {
+        if (!tmdbId) {
+            toast.error("Vui lòng nhập TMDB ID");
+            return;
+        }
+
+        if (!selectedMovieType) {
+            toast.error("Vui lòng chọn 'Phim lẻ' hoặc 'Phim bộ' trước khi fetch.");
+            return;
+        }
+
+        setIsFetching(true);
+        try {
+            // 1. Gọi API BE
+            let res;
+            if (selectedMovieType === 'single') {
+                res = await apiClient.get(`/movies/tmdb/details/${tmdbId}`);
+            } else { // 'series'
+                res = await apiClient.get(`/movies/tmdb/tv/${tmdbId}`);
+            }
+            
+            const data = res.data;
+
+            setMovieTitle(data.title);
+            setOriginalTitle(data.original_title); 
+            setOverview(data.overview);
+            if (data.release_date) {
+                setReleaseDate(new Date(data.release_date));
+            }
+            setPosterPreview(data.poster_url);
+            setBackdropPreview(data.backdrop_url);
+            // 3. Tự động điền quốc gia
+            if (data.production_country) {
+                const mappedIso = countryIsoMap[data.production_country];
+                const mappedName = countryMap[data.production_country];
+                
+                if (mappedIso) {
+                    setSelectedCountry(mappedIso);
+                } else if (mappedName) {
+                    setSelectedCountry(mappedName);
+                } else {
+                    console.warn(`Không có mapping cho quốc gia: ${data.production_country}`);
+                    setSelectedCountry(undefined); 
+                }
+            }
+
+            // (Các logic khác cho Genres và People giữ nguyên)
+            const genresFromTmdb = data.genres.map((g: {id: number, name: string}) => ({
+                id: g.name, 
+                name: g.name
+            }));
+            // ... (setAllGenres)
+            setAllGenres(prevDB => {
+                const newGenres = [...prevDB];
+                genresFromTmdb.forEach((tmdbGenre: Genre) => {
+                    if (!prevDB.some(dbGenre => dbGenre.name === tmdbGenre.name)) {
+                        newGenres.push({ id: tmdbGenre.name, name: tmdbGenre.name }); 
+                    }
+                });
+                return newGenres;
+            });
+            setSelectedGenres(genresFromTmdb);
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const castFromTmdb = data.cast.map((person: any) => ({
+                id: person.id.toString(),
+                name: person.name,
+                character: person.character,
+                avatarUrl: getTmdbImageUrl(person.profile_path),
+                role: 'actor',
+            }));
+            const directorFromTmdb = data.director ? [{
+                id: data.director.id.toString(),
+                name: data.director.name,
+                character: 'Đạo diễn',
+                avatarUrl: getTmdbImageUrl(data.director.profile_path),
+                role: 'director',
+            }] : [];
+            setPeople([...directorFromTmdb, ...castFromTmdb]);
+            
+            toast.success(`Đã tải dữ liệu cho phim: ${data.title}`);
+            setIsTmdbDataLoaded(true);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (err: any) {
+            console.error("Lỗi fetch TMDB:", err);
+            setIsTmdbDataLoaded(false);
+            if (selectedMovieType === 'single') {
+                toast.error("Không tìm thấy Phim Lẻ (Movie) với ID này. Bạn có chắc đây là ID phim lẻ?");
+            } else {
+                toast.error("Không tìm thấy Phim Bộ (TV Show) với ID này. Bạn có chắc đây là ID phim bộ?");
+            }
+        } finally {
+            setIsFetching(false);
+        }
+    };
+
+    const getTmdbImageUrl = (path: string | null | undefined): string => {
+        if (!path) {
+            return "/avatar.jpg"; 
+        }
+        return `https://image.tmdb.org/t/p/w500${path}`;
+    };
+
+    const handleCreateGenreAPI = (name: string) => {
+        const newGenre: Genre = { id: name, name: name };
+        setAllGenres((currentDB) => [...currentDB, newGenre]);
+        setSelectedGenres((currentSelected) => [...currentSelected, newGenre]);
+    };
+    const handleDeleteGenreAPI = (idToDelete: string) => {
+        setAllGenres((currentDB) => currentDB.filter((g) => g.id !== idToDelete));
+        setSelectedGenres((currentSelected) => currentSelected.filter((g) => g.id !== idToDelete));
+    };
+
+    
+    //  Hàm Submit 
+    const handleFormSubmit = async () => {
+        // (Lưu ý: Đây là logic GIẢ LẬP. Cần một dịch vụ upload file thực tế)
+        // 1. Xử lý file phim lẻ 
+        let singleMovieFileName = null;
+        if (selectedMovieType === 'single' && singleMovieFile) {
+            //gọi API upload (ví dụ: uploadToCloud(singleMovieFile))và nhận lại một URL. Tạm thờivchỉ dùng tên file.
+            singleMovieFileName = singleMovieFile.name;
+        }
+
+        // 2. Xử lý file phim bộ (nếu có)
+        const seasonsWithFileNames = seasons.map(s => ({
+            name: s.name,
+            episodes: s.episodes.map(e => ({
+                title: e.title,
+                duration: e.duration,
+                // TẠI ĐÂY sẽ upload e.file và lấy URL
+                fileName: e.fileName, 
+            }))
+        }));
+
+        // 3. Tạo formData SẠCH 
+        const formData = {
+            tmdb_id: tmdbId,
+            movieTitle,
+            originalTitle,
+            releaseDate,
+            overview,
+            posterUrl: posterPreview,
+            backdropUrl: backdropPreview,
+            selectedCountry,
+            selectedGenres,
+            selectedMovieType,
+            
+            // Chỉ gửi thông tin file đã xử lý
+            singleMovieFile: singleMovieFileName ? { fileName: singleMovieFileName, duration: 0 } : null,
+            seasons: seasonsWithFileNames,
+            
+            people,
+        };
+        
+        try {
+            setIsFetching(true); 
+            await apiClient.post('/movies', formData); 
+            
+            toast.success("Tạo phim mới thành công!");
+            onClose(); 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (err: any) { 
+            console.error("Lỗi khi tạo phim:", err); 
+           
+            if (err.response && err.response.data && err.response.data.message) {
+                toast.error(err.response.data.message); 
+            } else {
+                toast.error("Đã xảy ra lỗi khi tạo phim.");
+            }
+        } finally {
+            setIsFetching(false);
+        }
+    };
+    
+    const handleNextStep = () => {
+        if (currentStep < steps.length) {
+            setCurrentStep(currentStep + 1);
+        } else {
+            handleFormSubmit();
+        }
+    };
     
     // --- Hàm Step 1 ---
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, type: 'poster' | 'backdrop') => {
-        // ... (code giữ nguyên)
         const file = event.target.files?.[0];
         if (file) {
             const reader = new FileReader();
@@ -190,16 +428,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
         }
     };
 
-    // --- Hàm điều hướng ---
-    const handleNextStep = () => {
-        if (currentStep < steps.length) {
-            setCurrentStep(currentStep + 1);
-        } else {
-            console.log("Submit form");
-            // ... (logic submit)
-        }
-    };
-    
     const handlePrevStep = () => {
         if (currentStep > 1) {
             setCurrentStep(currentStep - 1);
@@ -216,7 +444,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     };
 
     const handleAddNewSeason = () => {
-        // ... (code giữ nguyên)
         if (newSeasonName.trim() === "") return;
         const newSeasonId = `client-id-${Date.now()}`;
         const newSeason: Season = {
@@ -230,12 +457,10 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     };
 
     const handleSeasonSelect = (seasonId: string) => {
-        // ... (code giữ nguyên)
         setSelectedSeasonId(seasonId);
     };
 
     const handleAddEpisode = () => {
-        // ... (code giữ nguyên)
         setSeasons(prevSeasons => 
             prevSeasons.map(season => {
                 if (season.id === selectedSeasonId) {
@@ -254,7 +479,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     };
 
     const handleRemoveEpisode = (episodeId: number) => {
-        // ... (code giữ nguyên)
         setSeasons(prevSeasons =>
             prevSeasons.map(season => {
                 if (season.id === selectedSeasonId) {
@@ -268,7 +492,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     };
 
     const handleEpisodeChange = (episodeId: number, field: 'title' | 'duration', value: string | number) => {
-        // ... (code giữ nguyên)
         setSeasons(prevSeasons =>
             prevSeasons.map(season => {
                 if (season.id === selectedSeasonId) {
@@ -285,7 +508,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     };
 
     const handleEpisodeFileChange = (episodeId: number, event: React.ChangeEvent<HTMLInputElement>) => {
-        // ... (code giữ nguyên)
         const file = event.target.files?.[0];
         if (file) {
             setSeasons(prevSeasons =>
@@ -313,8 +535,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
             alert("Diễn viên này đã có trong danh sách.");
             return;
         }
-
-        // Tạo object Person mới
         const newPerson: Person = {
             id: data.person.id,
             name: data.person.name,
@@ -337,11 +557,11 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     };
     
     const currentSelectedSeason = seasons.find(s => s.id === selectedSeasonId);
-
+    const isDisabled = isTmdbDataLoaded;
     return (
         <div className="flex flex-col md:flex-row w-full gap-6 text-white min-h-[calc(100vh-theme(space.16)-theme(space.12))]">
 
-            {/* --- Sidebar Steps --- (Giữ nguyên) */}
+            {/* --- Sidebar Steps --- */}
             <div className="w-full md:w-60 flex-shrink-0 bg-[#262626] p-4 md:p-6 rounded-lg border border-slate-800 flex flex-col">
                 <Button variant="ghost" size="sm" onClick={onClose} className="self-start px-2 mb-6 text-gray-400 hover:text-white">
                     <ArrowLeft className="w-4 h-4 mr-2" />
@@ -381,13 +601,13 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
             {/* --- Main Content Form --- */}
             <div className="flex-1 bg-[#1F1F1F] p-6 rounded-lg border border-slate-800 overflow-y-auto">
                 
-                {/* --- Step 1 Content --- (Giữ nguyên) */}
+                {/* --- Step 1 Content --- */}
                 {currentStep === 1 && (
                     <div className="space-y-6"> 
                         {/* ... (Backdrop) ... */}
                         <div className="relative w-full">
                             <div
-                                className="relative w-full h-64 rounded-md overflow-hidden bg-slate-800/50 border border-dashed border-slate-600 flex items-center justify-center cursor-pointer hover:border-primary group"
+                                className="relative w-full h-96 rounded-md overflow-hidden bg-slate-800/50 border border-dashed border-slate-600 flex items-center justify-center cursor-pointer hover:border-primary group"
                                 onClick={() => backdropInputRef.current?.click()}
                             >
                                 {backdropPreview ? (
@@ -408,7 +628,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                             </div>
                             <div className="flex flex-col md:flex-row gap-8 -mt-[120px] relative z-10 px-6 md:px-12">
                                 {/* ... (Poster) ... */}
-                                <div className="w-full md:w-auto max-w-[240px] flex-shrink-0 space-y-2 mx-auto md:mx-0 md:ml-8 lg:ml-12">
+                                <div className="w-full md:w-[300px] flex-shrink-0 space-y-2 mx-auto md:mx-0 md:ml-4 lg:ml-8">
                                     <div
                                         className="aspect-[2/3] relative w-full rounded-md overflow-hidden bg-slate-700 border-4 border-[#1F1F1F] shadow-lg cursor-pointer group hover:border-primary" 
                                         onClick={() => posterInputRef.current?.click()}
@@ -438,13 +658,39 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                 </div>
                                 {/* ... (Movie Title, Release Date) ... */}
                                 <div className="flex-1 space-y-6 pt-20 md:pt-28 lg:pt-32">
+                                    {/*  Thêm TMDB ID Input  */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                                            Tải dữ liệu từ TMDB (Movie)
+                                        </label>
+                                        <InputGroup>
+                                            <InputGroupInput 
+                                                placeholder="Nhập TMDB Movie ID (ví dụ: 603)" 
+                                                className="h-full rounded-l-md bg-[#262626] border-none"
+                                                value={tmdbId}
+                                                onChange={(e) => {
+                                                    setTmdbId(e.target.value);
+                                                    if (e.target.value === '' && isTmdbDataLoaded) {
+                                                        setIsTmdbDataLoaded(false);
+                                                    }
+                                                }}
+                                            />
+                                            <InputGroupButton 
+                                                className="bg-blue-600 hover:bg-blue-700 text-white h-full rounded-md"
+                                                onClick={handleFetchTmdbData}
+                                                disabled={isFetching}
+                                            >
+                                                {isFetching ? "..." : <Download className="w-4 h-4" />}
+                                            </InputGroupButton>
+                                        </InputGroup>
+                                    </div>
                                     <div>
                                         <label htmlFor="movieTitle" className="block text-sm font-medium text-gray-300 mb-1">Tên phim</label>
                                         <Input
                                             id="movieTitle"
                                             value={movieTitle}
                                             onChange={(e) => setMovieTitle(e.target.value)}
-                                            className="bg-[#262626] border-slate-700 focus:border-primary focus:ring-primary"
+                                            className="bg-[#262626] border-slate-700 focus:border-primary "
                                         />
                                     </div>
                                     <div>
@@ -473,6 +719,16 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                             </PopoverContent>
                                         </Popover>
                                     </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-1">Quốc gia</label>
+                                        <CountrySelect 
+                                            value={selectedCountry}
+                                            onValueChange={setSelectedCountry}
+                                           
+                                        />
+                                    </div>
+
+                                    
                                 </div>
                             </div>
                         </div>
@@ -491,7 +747,17 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                 <p className="text-xs text-gray-500 text-right mt-1">{overview.length}/1000 từ</p>
                             </div>
 
-                            <GenreSelect />
+                            <div>
+                                <label className="text-sm text-slate-300">Thể loại</label>
+                                <GenreCombobox
+                                  allGenres={allGenres} 
+                                  selectedGenres={selectedGenres} 
+                                  onChange={(newSelection) => setSelectedGenres(newSelection)}
+                                  onCreate={handleCreateGenreAPI}
+                                  onDelete={handleDeleteGenreAPI}
+                                  className="mt-2"
+                                />
+                            </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-2">Loại phim</label>
@@ -502,7 +768,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                                 ? 'bg-[#E50914]/20 border-[#E50914]'
                                                 : 'bg-[#262626] border-slate-700 hover:border-slate-500'
                                         }`}
-                                        onClick={() => setSelectedMovieType('single')}
+                                        onClick={() => !isDisabled && setSelectedMovieType('single')}
                                     >
                                         <div className="flex items-center gap-3">
                                             <Film className={`w-6 h-6 ${selectedMovieType === 'single' ? 'text-[#E50914]' : 'text-gray-400'}`} />
@@ -518,7 +784,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                                 ? 'bg-[#E50914]/20 border-[#E50914]'
                                                 : 'bg-[#262626] border-slate-700 hover:border-slate-500'
                                         }`}
-                                        onClick={() => setSelectedMovieType('series')}
+                                        onClick={() => !isDisabled && setSelectedMovieType('series')}
                                     >
                                            <div className="flex items-center gap-3">
                                             <Tv className={`w-6 h-6 ${selectedMovieType === 'series' ? 'text-[#E50914]' : 'text-gray-400'}`} />
@@ -534,9 +800,16 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                     </div>
                 )}
 
-                {/* --- Step 2 Content --- (Giữ nguyên) */}
+                {/* --- Step 2 Content ---  */}
                 {currentStep === 2 && (
                     <>
+                    {selectedMovieType === null && (
+                            <div className="flex flex-col items-center justify-center h-full space-y-4 p-8 text-center text-gray-400">
+                                <Info className="w-16 h-16 text-slate-700" />
+                                <h2 className="text-2xl font-semibold text-white">Chưa chọn loại phim</h2>
+                                <p>Vui lòng quay lại Bước 1 và chọn &quot;Phim lẻ&quot; hoặc &quot;Phim bộ&quot; để tiếp tục.</p>
+                            </div>
+                        )}
                         {/* --- PHIM LẺ --- */}
                         {selectedMovieType === 'single' && (
                             <div className="flex flex-col items-center justify-center h-full space-y-8 p-4 md:p-8">
@@ -570,7 +843,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                         id="single-movie-upload"
                                         ref={singleFileRef}
                                         type="file"
-                                        accept="video/*" // Chỉ chấp nhận video
+                                        accept="video/*" 
                                         className="hidden"
                                         onChange={handleSingleFileChange}
                                     />
@@ -582,7 +855,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                         {selectedMovieType === 'series' && (
                             <div className="space-y-6">
                                 <h2 className="text-2xl font-semibold text-white">QUẢN LÝ MÙA VÀ TẬP PHIM</h2>
-                                {/* Quản lý mùa */}
                                 <div>
                                     <div className="flex items-end gap-3">
                                         <div className="flex-1">
@@ -630,7 +902,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
 
                                         {/* Danh sách tập phim */}
                                         <h3 className="text-lg font-semibold text-white">Danh sách tập</h3>
-                                        <div className="space-y-4">
+                                        <div className="space-y-4 ">
                                             {currentSelectedSeason?.episodes.map((episode, index) => (
                                                 <Card key={episode.id} className="p-4 bg-white/5 border-slate-700 relative">
                                                     <div className="flex flex-col md:flex-row gap-4">
@@ -640,7 +912,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                                             <Input 
                                                                 value={`Tập ${index + 1}`}
                                                                 readOnly 
-                                                                className="bg-white/10 border-slate-600 w-full md:w-24 text-center" 
+                                                                className="bg-white/10 text-white border-slate-600 w-full md:w-24 text-center" 
                                                             />
                                                         </div>
                                                         
@@ -652,7 +924,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                                                     id={`ep_title_${episode.id}`}
                                                                     value={episode.title}
                                                                     onChange={(e) => handleEpisodeChange(episode.id, 'title', e.target.value)}
-                                                                    className="bg-white/10 border-slate-600"
+                                                                    className="bg-white/10 border-slate-600 text-white"
                                                                 />
                                                             </div>
                                                             <div>
@@ -662,7 +934,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                                                     type="number"
                                                                     value={episode.duration}
                                                                     onChange={(e) => handleEpisodeChange(episode.id, 'duration', e.target.valueAsNumber || 0)}
-                                                                    className="bg-white/10 border-slate-600"
+                                                                    className="bg-white/10 border-slate-600 text-white"
                                                                     min="0"
                                                                 />
                                                                 <p className="text-xs text-gray-500 mt-1">Tính bằng phút.</p>
@@ -674,7 +946,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                                                         id={`ep_file_${episode.id}`}
                                                                         value={episode.fileName || "Chưa chọn file"} 
                                                                         readOnly 
-                                                                        className="bg-white/10 border-slate-600 rounded-r-none focus-visible:ring-offset-0 focus-visible:ring-0" 
+                                                                        className="bg-white/10 text-white border-slate-600 rounded-r-none focus-visible:ring-offset-0 focus-visible:ring-0" 
                                                                         onClick={() => episodeFileRefs.current[`s${selectedSeasonId}-e${episode.id}`]?.click()}
                                                                     />
                                                                     <Button 
@@ -754,7 +1026,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                             </Button>
                         </div>
                         
-                        {/* 2. Sắp xếp (Giữ nguyên) */}
+                        {/* 2. Sắp xếp */}
                         <div className="w-45">
                             <Select defaultValue="az">
                             <SelectTrigger id="sort" className="w-full bg-white/10 border-slate-600">
@@ -771,18 +1043,18 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                     
                     <CardContent>
                         <div className="space-y-4">
-                        {/* 3. Tiêu đề Bảng (Giữ nguyên) */}
+                        {/* 3. Tiêu đề Bảng */}
                         <div className="grid grid-cols-12 gap-4 px-4 py-2 border-b border-slate-700 font-semibold text-gray-400 text-sm">
                             <div className="col-span-5">Tên</div>
                             <div className="col-span-4">Nhân vật</div>
                             <div className="col-span-3 text-right">Thao tác</div>
                         </div>
 
-                        {/* 4. Danh sách thành viên (Giữ nguyên) */}
+                        {/* 4. Danh sách thành viên */}
                         <div className="space-y-3">
-                            {people.map((person) => (
+                            {people.map((person, index) => (
                             <div 
-                                key={person.id} 
+                                key={`${person.id}-${index}`} 
                                 className="grid grid-cols-12 gap-4 items-center px-4 py-2 rounded-md hover:bg-white/5"
                             >
                                 {/* Tên */}
@@ -827,7 +1099,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                     </CardContent>
 
                     <CardFooter className="flex justify-end pt-4">
-                        {/* 5. Phân trang (Pagination) (Giữ nguyên) */}
+                        {/* 5. Phân trang (Pagination) */}
                         <div className="flex items-center gap-2">
                         <Button variant="outline" size="icon" className="bg-white/10 border-slate-700 hover:bg-white/20">
                             <ChevronLeft className="w-4 h-4" /> 
@@ -863,7 +1135,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                     <Button 
                         onClick={handleNextStep} 
                         className="bg-[#E50914] hover:bg-[#b80710]"
-                        disabled={currentStep === 1 && selectedMovieType === null}
+                        disabled={isFetching || (currentStep === 1 && selectedMovieType === null)}
                     >
                         {currentStep === steps.length ? 'Đăng phim' : 'Tiếp tục'}
                         
