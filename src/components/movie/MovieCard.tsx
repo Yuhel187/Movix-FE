@@ -3,7 +3,7 @@
 import Image from "next/image"
 import { useRef, useState, useEffect, MouseEvent } from "react"
 import { useRouter } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, m } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Heart, Info, Play, Eye, Clock,Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -37,18 +37,21 @@ export function MovieCard({
     const [isLoadingFav, setIsLoadingFav] = useState(true)
     const {
         title,
-        subTitle,
-        posterUrl,
+        //subTitle,
+        //posterUrl,
         year,
         type,
         episode,
         tags = [],
         description,
-        duration,
+        //duration,
         views,
         slug,
+        metadata
     } = movie
-
+    const subTitle= movie.subTitle||movie.original_title||"";
+    const displayDuration = movie.duration || metadata?.duration;
+    const displayPoster = movie.posterUrl || movie.poster_url || "https://static.vecteezy.com/system/resources/previews/020/276/914/non_2x/404-internet-error-page-icon-404-number-symbol-free-vector.jpg";
     const handleMouseEnter = () => {
         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
         hoverTimeoutRef.current = setTimeout(() => setHovered(true), 300)
@@ -134,7 +137,7 @@ export function MovieCard({
                     onClick={handleDetail}
                 >
                     <Image
-                        src={posterUrl}
+                        src={displayPoster}
                         alt={title}
                         fill
                         className="object-cover transition-transform duration-500 hover:scale-105"
@@ -152,7 +155,7 @@ export function MovieCard({
                             className="absolute left-1/2 top-0 z-50 w-[350px] h-[400px] -translate-x-1/2 -translate-y-[5%] rounded-xl overflow-hidden bg-card text-card-foreground shadow-2xl"
                         >
                             <div className="relative h-1/2 w-full">
-                                <Image src={posterUrl} alt={title} fill className="object-cover" />
+                                <Image src={displayPoster} alt={title} fill className="object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                             </div>
 
@@ -237,10 +240,10 @@ export function MovieCard({
                     {title}
                 </p>
                 <div className="mt-1 flex items-center justify-between text-xs text-muted">
-                    {duration && (
+                    {displayDuration && (
                         <span className="inline-flex items-center gap-1 text-primary-foreground">
                             <Clock className="size-3" />
-                            {duration}
+                            {displayDuration}
                         </span>
                     )}
 

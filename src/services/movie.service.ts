@@ -21,6 +21,7 @@ export async function getMovieData(slug: string) {
 
   const movie: Movie = {
     id: raw.id,
+    slug: raw.slug,
     title: raw.title || raw.original_title || "Không có tiêu đề",
     subTitle: raw.original_title || raw.title || "",
     description: raw.description || "",

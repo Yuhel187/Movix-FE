@@ -1,10 +1,13 @@
 export interface Movie {
   id: string | number
-  slug?: string //tạm thời để null để không lỗi
+  slug?: string
   title: string
   subTitle?: string
   posterUrl: string
   backdropUrl?: string
+  poster_url?: string
+  backdrop_url?: string
+  original_title?: string 
   description?: string
   videoUrl?: string
   year?: number
@@ -14,5 +17,10 @@ export interface Movie {
   rating?: number
   duration?: string
   country?: string
-  views?: number        
+  views?: number
+metadata?: {
+    tmdb_rating?: number
+    duration?: string
+    [key: string]: any
+  }       
 }
