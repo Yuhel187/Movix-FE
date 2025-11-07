@@ -15,7 +15,10 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-// **Import SearchBar (đảm bảo component này đã được cập nhật để nhận value và onChange)**
+import FilterPanel, { FilterState } from "@/components/filter/FilterPanel";
+import { Pagination } from "@/components/common/pagination";
+import AddMovieForm from "./AddMovieForm";
+import apiClient from "@/lib/apiClient"; 
 import { SearchBar } from "@/components/common/search-bar";
 import {
   List,
@@ -31,10 +34,8 @@ import {
 import type { Movie } from "@/types/movie";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatePresence, motion } from "framer-motion";
-import FilterPanel from "@/components/filter/FilterPanel";
 import { MovieCard } from "@/components/movie/MovieCard";
-import { Pagination } from "@/components/common/pagination";
-import AddMovieForm from "./AddMovieForm";
+
 const baseMockMovies: Movie[] = [
     {
       id: 1,
@@ -154,6 +155,25 @@ async function fetchMoviesFromDatabase(): Promise<Movie[]> {
     }, 1000);
   });
 }
+
+type Genre = {
+  id: string;
+  name: string;
+};
+type Country = {
+  id: string;
+  name: string | null;
+};
+
+const defaultFilters: FilterState = {
+  country: "Tất cả",
+  type: "Tất cả",
+  rating: "Tất cả",
+  genre: [],
+  language: "Tất cả",
+  year: "Tất cả",
+  q: "",
+};
 
 const RenderPreviewCard = ({ movie }: { movie: Movie | null }) => {
   if (!movie) {
@@ -302,7 +322,7 @@ const RenderListView = ({
 
 const MovieGridSkeleton = () => (
   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-7 gap-x-4 gap-y-8">
-    {Array.from({ length: 21 }).map((_, i) => (
+    {Array.from({ length: 35 }).map((_, i) => (
       <div key={i} className="group relative">
         <Skeleton className="aspect-[2/3] w-full rounded-md bg-slate-800" />
         <div className="mt-2 px-0.5">
@@ -362,7 +382,7 @@ const MovieListSkeleton = () => (
   </Card>
 );
 
-const MOVIES_PER_PAGE = 21;
+const MOVIES_PER_PAGE = 35;
 
 export default function MovieStoragePage() {
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
@@ -373,12 +393,35 @@ export default function MovieStoragePage() {
   const [error, setError] = useState<string | null>(null);
 
   const [showFilter, setShowFilter] = useState(false);
-  const toggleFilter = () => setShowFilter(!showFilter);
 
   const [currentPage, setCurrentPage] = useState(1);
-  // **State cho SearchTerm**
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [isLoadingFilterData, setIsLoadingFilterData] = useState(true);
+  const [pendingFilters, setPendingFilters] = useState<FilterState>(defaultFilters);
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>(defaultFilters);
+
+  useEffect(() => {
+    const fetchFilterData = async () => {
+      try {
+        setIsLoadingFilterData(true);
+        const [genresRes, countriesRes] = await Promise.all([
+          apiClient.get('/movies/genres'),
+          apiClient.get('/movies/countries')
+        ]);
+        setGenres(genresRes.data || []);
+        setCountries(countriesRes.data || []);
+      } catch (err) {
+        console.error("Lỗi khi tải dữ liệu filter:", err);
+      } finally {
+        setIsLoadingFilterData(false);
+      }
+    };
+    fetchFilterData();
+  }, []);
 
   useEffect(() => {
     const loadMovies = async () => {
@@ -404,27 +447,28 @@ export default function MovieStoragePage() {
       }
     };
 
-    if (!showAddForm) { // Chỉ load lại danh sách khi không ở form thêm phim
+    if (!showAddForm) {
         loadMovies();
     } else {
-        setLoading(false); // Ngừng loading nếu đang mở form
+        setLoading(false); 
     }
   }, [showAddForm]);
 
-  // **Lọc phim dựa trên searchTerm**
-  const filteredMovies = movies.filter(movie =>
-    movie.title.toLowerCase().includes(searchTerm.toLowerCase())
-    // Bạn có thể thêm các trường khác để tìm kiếm nếu muốn, ví dụ:
-    // || movie.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredMovies = movies.filter(movie => {
+    const matchesSearch = movie.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = !appliedFilters.type || appliedFilters.type === "Tất cả" || movie.type === appliedFilters.type;
+    const matchesCountry = !appliedFilters.country || appliedFilters.country === "Tất cả" || movie.country === appliedFilters.country;
+    const matchesGenre = appliedFilters.genre.length === 0 
+      || (movie.tags?.some(tag => appliedFilters.genre.includes(tag)) ?? false);
+    const matchesYear = !appliedFilters.year || appliedFilters.year === "Tất cả" || movie.year?.toString() === appliedFilters.year;
 
-  // **Tính toán phân trang dựa trên filteredMovies**
+    return matchesSearch && matchesType && matchesCountry && matchesGenre && matchesYear;
+  });
+
   const totalPages = Math.ceil(filteredMovies.length / MOVIES_PER_PAGE);
   const indexOfLastMovie = currentPage * MOVIES_PER_PAGE;
   const indexOfFirstMovie = indexOfLastMovie - MOVIES_PER_PAGE;
-  // **Sử dụng filteredMovies cho trang hiện tại**
   const currentMovies = filteredMovies.slice(indexOfFirstMovie, indexOfLastMovie);
-
 
   const renderContent = () => {
     if (loading) {
@@ -440,15 +484,12 @@ export default function MovieStoragePage() {
       );
     }
 
-    // **Kiểm tra currentMovies và filteredMovies**
     if (currentMovies.length === 0 && filteredMovies.length > 0) {
-       // Nếu trang hiện tại rỗng nhưng có kết quả lọc => về trang 1
        setCurrentPage(1);
        return null;
     } else if (filteredMovies.length === 0) {
        return (
          <div className="flex flex-col items-center justify-center h-64 text-gray-400 bg-[#262626] border border-slate-800 rounded-md">
-           {/* **Thông báo phù hợp khi có tìm kiếm hoặc không** */}
            <p>{searchTerm ? `Không tìm thấy phim nào khớp với "${searchTerm}".` : "Không tìm thấy phim nào trong kho."}</p>
          </div>
        );
@@ -462,6 +503,29 @@ export default function MovieStoragePage() {
     );
   };
 
+  const toggleFilter = () => {
+    if (showFilter) {
+      setPendingFilters(appliedFilters);
+    }
+    setShowFilter(!showFilter);
+  };
+
+  const handleFilterChange = (key: keyof FilterState, value: string | string[]) => {
+    setPendingFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleSubmit = () => {
+    setAppliedFilters(pendingFilters); 
+    setCurrentPage(1); 
+    setShowFilter(true); 
+  };
+
+  const handleReset = () => {
+    setPendingFilters(defaultFilters);
+    setAppliedFilters(defaultFilters);
+    setCurrentPage(1);
+  };
+
   const sidebarTopOffset = "top-[calc(4rem+1.5rem)]";
   const sidebarHeight = "h-[calc(100vh-4rem-1.5rem-1.5rem)]";
 
@@ -472,18 +536,16 @@ export default function MovieStoragePage() {
   return (
     <div className="relative flex w-full">
       <main className="flex-1 overflow-y-auto lg:pr-[calc(theme(space.80)+theme(space.6))] xl:pr-[calc(theme(space.96)+theme(space.6))] 2xl:pr-[calc(450px+theme(space.6))]">
-        {/* **Đổi padding-top thành pt-6 để khớp padding khác** */}
         <div className="pt-6 pb-6 px-6">
           <div className="flex flex-col md:flex-row justify-between items-top gap-4 mb-6">
             <h1 className="text-2xl font-bold text-white">Kho phim</h1>
             <div className="flex-1 w-full md:w-auto md:max-w-lg">
-              {/* **Sử dụng SearchBar và kết nối state** */}
               <SearchBar
                 placeholder="Tìm kiếm trong kho phim..."
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
-                  setCurrentPage(1); // Reset về trang 1 khi tìm kiếm
+                  setCurrentPage(1);
                 }}
               />
             </div>
@@ -544,7 +606,16 @@ export default function MovieStoragePage() {
                 transition={{ duration: 0.3, ease: "easeInOut" }}
                 className="overflow-hidden"
               >
-                <FilterPanel />
+                <FilterPanel
+                  filters={pendingFilters}
+                  onFilterChange={handleFilterChange}
+                  onSubmit={handleSubmit}
+                  onReset={handleReset}
+                  genres={genres}
+                  countries={countries}
+                  isLoadingGenres={isLoadingFilterData}
+                  isLoadingCountries={isLoadingFilterData}
+                />
                 <div className="h-6" />
               </motion.div>
             )}

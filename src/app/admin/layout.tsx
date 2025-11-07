@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AdminTopbar from "@/components/layout/AdminTopbar";
+import { Toaster } from "@/components/ui/sonner";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -68,6 +69,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         <main className="flex-1 p-6 overflow-y-auto">{children}</main>
       </div>
+      <Toaster position="top-right" theme="dark" />
     </div>
   );
 }

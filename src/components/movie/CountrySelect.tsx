@@ -14,7 +14,7 @@ const countries = ["Anh", "Canada", "Hàn Quốc", "Hồng Kông", "Mỹ", "Nh�
 export function CountrySelect(props: React.ComponentProps<typeof Select>) {
   return (
     <Select {...props}>
-      <SelectTrigger className="w-[200px]">
+      <SelectTrigger className="w-full">
         <SelectValue placeholder="Select country" />
       </SelectTrigger>
       <SelectContent>
