@@ -24,7 +24,7 @@ export interface FilterState {
   country: string;
   type: string;
   rating: string;
-  genre: string;
+  genre: string[];
   language: string;
   year: string;
   q?: string;
@@ -32,7 +32,7 @@ export interface FilterState {
 
 interface FilterPanelProps {
   filters: FilterState;
-  onFilterChange: (key: keyof FilterState, value: string) => void;
+  onFilterChange: (key: keyof FilterState, value: string | string[]) => void;
   onReset: () => void;
   onSubmit: () => void;
   
@@ -61,11 +61,25 @@ export default function FilterPanel({
     setCustomYear(years.includes(filters.year) ? "" : filters.year);
   }, [filters.year]);
 
-  const handleSelect = (key: keyof FilterState, value: string) => {
-    onFilterChange(key, value);
+  const handleSelectString = (key: keyof FilterState, value: string) => {
+    onFilterChange(key, value); 
     if (key === "year") {
       setCustomYear(""); 
     }
+  };
+
+  const handleGenreToggle = (genreName: string) => {
+    const currentGenres = filters.genre;
+    if (genreName === "Tất cả") {
+      onFilterChange("genre", []); 
+      return;
+    }
+
+    const newGenres = currentGenres.includes(genreName)
+      ? currentGenres.filter(g => g !== genreName)
+      : [...currentGenres, genreName]; 
+    
+    onFilterChange("genre", newGenres);
   };
 
   const handleYearInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,10 +104,9 @@ export default function FilterPanel({
         <div>
           <h3 className="mb-2 font-medium text-white">Quốc gia</h3>
           <div className="flex flex-wrap gap-2">
-            {/* Thêm nút "Tất cả" */}
             <Button
               variant={filters.country === "Tất cả" ? "default" : "outline"}
-              onClick={() => handleSelect("country", "Tất cả")}
+              onClick={() => handleSelectString("country", "Tất cả")}
               className={`rounded-full ${
                 filters.country === "Tất cả" ? "border border-green-600 bg-transparent" : " text-white bg-transparent"
               }`}
@@ -102,11 +115,11 @@ export default function FilterPanel({
             </Button>
             {/* Logic render mới */}
             {isLoadingCountries ? renderFilterSkeletons(countries.length) : (
-              countries.map(c => c.name && ( // Chỉ render nếu có tên
+              countries.map(c => c.name && ( 
                 <Button
                   key={c.id}
                   variant={filters.country === c.name ? "default" : "outline"}
-                  onClick={() => handleSelect("country", c.name!)} 
+                  onClick={() => handleSelectString("country", c.name!)} 
                   className={`rounded-full ${
                     filters.country === c.name ? "border border-green-600 bg-transparent" : " text-white bg-transparent"
                   }`}
@@ -126,7 +139,7 @@ export default function FilterPanel({
               <Button
                 key={t}
                 variant={filters.type === t ? "default" : "outline"}
-                onClick={() => handleSelect("type", t)}
+                onClick={() => handleSelectString("type", t)}
                 className={`rounded-full ${
                   filters.type === t ? "border border-green-600 bg-transparent" : " text-white bg-transparent"
                 }`}
@@ -145,7 +158,7 @@ export default function FilterPanel({
               <Button
                 key={t}
                 variant={filters.rating === t ? "default" : "outline"}
-                onClick={() => handleSelect("rating", t)}
+                onClick={() => handleSelectString("rating", t)}
                 className={`rounded-full ${
                   filters.rating === t ? "border border-green-600 bg-transparent" : " text-white bg-transparent"
                 }`}
@@ -162,10 +175,10 @@ export default function FilterPanel({
           <div className="flex flex-wrap gap-2">
             {/* Thêm nút "Tất cả" */}
              <Button
-              variant={filters.genre === "Tất cả" ? "default" : "outline"}
-              onClick={() => handleSelect("genre", "Tất cả")}
+              variant={filters.genre.length === 0 ? "default" : "outline"}
+              onClick={() => handleGenreToggle("Tất cả")} 
               className={`rounded-full ${
-                filters.genre === "Tất cả" ? "border border-green-600 bg-transparent" : " text-white bg-transparent"
+                filters.genre.length === 0 ? "border border-green-600 bg-transparent" : " text-white bg-transparent"
               }`}
             >
               Tất cả
@@ -174,10 +187,10 @@ export default function FilterPanel({
               genres.map(g => (
                 <Button
                   key={g.id}
-                  variant={filters.genre === g.name ? "default" : "outline"}
-                  onClick={() => handleSelect("genre", g.name)} 
+                  variant={filters.genre.includes(g.name) ? "default" : "outline"} 
+                  onClick={() => handleGenreToggle(g.name)}
                   className={`rounded-full ${
-                    filters.genre === g.name ? "border border-green-600 bg-transparent" : " text-white bg-transparent"
+                    filters.genre.includes(g.name) ? "border border-green-600 bg-transparent" : " text-white bg-transparent"
                   }`}
                 >
                   {g.name}
@@ -196,7 +209,7 @@ export default function FilterPanel({
               <Button
                 key={y}
                 variant={filters.year === y ? "default" : "outline"}
-                onClick={() => handleSelect("year", y)}
+                onClick={() => handleSelectString("year", y)}
                 className={`rounded-full ${
                   filters.year === y ? "border border-green-600 bg-transparent" : " text-white bg-transparent"
                 }`}

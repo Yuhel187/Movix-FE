@@ -40,7 +40,7 @@ const defaultFilters: FilterState = {
   country: "Tất cả",
   type: "Tất cả",
   rating: "Tất cả",
-  genre: "Tất cả",
+  genre: [],
   language: "Tất cả",
   year: "Tất cả",
   q: "",
@@ -61,7 +61,7 @@ export default function FilterPage({ searchParams }: FilterPageProps) {
   const [countries, setCountries] = useState<Country[]>([]);
   const [isLoadingFilterData, setIsLoadingFilterData] = useState(true);
 
- const [filters, setFilters] = useState<FilterState>(() => {
+  const [filters, setFilters] = useState<FilterState>(() => {
     const initialUrlType = searchParams?.type;
     let initialDisplayType = "Tất cả";
     if (initialUrlType === "phim-le") {
@@ -69,12 +69,13 @@ export default function FilterPage({ searchParams }: FilterPageProps) {
     } else if (initialUrlType === "phim-bo") {
       initialDisplayType = "Phim bộ";
     }
+    const initialGenres = searchParams?.genre ? [searchParams.genre] : [];
 
     return {
       ...defaultFilters,
       q: searchParams?.q || "",
       type: initialDisplayType,
-      genre: searchParams?.genre || "Tất cả",
+      genre: initialGenres,
       country: searchParams?.country || "Tất cả",
       year: searchParams?.year || "Tất cả",
     };
@@ -113,7 +114,11 @@ export default function FilterPage({ searchParams }: FilterPageProps) {
       const typeValue = currentFilters.type === 'Phim lẻ' ? 'phim-le' : (currentFilters.type === 'Phim bộ' ? 'phim-bo' : currentFilters.type);
       params.append("type", typeValue);
     }
-    if (currentFilters.genre && currentFilters.genre !== "Tất cả") params.append("genre", currentFilters.genre);
+    if (currentFilters.genre && currentFilters.genre.length > 0) {
+      currentFilters.genre.forEach(g => {
+        params.append("genre", g); 
+      });
+    }
     if (currentFilters.country && currentFilters.country !== "Tất cả") params.append("country", currentFilters.country);
     if (currentFilters.year && currentFilters.year !== "Tất cả") params.append("year", currentFilters.year);
 
@@ -146,11 +151,12 @@ export default function FilterPage({ searchParams }: FilterPageProps) {
       displayType = "Phim bộ"; 
     }
 
-    const newFilters: FilterState = {
+  const urlGenres = clientSearchParams.getAll("genre");
+  const newFilters: FilterState = {
       ...defaultFilters,
       q: clientSearchParams.get("q") || "",
-      type: displayType,
-      genre: clientSearchParams.get("genre") || "Tất cả",
+      type: displayType, 
+      genre: urlGenres, 
       country: clientSearchParams.get("country") || "Tất cả",
       year: clientSearchParams.get("year") || "Tất cả",
     };
@@ -165,15 +171,19 @@ export default function FilterPage({ searchParams }: FilterPageProps) {
       const typeValue = newFilters.type === 'Phim lẻ' ? 'phim-le' : (newFilters.type === 'Phim bộ' ? 'phim-bo' : newFilters.type);
       params.set("type", typeValue);
     }
-    if (newFilters.genre && newFilters.genre !== "Tất cả") params.set("genre", newFilters.genre);
+    if (newFilters.genre && newFilters.genre.length > 0) {
+      newFilters.genre.forEach(g => {
+        params.append("genre", g);
+      });
+ }
     if (newFilters.country && newFilters.country !== "Tất cả") params.set("country", newFilters.country);
     if (newFilters.year && newFilters.year !== "Tất cả") params.set("year", newFilters.year);
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  const handleFilterChange = (key: keyof FilterState, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  };
+  const handleFilterChange = (key: keyof FilterState, value: string | string[]) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
 
   const handleSubmit = () => {
     setCurrentPage(1); 
