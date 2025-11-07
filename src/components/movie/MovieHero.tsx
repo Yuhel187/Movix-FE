@@ -1,16 +1,68 @@
 'use client';
 
 import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Plus, ThumbsUp, Volume2 } from "lucide-react";
+import { Play, Plus, Heart, Bookmark, Loader2 } from "lucide-react";
 import type { Movie } from "@/types/movie";
+import { useAuth } from '@/contexts/AuthContext';
+import { useEffect, useState } from 'react';
+import { checkFavoriteStatus, toggleFavorite } from '../../services/interaction.service';
+import { toast } from 'sonner';
+import { AddToPlaylistDialog } from './AddToPlaylistDialog';
 
 interface MovieHeroProps {
     movie: Movie;
 }
 
 export default function MovieHero({ movie }: MovieHeroProps) {
+    const { isLoggedIn } = useAuth();
+    const [isFavorite, setIsFavorite] = useState(false);
+    const [isLoadingFav, setIsLoadingFav] = useState(true);
+    const [isPlaylistOpen, setIsPlaylistOpen] = useState(false);
+
+    useEffect(() => {
+        if (isLoggedIn) {
+            setIsLoadingFav(true);
+            checkFavoriteStatus(movie.id.toString())
+                .then((data) => {
+                    setIsFavorite(data.isFavorite);
+                })
+                .catch(() => {  })
+                .finally(() => {
+                    setIsLoadingFav(false);
+                });
+        } else {
+            setIsLoadingFav(false);
+        }
+    }, [isLoggedIn, movie.id]);
+
+    const handleToggleFavorite = async () => {
+        if (!isLoggedIn) {
+            toast.error('Bạn cần đăng nhập để thực hiện việc này.');
+            return;
+        }
+
+        const oldState = isFavorite;
+        setIsFavorite(!oldState);
+
+        try {
+            const { message } = await toggleFavorite(movie.id.toString());
+            toast.success(message);
+        } catch (error) {
+            toast.error('Có lỗi xảy ra, vui lòng thử lại.');
+            setIsFavorite(oldState);
+        }
+    };
+
+    const handlePlaylistClick = () => {
+        if (!isLoggedIn) {
+            toast.error('Bạn cần đăng nhập để thực hiện việc này.');
+            return;
+        }
+        setIsPlaylistOpen(true);
+    }
     return (
         <section className="relative h-screen w-full">
             {/* Backdrop*/}
@@ -28,7 +80,7 @@ export default function MovieHero({ movie }: MovieHeroProps) {
                     {/* Cột trái: Poster phim */}
                     <div className="relative aspect-[2/3] w-full max-w-sm mx-auto md:mx-0 rounded-lg overflow-hidden shadow-2xl">
                         <Image
-                            src={movie.posterUrl}
+                            src={movie.posterUrl!}
                             alt={`Poster of ${movie.title}`}
                             fill
                             className="object-cover"
@@ -45,18 +97,43 @@ export default function MovieHero({ movie }: MovieHeroProps) {
                         </p>
 
                         <div className="mt-8 flex flex-wrap justify-center md:justify-start items-center gap-4">
-                            <Button size="lg" className="bg-red-600 hover:bg-red-700 text-white rounded-md">
-                                <Play className="mr-2 h-5 w-5" />
-                                Xem ngay
+                            <Button size="lg" className="bg-red-600 hover:bg-red-700 text-white rounded-md" asChild>
+                                <Link href={`/movies/${movie.slug}/watch`}>
+                                    <Play className="mr-2 h-5 w-5" />
+                                    Xem ngay
+                                </Link>
                             </Button>
-                            <Button size="lg" variant="outline" className="bg-white/10 border-white/20 hover:bg-white/20 rounded-md">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="lg"
+                                className="bg-white/20 border-white/30 hover:bg-white/30"
+                                onClick={handleToggleFavorite}
+                                disabled={isLoadingFav}
+                            >
+                                {isLoadingFav ? (
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                ) : (
+                                    <Heart
+                                        className={`h-5 w-5 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`}
+                                    />
+                                )}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                className="bg-white/20 border-white/30 hover:bg-white/30"
+                                onClick={handlePlaylistClick}
+                            >
                                 <Plus className="h-5 w-5" />
                             </Button>
-                            <Button size="lg" variant="outline" className="bg-white/10 border-white/20 hover:bg-white/20 rounded-md">
-                                <ThumbsUp className="h-5 w-5" />
-                            </Button>
-                            <Button size="lg" variant="outline" className="bg-white/10 border-white/20 hover:bg-white/20 rounded-md">
-                                <Volume2 className="h-5 w-5" />
+
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                className="bg-white/20 border-white/30 hover:bg-white/30"
+                            >
+                                <Bookmark className="h-5 w-5" />
                             </Button>
                         </div>
 
@@ -68,6 +145,11 @@ export default function MovieHero({ movie }: MovieHeroProps) {
                             ))}
                         </div>
                     </div>
+                    <AddToPlaylistDialog
+                        open={isPlaylistOpen}
+                        onOpenChange={setIsPlaylistOpen}
+                        movieId={movie.id.toString()}
+                    />
                 </div>
             </div>
         </section>

@@ -289,7 +289,7 @@ const Navbar = () => {
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="bg-[#1A1A1A] text-white border-gray-700">
-                  <DropdownMenuLabel>{user?.name || user?.username || 'Tài khoản'}</DropdownMenuLabel>
+                  <DropdownMenuLabel>{user?.display_name || user?.username || 'Tài khoản'}</DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-gray-700" />
                   <DropdownMenuItem><a href='/account/profile'>Hồ sơ</a></DropdownMenuItem>
                   <DropdownMenuItem><a href='/account/favorites'>Yêu thích</a></DropdownMenuItem>
@@ -327,7 +327,7 @@ const Navbar = () => {
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="bg-[#1A1A1A] text-white border-gray-700">
-                  <DropdownMenuLabel>{user?.name || user?.username || 'Tài khoản'}</DropdownMenuLabel>
+                  <DropdownMenuLabel>{user?.display_name || user?.username || 'Tài khoản'}</DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-gray-700" />
                   <DropdownMenuItem><a href='/account/profile'>Hồ sơ</a></DropdownMenuItem>
                   <DropdownMenuItem><a href='/account/favorites'>Yêu thích</a></DropdownMenuItem>

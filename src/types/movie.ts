@@ -17,5 +17,11 @@ export interface Movie {
   rating?: number
   duration?: string
   country?: string
-  views?: number        
+  views?: number
+metadata?: {
+    tmdb_rating?: number
+    duration?: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: any
+  }       
 }
