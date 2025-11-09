@@ -33,9 +33,9 @@ export default function LoginPage() {
         password,
       });
 
-      const { accessToken, refreshToken, ...user } = res.data.data;
+      const { ...user } = res.data.data;
 
-      login(user, accessToken, refreshToken);
+      login(user);
 
       toast.success("Đăng nhập thành công!");
       

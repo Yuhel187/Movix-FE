@@ -27,7 +27,7 @@ export async function getMovieData(slug: string) {
     description: raw.description || "",
     posterUrl: raw.poster_url || raw.backdrop_url || "",
     backdropUrl: raw.backdrop_url || raw.poster_url || "",
-    videoUrl: raw.video_url || null, 
+    videoUrl: raw.trailer_url || null, 
     tags:
       raw.movie_genres?.map((mg: any) => mg.genre?.name).filter(Boolean) || [],
   };
