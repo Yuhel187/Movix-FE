@@ -318,7 +318,7 @@ const newupdateMovies: Movie[] = [
 const horrorMovies: Movie[] = [
   {
     id: '74af397a-0b08-4816-a941-9cfa8b8fc3a9',
-    slug: "inception",
+    slug: "avengers-endgame",
     title: "Avengers: Endgame",
     subTitle: "Hồi kết của Avengers",
     posterUrl: "https://image.tmdb.org/t/p/w500/ulzhLuWrPK07P1YkdWQLZnQh1JL.jpg",
