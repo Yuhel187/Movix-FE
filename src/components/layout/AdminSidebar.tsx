@@ -104,16 +104,11 @@ export default function AdminSidebar({
 
   const handleLogout = async () => {
     try {
-      const refreshToken = localStorage.getItem("refreshToken");
-
-      if (refreshToken) {
-        await apiClient.post("/auth/logout", { refreshToken });
-      }
+        await logout(); 
+        toast.success("Đăng xuất thành công!");
     } catch (error) {
-      console.error("Lỗi khi gọi API đăng xuất:", error);
-    } finally {
-      logout();
-      toast.success("Đăng xuất thành công!");
+        console.error("Lỗi khi gọi API đăng xuất:", error);
+        toast.error("Đã xảy ra lỗi khi đăng xuất.");
     }
   };
 
