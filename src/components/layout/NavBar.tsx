@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Search, Bell, ChevronDown, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import NotificationDropdown from '@/components/common/NotificationDropdown';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -275,9 +276,7 @@ const Navbar = () => {
 
           {isLoggedIn ? (
             <>
-              <Button variant="ghost" size="icon">
-                <Bell className="h-6 w-6" />
-              </Button>
+              <NotificationDropdown />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div className="flex items-center cursor-pointer">

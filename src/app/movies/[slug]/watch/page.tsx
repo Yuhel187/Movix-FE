@@ -5,6 +5,7 @@ import MovieSharedLayout from "@/components/movie/MovieSharedLayout";
 
 export default async function MovieWatchPage({ params }: { params: { slug: string } }) {
   const { movie, castData, sidebarData } = await getMovieData(params.slug);
+  console.log("Movie Watch Data:", movie.videoUrl);
 
   return (
     <main className="dark min-h-screen bg-black text-white">
@@ -15,7 +16,8 @@ export default async function MovieWatchPage({ params }: { params: { slug: strin
         className="pt-20 w-full max-w-6xl px-4 mx-auto flex justify-center"
       >
         <VideoPlayer
-          src={movie.videoUrl || "https://default-video-url.com"}
+          src={movie.videoUrl || ""}
+
           poster={movie.posterUrl || "https://www.coengoedegebure.com/content/images/2017/08/default404.gif"}
         />
       </section>
