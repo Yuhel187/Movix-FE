@@ -10,7 +10,6 @@ import type { Notification, NotificationType } from "@/types/notification";
 import apiClient from "@/lib/apiClient"; 
 import { Skeleton } from "@/components/ui/skeleton";
 
-// --- Mock Data (Sẽ thay bằng API) ---
 const mockNotifications: Notification[] = [
   {
     id: "1",
@@ -52,7 +51,7 @@ const mockNotifications: Notification[] = [
     type: "system_alert",
     title: "Bảo trì hệ thống",
     message: "Hệ thống sẽ bảo trì vào lúc 3:00 AM. Vui lòng quay lại sau.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 ngày trước
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), 
     isRead: true,
   },
     {
@@ -60,12 +59,12 @@ const mockNotifications: Notification[] = [
     type: "new_comment",
     title: "Bình luận mới",
     message: "Một người dùng khác đã trả lời bình luận của bạn.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(), // 3 ngày trước
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(), 
     isRead: true,
     link: "/movies/john-wick-4",
   },
 ];
-// --- End Mock Data ---
+
 
 function formatTimeAgo(dateString: string) {
   const date = new Date(dateString);
@@ -172,11 +171,10 @@ const NotificationItem = ({
 export default function NotificationsPage() {
   const [notifications, setNotifications] =
     useState<Notification[]>(mockNotifications);
-  const [isLoading, setIsLoading] = useState(false); // Sẽ đổi thành true khi dùng API
+  const [isLoading, setIsLoading] = useState(false); 
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const router = useRouter();
 
-  // // Logic tải dữ liệu thật
   // useEffect(() => {
   //   setIsLoading(true);
   //   apiClient.get('/notifications') // Fetch all notifications
@@ -186,10 +184,6 @@ export default function NotificationsPage() {
   // }, []);
 
   const handleNotificationClick = (notification: Notification) => {
-    // Gọi API đánh dấu đã đọc
-    // ...
-
-    // Cập nhật giao diện
     setNotifications((prev) =>
       prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
     );
@@ -201,10 +195,6 @@ export default function NotificationsPage() {
   };
 
   const markAllAsRead = () => {
-    // Gọi API đánh dấu tất cả đã đọc
-    // ...
-
-    // Cập nhật giao diện
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
 
