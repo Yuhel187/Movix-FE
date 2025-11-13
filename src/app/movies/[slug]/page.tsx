@@ -12,7 +12,11 @@ export default async function MovieDetailPage({ params }: { params: { slug: stri
         <Navbar />
       </div>
       <MovieHero movie={movie} />
-      <MovieSharedLayout castData={castData} sidebarData={sidebarData} />
+      <MovieSharedLayout 
+        castData={castData} 
+        sidebarData={sidebarData} 
+        movieId={movie.id  as string}
+      />
     </main>
   );
 }

@@ -1,51 +1,72 @@
-// src/components/movie/comments/CommentForm.tsx
 "use client";
 
-import { useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Send } from "lucide-react";
-
-const currentUser = {
-  name: "Huy Lê",
-  avatarUrl: "https://i.pravatar.cc/150?u=a042581f4e29026704d", 
-};
+import { useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Send } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext'; 
 
 interface CommentFormProps {
-  onSubmit: (text: string, isSpoiler: boolean) => void;
+  onSubmit: (text: string, isSpoiler: boolean) => Promise<void> | void;
+  initialText?: string;
+  onCancel?: () => void;
+  showAvatar?: boolean; 
 }
 
-export function CommentForm({ onSubmit }: CommentFormProps) {
-  const [text, setText] = useState("");
+export function CommentForm({
+  onSubmit,
+  initialText = '',
+  onCancel,
+  showAvatar = true,
+}: CommentFormProps) {
+  const { user } = useAuth(); 
+  const [text, setText] = useState(initialText);
   const [isSpoiler, setIsSpoiler] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const maxChars = 1000;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (text.trim()) {
-      onSubmit(text, isSpoiler);
-      setText("");
+    if (!text.trim()) return;
+
+    setIsLoading(true);
+    try {
+      await onSubmit(text, isSpoiler);
+      setText('');
       setIsSpoiler(false);
+      if (onCancel) onCancel(); 
+    } catch (error) {
+      console.error('Không thể gửi bình luận:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const avatarUrl = user?.avatarUrl || '';
+  const displayName = user?.display_name || 'User';
+
   return (
     <form onSubmit={handleSubmit} className="flex gap-4">
-      <Avatar className="h-10 w-10">
-        <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-        <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
-      </Avatar>
-      <div className="flex-1 space-y-3">
+      {showAvatar && (
+        <Avatar className="h-10 w-10">
+          <AvatarImage src={avatarUrl} alt={displayName} />
+          <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+        </Avatar>
+      )}
+      <div className={`flex-1 space-y-3 ${!showAvatar ? 'w-full' : ''}`}>
         <div className="relative">
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Viết bình luận..."
+            placeholder={
+              showAvatar ? 'Viết bình luận...' : 'Viết trả lời...'
+            }
             className="bg-zinc-800 border-zinc-700 text-white min-h-[100px] pr-20"
             maxLength={maxChars}
+            disabled={isLoading}
           />
           <span className="absolute bottom-3 right-4 text-xs text-gray-400">
             {text.length} / {maxChars}
@@ -54,22 +75,39 @@ export function CommentForm({ onSubmit }: CommentFormProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Switch
-              id="spoiler-toggle"
+              id={`spoiler-toggle-${showAvatar}`}
               checked={isSpoiler}
               onCheckedChange={setIsSpoiler}
               className="data-[state=checked]:bg-red-600"
+              disabled={isLoading}
             />
-            <Label htmlFor="spoiler-toggle" className="text-gray-400 font-normal">
+            <Label
+              htmlFor={`spoiler-toggle-${showAvatar}`}
+              className="text-gray-400 font-normal"
+            >
               Có tiết lộ nội dung?
             </Label>
           </div>
-          <Button
-            type="submit"
-            disabled={!text.trim()}
-            className="bg-red-600 hover:bg-red-700 text-white"
-          >
-            Gửi <Send className="ml-2 h-4 w-4" />
-          </Button>
+          <div className="flex gap-2">
+            {onCancel && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onCancel}
+                disabled={isLoading}
+              >
+                Hủy
+              </Button>
+            )}
+            <Button
+              type="submit"
+              disabled={!text.trim() || isLoading}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {isLoading ? 'Đang gửi...' : 'Gửi'}
+              <Send className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
         </div>
       </div>
     </form>

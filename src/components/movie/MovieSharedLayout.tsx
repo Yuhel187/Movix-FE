@@ -7,15 +7,20 @@ import type { SidebarData } from "@/services/movie.service";
 interface MovieSharedLayoutProps {
   castData: Actor[];
   sidebarData: SidebarData;
+  movieId: string; 
 }
 
-export default function MovieSharedLayout({ castData, sidebarData }: MovieSharedLayoutProps) {
+export default function MovieSharedLayout({ 
+  castData, 
+  sidebarData, 
+  movieId 
+}: MovieSharedLayoutProps) {
   return (
     <div className="relative z-10 bg-black px-[7rem] py-12">
       <div className="flex flex-col lg:flex-row gap-12 lg:items-start">
         <div className="flex flex-1 flex-col gap-12">
           <MovieCast cast={castData} />
-          <MovieCommentSection />
+          <MovieCommentSection movieId={movieId} /> 
         </div>
         <div className="w-full lg:w-auto">
           <MovieDetailSidebar {...sidebarData} />

@@ -22,7 +22,11 @@ export default async function MovieWatchPage({ params }: { params: { slug: strin
         />
       </section>
 
-      <MovieSharedLayout castData={castData} sidebarData={sidebarData} />
+      <MovieSharedLayout
+        castData={castData}
+        sidebarData={sidebarData}
+        movieId={movie.id as string}
+      />
     </main>
   );
 }
