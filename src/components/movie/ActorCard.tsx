@@ -1,16 +1,20 @@
 import Image from "next/image"
-import { Trash } from "lucide-react"
+import { Trash, User } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface ActorCardProps {
   name: string
-  imageUrl: string
+  profileUrl?: string | null; 
+  imageUrl?: string | null;   
+  avatar_url?: string | null; 
   layout?: "vertical" | "horizontal"
   onRemove?: () => void
   character?: string
 }
 
-export function ActorCard({ name, imageUrl, layout = "vertical", onRemove, character }: ActorCardProps) {
+export function ActorCard({ name, profileUrl, imageUrl, avatar_url, layout = "vertical", onRemove, character }: ActorCardProps) {
   const isHorizontal = layout === "horizontal"
+  const displayUrl = avatar_url || profileUrl || imageUrl;
 
   return (
     <div
@@ -23,13 +27,20 @@ export function ActorCard({ name, imageUrl, layout = "vertical", onRemove, chara
           isHorizontal ? "w-16 h-20" : "w-24 h-32"
         } rounded-md overflow-hidden flex-shrink-0 relative`}
       >
-        <Image
-          src={imageUrl}
-          alt={name}
-          width={isHorizontal ? 64 : 96}
-          height={isHorizontal ? 80 : 128}
-          className="object-cover w-full h-full"
-        />
+        {displayUrl ? (
+          <Image
+            src={displayUrl}
+            alt={name}
+            fill
+            sizes="(max-width: 640px) 30vw, (max-width: 1024px) 20vw, 15vw"
+            className="object-cover"
+          />
+        ) : (
+          <div className="flex items-center justify-center w-full h-full">
+            <User className="w-1/2 h-1/2 text-gray-500" />
+          </div>
+        )}
+        
         {onRemove && (
           <button
             onClick={onRemove}

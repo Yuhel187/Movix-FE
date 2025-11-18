@@ -9,6 +9,7 @@ import {
     CarouselPrevious,
 } from "@/components/ui/carousel";
 import type { Actor } from "@/types/actor";
+import { User } from "lucide-react"; 
 
 interface MovieCastProps {
     cast: Actor[];
@@ -37,19 +38,29 @@ export default function MovieCast({ cast }: MovieCastProps) {
 
                 {/* Content */}
                 <CarouselContent className="-ml-2">
-                    {cast.map((actor) => (
+                    {cast.map((actor) => {
+                        // Logic xử lý ảnh từ hotfix type
+                        const displayUrl = actor.avatar_url || actor.profileUrl || actor.imageUrl;
+
+                        return (
                         <CarouselItem
                             key={actor.id}
                             className="pl-2 basis-1/4 sm:basis-1/5 md:basis-1/6"
                         >
                             <div className="flex flex-col items-center text-center">
-                                <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden mb-1 border border-border/30">
-                                    <Image
-                                        src={actor.profileUrl}
-                                        alt={actor.name}
-                                        fill
-                                        className="object-cover"
-                                    />
+                                <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden mb-1 border border-border/30 bg-slate-800">
+                                    {displayUrl ? (
+                                        <Image
+                                            src={displayUrl}
+                                            alt={actor.name}
+                                            fill
+                                            className="object-cover"
+                                        />
+                                    ) : (
+                                        <div className="flex items-center justify-center w-full h-full">
+                                            <User className="w-8 h-8 text-gray-500" />
+                                        </div>
+                                    )}
                                 </div>
                                 <p className="font-medium text-[11px] text-foreground truncate w-full">
                                     {actor.name}
@@ -59,7 +70,8 @@ export default function MovieCast({ cast }: MovieCastProps) {
                                 </p>
                             </div>
                         </CarouselItem>
-                    ))}
+                        );
+                    })}
                 </CarouselContent>
             </Carousel>
         </div>
