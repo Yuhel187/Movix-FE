@@ -8,13 +8,16 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select"
+import { cn } from "@/lib/utils"
 
 const countries = ["Anh", "Canada", "Hàn Quốc", "Hồng Kông", "Mỹ", "Nhật Bản", "Pháp", "Thái Lan", "Trung Quốc", "Úc", "Đài Loan", "Đức", "Việt Nam"]
 
-export function CountrySelect(props: React.ComponentProps<typeof Select>) {
+export function CountrySelect({ className, ...props }: React.ComponentProps<typeof Select> & {
+  className?: string
+}) {
   return (
     <Select {...props}>
-      <SelectTrigger className="w-full">
+      <SelectTrigger className={cn("w-full", className)}>
         <SelectValue placeholder="Select country" />
       </SelectTrigger>
       <SelectContent>

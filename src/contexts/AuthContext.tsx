@@ -29,32 +29,76 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem("user");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const normalizeUser = (data: any): AuthUser => {
+    if (!data) return data;
+    const roleNormalized = (typeof data.role === 'object' && data.role !== null) 
+        ? data.role.name 
+        : data.role;
 
-      if (storedUser) {
-        _setUser(JSON.parse(storedUser));
-      }
+    return {
+        ...data,
+        role: roleNormalized
+    };
+  };
+
+  const checkAuth = async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
+    try {
+      const res = await apiClient.get("/profile/me"); 
+      const userSafe = normalizeUser(res.data);
+      _setUser(userSafe);
+      localStorage.setItem("user_cache", JSON.stringify(userSafe));
     } catch (error) {
-      console.error("Failed to load auth state from localStorage", error);
+      if (!isSilent) {
+        _setUser(null);
+        localStorage.removeItem("user_cache");
+      }
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+       const cached = localStorage.getItem("user_cache");
+       if (cached) {
+           try {
+               const parsed = JSON.parse(cached);
+               const userSafe = normalizeUser(parsed);
+               if (!user) _setUser(userSafe);
+           } catch (e) {
+               localStorage.removeItem("user_cache");
+           }
+       }
+    }
+    checkAuth();
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    const intervalId = setInterval(() => {
+        console.log("🔄 Auto-refreshing session...");
+        checkAuth(true);
+    }, 5 * 60 * 1000); 
+
+    return () => clearInterval(intervalId);
+  }, [user]);
+
   const setUser = (newUser: AuthUser | null) => {
-    _setUser(newUser);
+    const userSafe = newUser ? normalizeUser(newUser) : null;
+    _setUser(userSafe);
     if (typeof window !== 'undefined') {
-      if (newUser) {
-        localStorage.setItem("user", JSON.stringify(newUser));
+      if (userSafe) {
+        localStorage.setItem("user_cache", JSON.stringify(userSafe));
       } else {
-        localStorage.removeItem("user");
+        localStorage.removeItem("user_cache");
       }
     }
   };
 
   const login = (user: AuthUser) => {
-    setUser(user);    
+    setUser(user);
   };
 
   const logout = async () => {
@@ -63,10 +107,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
         console.error("Lỗi khi gọi API logout, nhưng vẫn đăng xuất client", error);
     }
-    setUser(null);   
+    setUser(null);  
     router.push("/");
   };
-  const isLoggedIn = !!user;
 
   return (
     <AuthContext.Provider value={{ 
@@ -74,7 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isLoading, 
       login, 
       logout, 
-      isLoggedIn, 
+      isLoggedIn: !!user, 
       setUser, 
     }}>
       {children}

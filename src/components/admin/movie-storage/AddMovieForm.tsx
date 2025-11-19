@@ -4,9 +4,9 @@ import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'; // <-- Đã thêm CardHeader/Footer/Content
-import { GenreSelect } from '@/components/movie/GenreSelect';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { getPersonAvatarUrl } from "@/lib/tmdb";
 import { Calendar } from "@/components/ui/calendar";
 import { 
     Select, 
@@ -32,31 +32,9 @@ import {
     FileUp,
     Info, 
     Pencil, 
-    Check, 
     Download,
-    ChevronsUpDown, 
-    X,
     FileVideo,
 } from 'lucide-react';
-
-import { 
-    Dialog, 
-    DialogContent, 
-    DialogHeader, 
-    DialogTitle, 
-    DialogTrigger,
-    DialogFooter,
-    DialogClose,
-} from "@/components/ui/dialog";
-
-import { 
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
 
 import { 
     InputGroup, 
@@ -124,7 +102,6 @@ type Episode = {
     id: number; 
     title: string;
     duration: number;
-    file: File | null;
     fileName: string;
 };
 
@@ -136,7 +113,7 @@ type Season = {
     nextEpisodeId: number;
 };
 
-// --- (MỚI) Type cho Person (Step 3) ---
+// --- Type cho Person (Step 3) ---
 type Person = {
     id: string;
     name: string;
@@ -144,40 +121,6 @@ type Person = {
     avatarUrl: string | null;
     role: 'actor' | 'director';
 };
-
-// --- Mock Data cho Step 3 ---
-const mockPeople: Person[] = [
-    { 
-        id: 'person-1', 
-        name: 'Jane Cooper', 
-        character: 'Jane Cooper', 
-        avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-        role: 'actor'
-    },
-    { 
-        id: 'person-2', 
-        name: 'John Doe', 
-        character: 'Đạo diễn',
-        avatarUrl: null,
-        role: 'director'
-    },
-    { 
-        id: 'person-3', 
-        name: 'Jane Cooper',
-        character: 'Một nhân vật khác', 
-        avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-        role: 'actor'
-    },
-];
-
-const allPeopleSearchList: {
-    id: string;
-    name: string;
-    roles?: string;
-    avatarUrl?: string | null;
-}[] = [...mockPeople];
-
-// ------------------------------
 
 export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     const [currentStep, setCurrentStep] = useState(1);
@@ -198,17 +141,18 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     const [allGenres, setAllGenres] = useState<Genre[]>(MOCK_GENRES_DB);
     const [selectedGenres, setSelectedGenres] = useState<Genre[]>([]);
     const [isTmdbDataLoaded, setIsTmdbDataLoaded] = useState(false);
+    const [trailerUrl, setTrailerUrl] = useState("");
 
     // --- State Step 2 ---
-    const [singleMovieFile, setSingleMovieFile] = useState<File | null>(null);
     const singleFileRef = useRef<HTMLInputElement>(null);
+    const [singleMovieFile, setSingleMovieFile] = useState<string>("");
     const [seasons, setSeasons] = useState<Season[]>([
         { 
             id: 'client-id-1', 
             name: 'Mùa 1: Pickle ball', 
             episodes: [
-                { id: 1, title: "Tập 1: Khởi đầu mới", duration: 24, file: null, fileName: 'video_e1.mp4' },
-                { id: 2, title: "Tập 2: Thử thách", duration: 23, file: null, fileName: 'video_e2.mp4' }
+                { id: 1, title: "Tập 1: Khởi đầu mới", duration: 24, fileName: 'video_e1.mp4' },
+                { id: 2, title: "Tập 2: Thử thách", duration: 23, fileName: 'video_e2.mp4' }
             ],
             nextEpisodeId: 3 
         },
@@ -216,7 +160,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
             id: 'client-id-2', 
             name: 'Mùa 2: The Final Arc', 
             episodes: [
-                { id: 1, title: "Tập 1: Trở lại", duration: 25, file: null, fileName: 'ss2_e1.mp4' },
+                { id: 1, title: "Tập 1: Trở lại", duration: 25, fileName: 'ss2_e1.mp4' },
             ],
             nextEpisodeId: 2
         }
@@ -280,6 +224,8 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                 id: g.name, 
                 name: g.name
             }));
+
+            setTrailerUrl(data.trailer_url || "");
             // ... (setAllGenres)
             setAllGenres(prevDB => {
                 const newGenres = [...prevDB];
@@ -293,24 +239,25 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
             setSelectedGenres(genresFromTmdb);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const castFromTmdb = data.cast.map((person: any) => ({
-                id: person.id.toString(),
-                name: person.name,
-                character: person.character,
-                avatarUrl: getTmdbImageUrl(person.profile_path),
-                role: 'actor',
-            }));
-            const directorFromTmdb = data.director ? [{
-                id: data.director.id.toString(),
-                name: data.director.name,
-                character: 'Đạo diễn',
-                avatarUrl: getTmdbImageUrl(data.director.profile_path),
-                role: 'director',
-            }] : [];
+    const castFromTmdb = data.cast.map((person: any) => ({
+            	  id: person.id.toString(),
+            	  name: person.name,
+            	  character: person.character,
+            	  avatarUrl: getPersonAvatarUrl(person.profile_path),
+            	  role: 'actor',
+            }));
+    const directorFromTmdb = data.director ? [{
+            	  id: data.director.id.toString(),
+            	  name: data.director.name,
+            	  character: 'Đạo diễn',
+            	  avatarUrl: getPersonAvatarUrl(data.director.profile_path), 
+            	  role: 'director',
+            }] : [];
             setPeople([...directorFromTmdb, ...castFromTmdb]);
             
             toast.success(`Đã tải dữ liệu cho phim: ${data.title}`);
             setIsTmdbDataLoaded(true);
+            console.log(data)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             console.error("Lỗi fetch TMDB:", err);
@@ -325,13 +272,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
         }
     };
 
-    const getTmdbImageUrl = (path: string | null | undefined): string => {
-        if (!path) {
-            return "/avatar.jpg"; 
-        }
-        return `https://image.tmdb.org/t/p/w500${path}`;
-    };
-
     const handleCreateGenreAPI = (name: string) => {
         const newGenre: Genre = { id: name, name: name };
         setAllGenres((currentDB) => [...currentDB, newGenre]);
@@ -345,13 +285,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     
     //  Hàm Submit 
     const handleFormSubmit = async () => {
-        // (Lưu ý: Đây là logic GIẢ LẬP. Cần một dịch vụ upload file thực tế)
-        // 1. Xử lý file phim lẻ 
-        let singleMovieFileName = null;
-        if (selectedMovieType === 'single' && singleMovieFile) {
-            //gọi API upload (ví dụ: uploadToCloud(singleMovieFile))và nhận lại một URL. Tạm thờivchỉ dùng tên file.
-            singleMovieFileName = singleMovieFile.name;
-        }
+        const singleMovieUrl = (selectedMovieType === 'single' && singleMovieFile) ? singleMovieFile : null;
 
         // 2. Xử lý file phim bộ (nếu có)
         const seasonsWithFileNames = seasons.map(s => ({
@@ -376,9 +310,10 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
             selectedCountry,
             selectedGenres,
             selectedMovieType,
+            trailerUrl: trailerUrl,
             
             // Chỉ gửi thông tin file đã xử lý
-            singleMovieFile: singleMovieFileName ? { fileName: singleMovieFileName, duration: 0 } : null,
+            singleMovieFile: singleMovieUrl ? { fileName: singleMovieUrl, duration: 0 } : null,
             seasons: seasonsWithFileNames,
             
             people,
@@ -435,20 +370,13 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     };
 
     // --- Hàm Step 2 ---
-    const handleSingleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            setSingleMovieFile(file);
-            console.log("Đã chọn file phim lẻ:", file.name);
-        }
-    };
 
     const handleAddNewSeason = () => {
         if (newSeasonName.trim() === "") return;
         const newSeasonId = `client-id-${Date.now()}`;
         const newSeason: Season = {
             id: newSeasonId, name: newSeasonName,
-            episodes: [{ id: 1, title: '', duration: 0, file: null, fileName: '' }],
+            episodes: [{ id: 1, title: '', duration: 0, fileName: '' }],
             nextEpisodeId: 2
         };
         setSeasons([...seasons, newSeason]);
@@ -465,7 +393,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
             prevSeasons.map(season => {
                 if (season.id === selectedSeasonId) {
                     const newEpisode: Episode = {
-                        id: season.nextEpisodeId, title: '', duration: 0, file: null, fileName: ''
+                        id: season.nextEpisodeId, title: '', duration: 0, fileName: ''
                     };
                     return {
                         ...season,
@@ -491,7 +419,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
         );
     };
 
-    const handleEpisodeChange = (episodeId: number, field: 'title' | 'duration', value: string | number) => {
+    const handleEpisodeChange = (episodeId: number, field: 'title' | 'duration' | 'fileName', value: string | number) => {
         setSeasons(prevSeasons =>
             prevSeasons.map(season => {
                 if (season.id === selectedSeasonId) {
@@ -505,25 +433,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                 return season;
             })
         );
-    };
-
-    const handleEpisodeFileChange = (episodeId: number, event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            setSeasons(prevSeasons =>
-                prevSeasons.map(season => {
-                    if (season.id === selectedSeasonId) {
-                        return {
-                            ...season,
-                            episodes: season.episodes.map(ep => 
-                                ep.id === episodeId ? { ...ep, file: file, fileName: file.name } : ep
-                            )
-                        };
-                    }
-                    return season;
-                })
-            );
-        }
     };
 
     // BƯỚC 3: Hàm callback
@@ -611,6 +520,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                 onClick={() => backdropInputRef.current?.click()}
                             >
                                 {backdropPreview ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
                                     <img src={backdropPreview} alt="Backdrop preview" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-70 transition-opacity" />
                                 ) : (
                                     <div className="text-center text-gray-400 group-hover:text-primary transition-colors z-0">
@@ -634,6 +544,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                         onClick={() => posterInputRef.current?.click()}
                                     >
                                         {posterPreview ? (
+                                            // eslint-disable-next-line @next/next/no-img-element
                                             <img src={posterPreview} alt="Poster preview" className="object-cover w-full h-full" />
                                         ) : (
                                             <div className="flex flex-col items-center justify-center h-full text-gray-400 group-hover:text-primary">
@@ -684,6 +595,28 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                             </InputGroupButton>
                                         </InputGroup>
                                     </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label htmlFor="posterUrlInput" className="block text-sm font-medium text-gray-300 mb-1">Poster URL</label>
+                                            <Input
+                                                id="posterUrlInput"
+                                                placeholder="https://image.tmdb.org/..."
+                                                value={posterPreview || ''}
+                                                onChange={(e) => setPosterPreview(e.target.value)}
+                                                className="bg-[#262626] border-slate-700 focus:border-primary"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="backdropUrlInput" className="block text-sm font-medium text-gray-300 mb-1">Backdrop URL</label>
+                                            <Input
+                                                id="backdropUrlInput"
+                                                placeholder="https://image.tmdb.org/..."
+                                                value={backdropPreview || ''}
+                                                onChange={(e) => setBackdropPreview(e.target.value)}
+                                                className="bg-[#262626] border-slate-700 focus:border-primary"
+                                            />
+                                        </div>
+                                    </div>
                                     <div>
                                         <label htmlFor="movieTitle" className="block text-sm font-medium text-gray-300 mb-1">Tên phim</label>
                                         <Input
@@ -691,6 +624,16 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                             value={movieTitle}
                                             onChange={(e) => setMovieTitle(e.target.value)}
                                             className="bg-[#262626] border-slate-700 focus:border-primary "
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="trailerUrlInput" className="block text-sm font-medium text-gray-300 mb-1">Trailer URL</label>
+                                        <Input
+                                            id="trailerUrlInput"
+                                            placeholder="https://www.youtube.com/watch?v=..."
+                                            value={trailerUrl || ''} 
+                                            onChange={(e) => setTrailerUrl(e.target.value)}
+                                            className="bg-[#262626] border-slate-700 focus:border-primary"
                                         />
                                     </div>
                                     <div>
@@ -819,33 +762,12 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                 <FileVideo className="w-40 h-40 text-slate-700" />
                                 
                                 <div className="w-full max-w-lg mx-auto space-y-2">
-                                    <label 
-                                        htmlFor="single-movie-upload" 
-                                        className="text-sm font-medium text-gray-300"
-                                    >
-                                        File phim
-                                    </label>
-
-                                    <div 
-                                        className="w-full h-14 px-4 bg-white/10 border border-slate-700 rounded-lg flex justify-between items-center cursor-pointer hover:border-slate-500 transition-colors"
-                                        onClick={() => singleFileRef.current?.click()}
-                                    >
-                                        <span className={cn(
-                                            "font-medium truncate pr-2",
-                                            singleMovieFile ? "text-white" : "text-gray-400"
-                                        )}>
-                                            {singleMovieFile ? singleMovieFile.name : "Nhấn để chọn file (video.mp4, .mkv...)"}
-                                        </span>
-                                        <FileUp className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                                    </div>
-
-                                    <input
+                                    <Input 
                                         id="single-movie-upload"
-                                        ref={singleFileRef}
-                                        type="file"
-                                        accept="video/*" 
-                                        className="hidden"
-                                        onChange={handleSingleFileChange}
+                                        className="bg-white/10 text-white border-slate-700 h-14 px-4" 
+                                        placeholder="https://.../video.m3u8 hoặc video.mp4"
+                                        value={singleMovieFile}
+                                        onChange={(e) => setSingleMovieFile(e.target.value)} 
                                     />
                                 </div>
                             </div>
@@ -940,30 +862,14 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                                                 <p className="text-xs text-gray-500 mt-1">Tính bằng phút.</p>
                                                             </div>
                                                             <div className="md:col-span-2">
-                                                                <label htmlFor={`ep_file_${episode.id}`} className="block text-sm font-medium text-gray-300 mb-1">File phim</label>
-                                                                <div className="flex">
-                                                                    <Input 
-                                                                        id={`ep_file_${episode.id}`}
-                                                                        value={episode.fileName || "Chưa chọn file"} 
-                                                                        readOnly 
-                                                                        className="bg-white/10 text-white border-slate-600 rounded-r-none focus-visible:ring-offset-0 focus-visible:ring-0" 
-                                                                        onClick={() => episodeFileRefs.current[`s${selectedSeasonId}-e${episode.id}`]?.click()}
-                                                                    />
-                                                                    <Button 
-                                                                        variant="outline" 
-                                                                        className="bg-white/20 border-slate-600 border-l-0 rounded-l-none hover:bg-white/30 px-3"
-                                                                        onClick={() => episodeFileRefs.current[`s${selectedSeasonId}-e${episode.id}`]?.click()}
-                                                                    >
-                                                                        <Upload className="w-4 h-4" />
-                                                                    </Button>
-                                                                    <input 
-                                                                        type="file" 
-                                                                        ref={(el) => { episodeFileRefs.current[`s${selectedSeasonId}-e${episode.id}`] = el; }}
-                                                                        className="hidden" 
-                                                                        onChange={(e) => handleEpisodeFileChange(episode.id, e)}
-                                                                        accept="video/*"
-                                                                    />
-                                                                </div>
+                                                                <label htmlFor={`ep_file_${episode.id}`} className="block text-sm font-medium text-gray-300 mb-1">Video URL (hoặc tên file)</label>
+                                                                <Input 
+                                                                    id={`ep_file_${episode.id}`} 
+                                                                    className="bg-white/10 text-white border-slate-600" 
+                                                                    placeholder="https://.../video.m3u8 hoặc /uploads/video.mp4"
+                                                                    value={episode.fileName || ''}
+                                                                    onChange={(e) => handleEpisodeChange(episode.id, 'fileName', e.target.value)} 
+                                                                />
                                                             </div>
                                                         </div>
                                                     </div>

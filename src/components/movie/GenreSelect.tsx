@@ -8,7 +8,6 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
 
 // Danh sách thể loại phim (có thể lấy từ DB sau này)

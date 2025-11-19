@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -35,126 +36,20 @@ import type { Movie } from "@/types/movie";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatePresence, motion } from "framer-motion";
 import { MovieCard } from "@/components/movie/MovieCard";
-
-const baseMockMovies: Movie[] = [
-    {
-      id: 1,
-      title: "Morbius",
-      posterUrl: "https://image.tmdb.org/t/p/w500/6JjfSchsU6daXk2AKX8EEBjO3Fm.jpg",
-      year: 2022,
-      type: "Phim lẻ",
-      tags: ["Hành động", "Phiêu lưu"],
-      duration: "1h 44m",
-      views: 1200000,
-    },
-    {
-      id: 2,
-      title: "John Wick 4",
-      posterUrl: "https://image.tmdb.org/t/p/w500/vZloFAK7NmvMGKE7VkF5UHaz0I.jpg",
-      year: 2023,
-      type: "Phim lẻ",
-      tags: ["Hành động", "Tội phạm"],
-      duration: "2h 49m",
-      views: 8900000,
-    },
-    {
-      id: 3,
-      title: "Demon Slayer: Mugen Train",
-      posterUrl: "https://image.tmdb.org/t/p/w500/h8Rb9gBr48ODIwYUttZNYeMWeUU.jpg",
-      year: 2020,
-      type: "Anime Movie",
-      tags: ["Anime", "Hành động"],
-      duration: "1h 57m",
-      views: 7600000,
-    },
-    {
-      id: 4,
-      title: "Interstellar",
-      posterUrl: "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
-      year: 2014,
-      type: "Phim lẻ",
-      tags: ["Sci-Fi", "Phiêu lưu"],
-      duration: "2h 49m",
-      views: 10400000,
-    },
-    {
-      id: 5,
-      title: "Avengers: Endgame",
-      posterUrl: "https://image.tmdb.org/t/p/w500/ulzhLuWrPK07P1YkdWQLZnQh1JL.jpg",
-      year: 2019,
-      type: "Phim lẻ",
-      tags: ["Hành động", "Sci-Fi"],
-      duration: "3h 2m",
-      views: 12000000,
-    },
-    {
-      id: 6,
-      title: "Pathaan",
-      posterUrl: "https://image.tmdb.org/t/p/w500/sKDSGvdBL2trg0i2dsD0WDF2c9s.jpg",
-      year: 2023,
-      type: "Phim lẻ",
-      tags: ["Hành động", "Hồi hộp"],
-      duration: "2h 26m",
-      views: 5500000,
-    },
-    {
-      id: 7,
-      title: "The Mother",
-      posterUrl: "https://image.tmdb.org/t/p/w500/vnG3oKR0m8iCVnS1uG2T33jLCaD.jpg",
-      year: 2023,
-      type: "Phim lẻ",
-      tags: ["Hành động", "Hồi hộp"],
-      duration: "1h 56m",
-      views: 4300000,
-    },
-    {
-      id: 8,
-      title: "Spider-Man: No Way Home",
-      posterUrl: "https://image.tmdb.org/t/p/w500/uJYYizSuA9Y3DCs0qS4qWvHfZg4.jpg",
-      year: 2021,
-      type: "Phim lẻ",
-      tags: ["Hành động", "Phiêu lưu", "Sci-Fi"],
-      duration: "2h 28m",
-      views: 15000000,
-    },
-    {
-      id: 9,
-      title: "Dune",
-      posterUrl: "https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94XAgMIckC.jpg",
-      year: 2021,
-      type: "Phim lẻ",
-      tags: ["Sci-Fi", "Phiêu lưu"],
-      duration: "2h 35m",
-      views: 9800000,
-    },
-     {
-      id: 10,
-      title: "The Batman",
-      posterUrl: "https://image.tmdb.org/t/p/w500/74xTEgt7R36Fpooo50r9T25onhq.jpg",
-      year: 2022,
-      type: "Phim lẻ",
-      tags: ["Hành động", "Tội phạm", "Drama"],
-      duration: "2h 56m",
-      views: 11000000,
-    },
-  ];
-
-
-const mockMovies: Movie[] = Array.from({ length: 4 }, (_, i) =>
-  baseMockMovies.map((movie, j) => ({
-    ...movie,
-    id: `${i}-${j}-${movie.id}`,
-    title: `${movie.title} ${i > 0 ? i + 1 : ''}`.trim()
-  }))
-).flat();
-
-async function fetchMoviesFromDatabase(): Promise<Movie[]> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(mockMovies);
-    }, 1000);
-  });
-}
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { Check, X, Tv, Film as FilmIcon } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Genre = {
   id: string;
@@ -175,7 +70,12 @@ const defaultFilters: FilterState = {
   q: "",
 };
 
-const RenderPreviewCard = ({ movie }: { movie: Movie | null }) => {
+const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: { 
+  movie: Movie | null;
+  onMovieDeleted: (movieId: string) => void; 
+  onEditMovie: (slug: string) => void;
+}) => {
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
   if (!movie) {
     return (
       <Card className="bg-[#262626] border-slate-800 text-white p-4 h-full">
@@ -188,47 +88,150 @@ const RenderPreviewCard = ({ movie }: { movie: Movie | null }) => {
     );
   }
 
+  const movieData = movie as any; 
+  const status: 'hiện' | 'ẩn' = movieData.is_active ? 'hiện' : 'ẩn';
+  let contentInfo = { icon: <FilmIcon className="w-4 h-4 mr-2" />, text: "Phim lẻ" };
+  if (movieData.media_type === 'TV') {
+    const totalSeasons = movieData.seasons?.length || 0;
+    const totalEpisodes = movieData.seasons?.reduce((acc: number, season: any) => acc + (season._count?.episodes || 0), 0) || 0;
+    contentInfo = {
+      icon: <Tv className="w-4 h-4 mr-2" />,
+      text: `${totalSeasons} Mùa / ${totalEpisodes} Tập`
+    };
+  }
+  const genres: string[] = movieData.movie_genres?.map((mg: any) => mg.genre.name) || [];
+  
+  const displayPoster = movie.poster_url || movie.posterUrl || "/images/placeholder-poster.png"; 
+
+  const handleDelete = async () => {
+    if (!movie || !movie.id) return;
+    
+    const toastId = toast.loading("Đang xóa phim...");
+    try {
+      await apiClient.delete(`/movies/${movie.id.toString()}`);
+      toast.success("Đã xóa phim thành công.", { id: toastId });
+      onMovieDeleted(movie.id.toString());
+    } catch (err) {
+      console.error(err);
+      toast.error("Xóa phim thất bại.", { id: toastId });
+    }
+    setIsAlertOpen(false);
+  };
+
   return (
-    <Card className="bg-[#262626] border-slate-800 text-white p-4 h-full">
-      <CardContent className="p-0">
-        <div className="max-w-xs mx-auto">
-          <div className="aspect-[2/3] relative w-full rounded-md overflow-hidden bg-slate-800">
-            <Image
-              src={movie.posterUrl}
-              alt={movie.title}
-              fill
-              className="object-cover"
-              sizes="(max-width: 1280px) 320px, (max-width: 1536px) 384px, 450px"
-            />
+    <Card className="bg-[#262626] border-slate-800 text-white h-full flex flex-col overflow-hidden">
+      
+      <CardContent className="p-4 flex-1 flex flex-col overflow-hidden">
+        
+        <div className="flex-shrink-0 overflow-y-auto no-scrollbar">
+          
+          <div className="max-w-[160px] mx-auto"> 
+            <div className="aspect-[2/3] relative rounded-md overflow-hidden bg-slate-800">
+              <Image
+                src={displayPoster || "/images/placeholder-poster.png"}
+                alt={movie.title}
+                fill
+                className="object-contain" 
+              />
+            </div>
           </div>
-        </div>
-        <h2 className="text-lg font-semibold text-center mt-4">{movie.title}</h2>
 
-        <div className="flex items-center gap-2 mt-4">
-          <Button variant="outline" className="flex-1 border-slate-700 bg-primary hover:bg-slate-800">
-            Đi tới <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-          <Button variant="default" className="flex-1 bg-primary hover:bg-primary/90">
-            Chi tiết
-          </Button>
-        </div>
+          <h2 className="text-lg font-semibold text-center mt-4">{movie.title}</h2>
+          
+          <div className="flex justify-center mt-3">
+            {status === 'hiện' ? (
+              <Badge className="bg-green-700/30 text-green-400 border border-green-600/50">
+                <Check className="w-3 h-3 mr-1.5" /> Đang hiện
+              </Badge>
+            ) : (
+              <Badge className="bg-gray-700/30 text-gray-400 border border-gray-600/50">
+                <X className="w-3 h-3 mr-1.5" /> Đang ẩn
+              </Badge>
+            )}
+          </div>
 
-        <div className="border-t border-slate-700 my-6"></div>
+          <div className="border-t border-slate-700 my-4"></div>
+          <div className="space-y-2 text-sm">
+            <h3 className="text-xs uppercase text-gray-400 font-semibold mb-2">Thông tin nhanh</h3>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Nội dung:</span>
+              <span className="font-medium flex items-center">
+                {contentInfo.icon} {contentInfo.text}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Năm SX:</span>
+              <span className="font-medium">
+                {(movie as any).release_date ? new Date((movie as any).release_date).getFullYear() : movie.year || 'N/A'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Quốc gia:</span>
+              <span className="font-medium">
+                {movieData.country?.name || 'N/A'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Mã TMDB:</span>
+              <span className="font-medium text-gray-300">
+                {movieData.tmdb_id || 'N/A'}
+              </span>
+            </div>
+          </div>
 
-        <div className="flex flex-col gap-3">
-          <Button
-            variant="outline"
-            className="bg-amber-600 border-amber-600 text-white hover:bg-amber-700 hover:text-white"
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            Chỉnh sửa thông tin
-          </Button>
-          <Button variant="destructive">
-            <Trash className="h-4 w-4 mr-2" />
-            Xóa phim
-          </Button>
-        </div>
+          <div className="flex-1 flex flex-col min-h-0">
+          
+          <div className="border-t border-slate-700 my-4 flex-shrink-0"></div>
+
+          <div className="space-y-2 text-sm overflow-y-auto no-scrollbar">
+            <h3 className="text-xs uppercase text-gray-400 font-semibold mb-2 flex-shrink-0">Thể loại</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {genres.length > 0 ? genres.map(genre => (
+                <Badge key={genre} variant="secondary" className="bg-slate-700 text-gray-300">
+                  {genre}
+                </Badge>
+              )) : (
+                <p className="text-gray-500 text-xs">Chưa gán thể loại.</p>
+              )}
+            </div>
+          </div>
+
+        </div> 
+
+          <div className="border-t border-slate-700 my-4"></div>
+          <div className="flex flex-col gap-3">
+            <Button
+              variant="outline"
+              className="bg-amber-600 border-amber-600 text-white hover:bg-amber-700 hover:text-white"
+              onClick={() => onEditMovie(movie.slug as string)}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Chỉnh sửa thông tin
+            </Button>
+            <Button variant="destructive" onClick={() => setIsAlertOpen(true)}>
+              <Trash className="h-4 w-4 mr-2" />
+              Xóa phim
+            </Button>
+          </div>
+        </div> 
       </CardContent>
+      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hành động này sẽ xóa (soft delete) phim <strong className="text-white">{movie.title}</strong>. <br/>Phim sẽ bị ẩn khỏi người dùng. Bạn có chắc chắn muốn tiếp tục?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Tiếp tục xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
@@ -247,18 +250,13 @@ const RenderGridView = ({
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-7 gap-x-4 gap-y-8 dark">
       {movies.map((movie) => (
-        <div key={movie.id} className="relative cursor-pointer text-center">
-          <MovieCard
-            movie={movie}
-            onDetail={handleAction}
-            onWatch={handleAction}
-          />
-          <div
-            className="absolute inset-0 z-10"
-            onClick={() => onSelectMovie(movie)}
-            aria-label={`Select ${movie.title}`}
-          />
-        </div>
+        <MovieCard
+          key={movie.id}
+          movie={movie}
+          onDetail={handleAction} 
+          onWatch={handleAction}
+          disablePreview={true} 
+        />
       ))}
     </div>
   );
@@ -293,7 +291,7 @@ const RenderListView = ({
             <TableCell className="font-medium">
               <div className="flex items-center gap-3">
                 <Image
-                  src={movie.posterUrl}
+                  src={movie.poster_url || movie.posterUrl || "/images/placeholder-poster.png"} 
                   alt={movie.title}
                   width={40}
                   height={56}
@@ -303,10 +301,14 @@ const RenderListView = ({
               </div>
             </TableCell>
             <TableCell className="text-gray-300">
-              {movie.tags?.slice(0, 2).join(", ")}
+              {(movie as any).movie_genres?.map((mg: any) => mg.genre.name).slice(0, 2).join(", ") || movie.tags?.slice(0, 2).join(", ")}
             </TableCell>
-            <TableCell className="text-gray-300">{movie.type}</TableCell>
-            <TableCell className="text-gray-300">{movie.year}</TableCell>
+            <TableCell className="text-gray-300">
+              {(movie as any).media_type === 'TV' ? 'Phim bộ' : 'Phim lẻ'}
+            </TableCell>
+            <TableCell className="text-gray-300">
+              {(movie as any).release_date ? new Date((movie as any).release_date).getFullYear() : movie.year}
+            </TableCell>
             <TableCell className="text-gray-300">2025-10-26</TableCell>
             <TableCell className="text-right">
               <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
@@ -385,6 +387,7 @@ const MovieListSkeleton = () => (
 const MOVIES_PER_PAGE = 35;
 
 export default function MovieStoragePage() {
+  const router = useRouter();
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
 
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -395,6 +398,7 @@ export default function MovieStoragePage() {
   const [showFilter, setShowFilter] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -403,6 +407,14 @@ export default function MovieStoragePage() {
   const [isLoadingFilterData, setIsLoadingFilterData] = useState(true);
   const [pendingFilters, setPendingFilters] = useState<FilterState>(defaultFilters);
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(defaultFilters);
+
+  const handleGoToEditPage = (slug: string) => {
+      if (!slug) {
+        toast.error("Phim này bị lỗi, không có slug để chỉnh sửa.");
+        return;
+      }
+      router.push(`/admin/movie-management?slug=${slug}`);
+    };
 
   useEffect(() => {
     const fetchFilterData = async () => {
@@ -424,18 +436,56 @@ export default function MovieStoragePage() {
   }, []);
 
   useEffect(() => {
-    const loadMovies = async () => {
+    // 1. Tạo hàm fetchMovies mới
+    const fetchMovies = async () => {
+      if (showAddForm) {
+        setLoading(false);
+        return;
+      }
+      
       try {
         setLoading(true);
         setError(null);
-        setCurrentPage(1);
+        
+        // 2. Chuẩn bị params cho API
+        const params = new URLSearchParams();
+        params.append('page', currentPage.toString());
+        params.append('take', MOVIES_PER_PAGE.toString());
+        params.append('status', 'all');
 
-        const data = await fetchMoviesFromDatabase();
-
-        setMovies(data);
-        if (data.length > 0) {
-          setSelectedMovie(data[0]);
+        // Thêm filter từ state
+        if (appliedFilters.q) params.append('q', appliedFilters.q);
+        if (appliedFilters.type && appliedFilters.type !== "Tất cả") {
+            const typeValue = appliedFilters.type === 'Phim lẻ' ? 'phim-le' : (appliedFilters.type === 'Phim bộ' ? 'phim-bo' : appliedFilters.type);
+            params.append("type", typeValue);
         }
+        if (appliedFilters.genre && appliedFilters.genre.length > 0) {
+            appliedFilters.genre.forEach(g => params.append('genre', g));
+        }
+        if (appliedFilters.country && appliedFilters.country !== "Tất cả") {
+            params.append("country", appliedFilters.country);
+        }
+        if (appliedFilters.year && appliedFilters.year !== "Tất cả") {
+            params.append("year", appliedFilters.year);
+        }
+        // Thêm search term
+        if (searchTerm.trim()) {
+            params.set('q', searchTerm.trim());
+        }
+
+        // 3. Gọi API
+        const res = await apiClient.get('/movies/filter', { params });
+        
+        // 4. Cập nhật state từ response của API
+        setMovies(res.data.data);
+        setTotalPages(res.data.pagination.totalPages || 1);
+        
+        if (currentPage === 1 && res.data.data.length > 0) {
+            setSelectedMovie(res.data.data[0]);
+        } else if (res.data.data.length === 0) {
+            setSelectedMovie(null);
+        }
+
       } catch (err: unknown) {
         let message = "Đã xảy ra lỗi khi tải phim";
         if (err instanceof Error && err.message) {
@@ -447,28 +497,19 @@ export default function MovieStoragePage() {
       }
     };
 
-    if (!showAddForm) {
-        loadMovies();
-    } else {
-        setLoading(false); 
+    // 5. Gọi hàm fetch
+    fetchMovies();
+    
+    // 6. Cập nhật dependencies
+  }, [showAddForm, appliedFilters, currentPage, searchTerm]);
+
+const handleRemoveMovieFromState = (movieId: string) => {
+    const newMovies = movies.filter(m => m.id.toString() !== movieId);
+    setMovies(newMovies);
+    if (selectedMovie?.id.toString() === movieId) {
+      setSelectedMovie(newMovies.length > 0 ? newMovies[0] : null);
     }
-  }, [showAddForm]);
-
-  const filteredMovies = movies.filter(movie => {
-    const matchesSearch = movie.title.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = !appliedFilters.type || appliedFilters.type === "Tất cả" || movie.type === appliedFilters.type;
-    const matchesCountry = !appliedFilters.country || appliedFilters.country === "Tất cả" || movie.country === appliedFilters.country;
-    const matchesGenre = appliedFilters.genre.length === 0 
-      || (movie.tags?.some(tag => appliedFilters.genre.includes(tag)) ?? false);
-    const matchesYear = !appliedFilters.year || appliedFilters.year === "Tất cả" || movie.year?.toString() === appliedFilters.year;
-
-    return matchesSearch && matchesType && matchesCountry && matchesGenre && matchesYear;
-  });
-
-  const totalPages = Math.ceil(filteredMovies.length / MOVIES_PER_PAGE);
-  const indexOfLastMovie = currentPage * MOVIES_PER_PAGE;
-  const indexOfFirstMovie = indexOfLastMovie - MOVIES_PER_PAGE;
-  const currentMovies = filteredMovies.slice(indexOfFirstMovie, indexOfLastMovie);
+  };
 
   const renderContent = () => {
     if (loading) {
@@ -484,22 +525,21 @@ export default function MovieStoragePage() {
       );
     }
 
-    if (currentMovies.length === 0 && filteredMovies.length > 0) {
-       setCurrentPage(1);
+    if (movies.length === 0 && totalPages > 1 && currentPage > 1) {
+       setCurrentPage(1); 
        return null;
-    } else if (filteredMovies.length === 0) {
+    } else if (movies.length === 0) {
        return (
          <div className="flex flex-col items-center justify-center h-64 text-gray-400 bg-[#262626] border border-slate-800 rounded-md">
-           <p>{searchTerm ? `Không tìm thấy phim nào khớp với "${searchTerm}".` : "Không tìm thấy phim nào trong kho."}</p>
+           <p>{searchTerm || appliedFilters.q ? `Không tìm thấy phim nào khớp.` : "Không tìm thấy phim nào trong kho."}</p>
          </div>
        );
     }
 
-
     return viewMode === "list" ? (
-      <RenderListView movies={currentMovies} onSelectMovie={setSelectedMovie} />
+      <RenderListView movies={movies} onSelectMovie={setSelectedMovie} />
     ) : (
-      <RenderGridView movies={currentMovies} onSelectMovie={setSelectedMovie} />
+      <RenderGridView movies={movies} onSelectMovie={setSelectedMovie} />
     );
   };
 
@@ -510,12 +550,15 @@ export default function MovieStoragePage() {
     setShowFilter(!showFilter);
   };
 
-  const handleFilterChange = (key: keyof FilterState, value: string | string[]) => {
-    setPendingFilters(prev => ({ ...prev, [key]: value }));
-  };
+  const handleFilterChange = (key: keyof FilterState, value: string | string[]) => {
+      if (key === 'q') {
+          setSearchTerm(value as string); 
+      }
+      setPendingFilters(prev => ({ ...prev, [key]: value }));
+    };
 
   const handleSubmit = () => {
-    setAppliedFilters(pendingFilters); 
+    setAppliedFilters({ ...pendingFilters, q: searchTerm || pendingFilters.q });
     setCurrentPage(1); 
     setShowFilter(true); 
   };
@@ -523,6 +566,7 @@ export default function MovieStoragePage() {
   const handleReset = () => {
     setPendingFilters(defaultFilters);
     setAppliedFilters(defaultFilters);
+    setSearchTerm("");
     setCurrentPage(1);
   };
 
@@ -545,7 +589,7 @@ export default function MovieStoragePage() {
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
-                  setCurrentPage(1);
+                  setPendingFilters(prev => ({ ...prev, q: e.target.value }));
                 }}
               />
             </div>
@@ -625,7 +669,7 @@ export default function MovieStoragePage() {
             {renderContent()}
           </div>
 
-           {!loading && !error && filteredMovies.length > MOVIES_PER_PAGE && (
+           {!loading && !error && totalPages > 1 && (
              <Pagination
                totalPages={totalPages}
                currentPage={currentPage}
@@ -638,16 +682,13 @@ export default function MovieStoragePage() {
       {!showAddForm && (
             <aside className={`hidden lg:block fixed right-0 ${sidebarTopOffset} ${sidebarHeight} lg:w-80 xl:w-96 2xl:w-[450px] pr-6 pl-0 py-0 z-40`}>
                 <div className="h-full overflow-y-auto no-scrollbar">
-                <RenderPreviewCard movie={selectedMovie} />
+                <RenderPreviewCard movie={selectedMovie}
+                 onMovieDeleted={handleRemoveMovieFromState}
+                 onEditMovie={handleGoToEditPage}
+                />
                 </div>
             </aside>
         )}
-
-      <aside className={`hidden lg:block fixed right-0 ${sidebarTopOffset} ${sidebarHeight} lg:w-80 xl:w-96 2xl:w-[450px] pr-6 pl-0 py-0 z-40`}>
-        <div className="h-full overflow-y-auto no-scrollbar">
-          <RenderPreviewCard movie={selectedMovie} />
-        </div>
-      </aside>
     </div>
   );
 }
