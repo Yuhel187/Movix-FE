@@ -34,7 +34,6 @@ const DetailSection = ({
   <div className="space-y-3">
     <div className="flex items-center gap-2 text-gray-400">
       {icon}
-      {/* SỬA 1: Thêm "whitespace-nowrap" để tiêu đề không bị vỡ */}
       <h3 className="text-sm font-medium uppercase tracking-wider whitespace-nowrap">{title}</h3>
     </div>
     <div>{children}</div>
@@ -49,7 +48,6 @@ export function MovieDetailSidebar({
   director,
 }: MovieDetailSidebarProps) {
   return (
-    // SỬA 2: Tăng chiều rộng từ "max-w-xs" lên "max-w-sm"
     <aside className="w-full max-w-sm space-y-8 rounded-lg bg-zinc-900/50 p-6 text-white">
       {/* Năm ra mắt */}
       <DetailSection icon={<Calendar size={18} />} title="Năm ra mắt">
@@ -80,7 +78,7 @@ export function MovieDetailSidebar({
             <div className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-gray-300">IMDb</span>
               <div className="flex items-center gap-2">
-                <StarRating rating={ratings.imdb} size={18} />
+                <StarRating rating={ratings.imdb/2} size={18} />
                 <span className="font-semibold">{ratings.imdb.toFixed(1)}</span>
               </div>
             </div>
@@ -90,7 +88,7 @@ export function MovieDetailSidebar({
             <div className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-gray-300">Movix</span>
               <div className="flex items-center gap-2">
-                <StarRating rating={ratings.movix} size={18} />
+                <StarRating rating={ratings.movix/2} size={18} />
                 <span className="font-semibold">{ratings.movix.toFixed(1)}</span>
               </div>
             </div>

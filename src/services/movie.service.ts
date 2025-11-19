@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import api from "@/lib/apiClient";
-import type { Movie } from "@/types/movie";
+import type { Movie, MovieResponse, Season } from "@/types/movie";
 import type { Actor } from "@/types/actor";
+import type { Director } from "@/types/director";
 import { getTmdbImageUrl, getPersonAvatarUrl } from "@/lib/tmdb";
 
 export interface SidebarData {
@@ -9,17 +9,63 @@ export interface SidebarData {
   languages: string[];
   ratings: { imdb: number; movix: number };
   genres: string[];
-  director: { name: string; avatarUrl: string; origin: string };
+  director: Director | null;
 }
+
 export async function getMovieData(slug: string) {
-  let raw: any;
+  let raw: MovieResponse;
+  
   try {
-    const res = await api.get(`/movies/${slug}`);
+    const res = await api.get<MovieResponse>(`/movies/${slug}`);
     raw = res.data;
   } catch (error: any) {
     console.error("Lỗi lấy phim:", error.response?.data || error.message);
     throw new Error("Không tìm thấy phim");
   }
+
+  const castData: Actor[] = raw.movie_people
+    ?.filter(mp => mp.person.role_type === "actor" || mp.credit_type === "cast")
+    .map((mp, idx) => ({
+      id: mp.person.id, 
+      name: mp.person.name || "Không rõ",
+      character: mp.character || "Unknown",
+      profileUrl: getPersonAvatarUrl(mp.person.avatar_url),
+    })) || [];
+  const directorRaw = raw.movie_people?.find(
+    (mp) => mp.person.role_type === "director" || mp.credit_type === "crew" 
+  );
+
+  const director: Director | null = directorRaw ? {
+      name: directorRaw.person.name,
+      avatarUrl: getPersonAvatarUrl(directorRaw.person.avatar_url),
+      origin: "Unknown"
+  } : null;
+  const seasons: Season[] = raw.seasons?.map(s => ({
+    id: s.id,
+    number: s.season_number,
+    title: s.title || `Season ${s.season_number}`,
+    episodes: s.episodes?.map(e => ({
+      id: e.id,
+      number: e.episode_number,
+      title: e.title || `Episode ${e.episode_number}`,
+      videoUrl: e.video_url,
+      runtime: e.runtime || 0
+    })) || []
+  })) || [];
+
+  let mainVideoUrl = raw.trailer_url;
+
+  if (raw.media_type === "MOVIE") {
+    const firstEpLink = seasons?.[0]?.episodes?.[0]?.videoUrl;
+    if (firstEpLink) {
+      mainVideoUrl = firstEpLink;
+    }
+  }
+  const releaseYear = raw.release_date
+    ? new Date(raw.release_date).getFullYear()
+    : "Đang cập nhật";
+
+  const tags = raw.movie_genres?.map((mg) => mg.genre?.name).filter(Boolean) || [];
 
   const movie: Movie = {
     id: raw.id,
@@ -27,42 +73,33 @@ export async function getMovieData(slug: string) {
     title: raw.title || raw.original_title || "Không có tiêu đề",
     subTitle: raw.original_title || raw.title || "",
     description: raw.description || "",
+    
     posterUrl: getTmdbImageUrl(raw.poster_url, "poster"),
     backdropUrl: getTmdbImageUrl(raw.backdrop_url, "backdrop"),
-    videoUrl: raw.trailer_url || null, 
-    tags:
-      raw.movie_genres?.map((mg: any) => mg.genre?.name).filter(Boolean) || [],
+    
+    trailerUrl: raw.trailer_url || null,
+    videoUrl: mainVideoUrl || null, 
+    seasons: seasons,               
+    
+    type: raw.media_type,           
+    releaseYear: releaseYear,
+    tags: tags,
+    cast: castData,
+    director: director || undefined,
+    rating: raw.metadata?.tmdb_rating || 0,
+    duration: raw.metadata?.duration || "N/A",
   };
-
-  const castData: Actor[] =
-    raw.movie_people?.map((mp: any, idx: number) => ({
-      id: idx + 1,
-      name: mp.person?.name || "Không rõ",
-      character: mp.character || "",
-      profileUrl: getPersonAvatarUrl(mp.person?.avatar_url),
-    })) || [];
-
-  const directorPerson = raw.movie_people?.find(
-    (mp: any) => mp.person?.role_type === "director"
-  )?.person;
 
   const sidebarData: SidebarData = {
-    releaseYear: raw.release_date
-      ? new Date(raw.release_date).getFullYear()
-      : "Đang cập nhật",
-    languages: ["Vietnamese"], // Nên lấy từ API nếu có
+    releaseYear: releaseYear,
+    languages: ["Vietnamese", "English"], 
     ratings: {
-      imdb: raw.metadata?.imdb_rating || 4.5,
-      movix: raw.metadata?.movix_rating || 4.0,
+      imdb: raw.metadata?.tmdb_rating || 0,
+      movix: 9.0,
     },
-    genres:
-      raw.movie_genres?.map((mg: any) => mg.genre?.name).filter(Boolean) || [],
-    director: {
-      name: directorPerson?.name || "Đang cập nhật",
-      avatarUrl: getPersonAvatarUrl(directorPerson?.avatar_url),
-      origin: "", 
-    },
+    genres: tags,
+    director: director,
   };
 
-  return { movie, castData, sidebarData };
+  return { movie, sidebarData };
 }

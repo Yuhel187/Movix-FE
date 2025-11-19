@@ -4,7 +4,7 @@ import { getMovieData } from "@/services/movie.service";
 import MovieSharedLayout from "@/components/movie/MovieSharedLayout"; 
 
 export default async function MovieDetailPage({ params }: { params: { slug: string } }) {
-  const { movie, castData, sidebarData } = await getMovieData(params.slug);
+  const { movie, sidebarData } = await getMovieData(params.slug);
 
   return (
     <main className="dark min-h-screen bg-black text-white">
@@ -12,10 +12,13 @@ export default async function MovieDetailPage({ params }: { params: { slug: stri
         <Navbar />
       </div>
       <MovieHero movie={movie} />
+      
       <MovieSharedLayout 
-        castData={castData} 
+        castData={movie.cast || []} 
         sidebarData={sidebarData} 
-        movieId={movie.id  as string}
+        movieId={movie.id as string}
+        seasons={movie.seasons}   
+        type={movie.type}         
       />
     </main>
   );
