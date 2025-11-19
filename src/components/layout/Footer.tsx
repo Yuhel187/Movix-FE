@@ -7,7 +7,6 @@ import {
   FaTwitter,
   FaInstagram,
   FaYoutube,
-  FaGithub,
 } from "react-icons/fa";
 
 export default function Footer() {

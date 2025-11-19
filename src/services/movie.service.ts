@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import api from "@/lib/apiClient";
 import type { Movie } from "@/types/movie";
 import type { Actor } from "@/types/actor";
+import { getTmdbImageUrl, getPersonAvatarUrl } from "@/lib/tmdb";
 
 export interface SidebarData {
   releaseYear: number | string;
@@ -25,8 +27,8 @@ export async function getMovieData(slug: string) {
     title: raw.title || raw.original_title || "Không có tiêu đề",
     subTitle: raw.original_title || raw.title || "",
     description: raw.description || "",
-    posterUrl: raw.poster_url || raw.backdrop_url || "",
-    backdropUrl: raw.backdrop_url || raw.poster_url || "",
+    posterUrl: getTmdbImageUrl(raw.poster_url, "poster"),
+    backdropUrl: getTmdbImageUrl(raw.backdrop_url, "backdrop"),
     videoUrl: raw.trailer_url || null, 
     tags:
       raw.movie_genres?.map((mg: any) => mg.genre?.name).filter(Boolean) || [],
@@ -37,9 +39,7 @@ export async function getMovieData(slug: string) {
       id: idx + 1,
       name: mp.person?.name || "Không rõ",
       character: mp.character || "",
-      profileUrl:
-        mp.person?.avatar_url ||
-        "https://i.pravatar.cc/150?u=movix-default-actor",
+      profileUrl: getPersonAvatarUrl(mp.person?.avatar_url),
     })) || [];
 
   const directorPerson = raw.movie_people?.find(
@@ -59,9 +59,7 @@ export async function getMovieData(slug: string) {
       raw.movie_genres?.map((mg: any) => mg.genre?.name).filter(Boolean) || [],
     director: {
       name: directorPerson?.name || "Đang cập nhật",
-      avatarUrl:
-        directorPerson?.avatar_url ||
-        "https://i.pravatar.cc/150?u=movix-director",
+      avatarUrl: getPersonAvatarUrl(directorPerson?.avatar_url),
       origin: "", 
     },
   };

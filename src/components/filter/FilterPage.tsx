@@ -105,42 +105,39 @@ export default function FilterPage({ searchParams }: FilterPageProps) {
   }, []);
 
   const fetchMovies = useCallback(async (currentFilters: FilterState, page: number) => {
-    setIsLoading(true);
-    setError(null);
-    const params = new URLSearchParams();
-    
-    if (currentFilters.q) params.append("q", currentFilters.q);
-    if (currentFilters.type && currentFilters.type !== "Tất cả") {
-      const typeValue = currentFilters.type === 'Phim lẻ' ? 'phim-le' : (currentFilters.type === 'Phim bộ' ? 'phim-bo' : currentFilters.type);
-      params.append("type", typeValue);
-    }
-    if (currentFilters.genre && currentFilters.genre.length > 0) {
-      currentFilters.genre.forEach(g => {
-        params.append("genre", g); 
-      });
+    setIsLoading(true);
+    setError(null);
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('take', moviesPerPage.toString());
+    
+    if (currentFilters.q) params.append("q", currentFilters.q);
+    if (currentFilters.type && currentFilters.type !== "Tất cả") {
+      const typeValue = currentFilters.type === 'Phim lẻ' ? 'phim-le' : (currentFilters.type === 'Phim bộ' ? 'phim-bo' : currentFilters.type);
+      params.append("type", typeValue);
     }
-    if (currentFilters.country && currentFilters.country !== "Tất cả") params.append("country", currentFilters.country);
-    if (currentFilters.year && currentFilters.year !== "Tất cả") params.append("year", currentFilters.year);
+    if (currentFilters.genre && currentFilters.genre.length > 0) {
+      currentFilters.genre.forEach(g => {
+        params.append("genre", g); 
+      });
+    }
+    if (currentFilters.country && currentFilters.country !== "Tất cả") params.append("country", currentFilters.country);
+    if (currentFilters.year && currentFilters.year !== "Tất cả") params.append("year", currentFilters.year);
 
-    try {
-      const res = await apiClient.get(`/movies/filter?${params.toString()}`);
-      const allMovies: Movie[] = res.data;
-      const total = allMovies.length;
-      setTotalPages(Math.ceil(total / moviesPerPage));
-      
-      const paginatedMovies = allMovies.slice(
-        (page - 1) * moviesPerPage,
-        page * moviesPerPage
-      );
-      setMovies(paginatedMovies);
-    } catch (err) {
-      console.error("Lỗi khi lọc phim:", err);
-      setError("Không thể tải kết quả lọc. Vui lòng thử lại.");
-      setMovies([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [moviesPerPage]); 
+    try {
+      const res = await apiClient.get(`/movies/filter`, { params });
+
+      setMovies(res.data.data);
+      setTotalPages(res.data.pagination.totalPages || 1);
+
+    } catch (err) {
+      console.error("Lỗi khi lọc phim:", err);
+      setError("Không thể tải kết quả lọc. Vui lòng thử lại.");
+      setMovies([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [moviesPerPage]);
 
   useEffect(() => {
     const urlType = clientSearchParams.get("type");
@@ -293,7 +290,7 @@ export default function FilterPage({ searchParams }: FilterPageProps) {
             )}
           </section>
 
-          {!isLoading && !error && movies.length > 0 && (
+          {!isLoading && !error && movies.length > 0 && totalPages > 1 && (
              <Pagination
                 totalPages={totalPages}
                 currentPage={currentPage}
