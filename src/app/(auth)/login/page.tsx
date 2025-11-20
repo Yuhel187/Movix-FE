@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"; 
 
 import Image from "next/image";
@@ -12,12 +13,16 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import OtpModal from "@/components/auth/OtpModal";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [targetEmail, setTargetEmail] = useState("");
   
   const router = useRouter();
   const { login } = useAuth(); 
@@ -45,9 +50,22 @@ export default function LoginPage() {
         router.push("/movies");
       }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      if (err.response && err.response.data && err.response.data.message) {
+      const isUnverified = 
+        err.response?.data?.message?.includes("xác thực") || 
+        err.response?.data?.code === "USER_NOT_VERIFIED";
+
+      if (isUnverified) {
+        toast.warning("Tài khoản chưa được xác thực. Vui lòng nhập mã OTP đã gửi đến email.");
+        setTargetEmail(email); 
+
+        try {
+            await apiClient.post('/auth/resend-verification', { email });
+            setOtpOpen(true); 
+        } catch (resendErr) {
+            toast.error("Không thể gửi lại mã OTP.");
+        }
+      } else if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
       } else {
         setError("Không thể đăng nhập. Vui lòng thử lại.");
@@ -57,6 +75,35 @@ export default function LoginPage() {
     }
   };
 
+  const handleVerify = async (code: string) => {
+    setError("");
+    setIsLoading(true);
+    try {
+      await apiClient.post("/auth/verify", {
+        email: targetEmail,
+        verificationCode: code,
+      });
+
+      setOtpOpen(false);
+      toast.success("Xác thực thành công! Bạn có thể đăng nhập ngay.");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi xác thực. Vui lòng thử lại.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setIsLoading(true);
+    try {
+      await apiClient.post('/auth/resend-verification', { email: targetEmail });
+      toast.success("Đã gửi lại mã OTP.");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi gửi lại mã.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <main className="relative flex min-h-screen items-center justify-center p-4">
@@ -94,7 +141,7 @@ export default function LoginPage() {
 
             {/* 12. Kết nối form với state và handler */}
             <form className="space-y-5" onSubmit={handleLogin}>
-              {error && (
+              {error && !otpOpen && (
                 <p className="text-red-400 text-sm bg-red-950/30 border border-red-700 rounded-md p-2">
                   {error}
                 </p>
@@ -160,6 +207,14 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+    <OtpModal
+        open={otpOpen}
+        onClose={() => setOtpOpen(false)}
+        onVerify={handleVerify}
+        isLoading={isLoading} 
+        targetEmail={targetEmail}
+        onResend={handleResend}
+      />
     </main>
   );
 }

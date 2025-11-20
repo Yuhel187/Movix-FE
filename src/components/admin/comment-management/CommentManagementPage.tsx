@@ -42,7 +42,7 @@ import { CommentItem } from "@/components/comment/CommentItem";
 import type { Comment } from "@/types/comment";
 import { cn } from "@/lib/utils";
 
-// --- Types và Mock Data (Giữ nguyên) ---
+// --- Types và Mock Data  ---
 interface CommentUser {
   id: string;
   username: string;

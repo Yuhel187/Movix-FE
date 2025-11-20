@@ -231,7 +231,7 @@ export default function MovieManagement() {
     const newPersonLink = {
       person: { id: data.person.id, name: data.person.name, avatar_url: data.person.avatarUrl },
       character: data.characterName,
-      credit_type: data.person.roles?.includes('Đạo diễn') ? 'director' : 'actor',
+      credit_type: data.person.roles?.includes('Đạo diễn') ? 'crew' : 'cast',
       ordering: (movieToEdit.movie_people?.length || 0) + 1
     };
     updateMovieField('movie_people', [...movieToEdit.movie_people, newPersonLink]);

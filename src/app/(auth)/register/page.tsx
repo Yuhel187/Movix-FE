@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import Image from "next/image";
@@ -61,15 +62,20 @@ export default function RegisterPage() {
       toast.success("Đăng ký thành công! Vui lòng kiểm tra email.");
       setOtpOpen(true);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      if (err.response && err.response.data && err.response.data.message) {
-        setError(err.response.data.message);
+    } catch (err: any) { 
+      const message = err.response?.data?.message || "";
+      if (message.includes("already exists") || message.includes("đã tồn tại")) {
+          try {
+              await apiClient.post('/auth/resend-verification', { email });
+              toast.info("Email này đã đăng ký nhưng chưa xác thực. Đã gửi lại mã OTP.");
+              setOtpOpen(true);
+              return;
+          } catch (e) {
+            setError(message);
+          }
       } else {
-        setError("Đã xảy ra lỗi. Vui lòng thử lại.");
+          setError(message || "Đã xảy ra lỗi.");
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -87,7 +93,6 @@ export default function RegisterPage() {
       toast.success("Xác thực thành công! Vui lòng đăng nhập.");
       router.push("/login"); 
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message); 
@@ -105,7 +110,6 @@ export default function RegisterPage() {
     try {
       await apiClient.post('/auth/resend-verification', { email });
       toast.success("Đã gửi lại mã OTP. Vui lòng kiểm tra email.");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
