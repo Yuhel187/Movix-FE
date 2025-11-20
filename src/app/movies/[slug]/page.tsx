@@ -17,6 +17,7 @@ export default async function MovieDetailPage({ params }: { params: { slug: stri
         castData={movie.cast || []} 
         sidebarData={sidebarData} 
         movieId={movie.id as string}
+        movieSlug={movie.slug}
         seasons={movie.seasons}   
         type={movie.type}         
       />
