@@ -1,94 +1,40 @@
-import ActorListPage from "@/components/actor/ActorList";
 import Navbar from "@/components/layout/NavBar";
 import Footer from "@/components/layout/Footer";
-import AIChatWidget from "@/components/ai/AIChatWidget";
-import { Actor } from "@/types/actor"; // <--- Dùng type hotfix
+import ActorList from "@/components/actor/ActorList";
+import { getPeopleList } from "@/services/person.service";
+import { ServerPagination } from "@/components/common/ServerPagination"; 
 
-// Giả lập dữ liệu diễn viên (sử dụng type Actor cũ)
-const MOCK_ACTORS: Actor[] = [
-  // Hàng 1
-  {
-    id: "keanu-reeves",
-    name: "Keanu Reeves",
-    character: 'Nhiều vai diễn', 
-    profileUrl: "https://image.tmdb.org/t/p/original/kEoUZKEG7dzbCESDjd0CKAN1r0n.jpg", 
-  },
-  {
-    id: "scarlett-johansson",
-    name: "Scarlett Johansson",
-    character: 'Nhiều vai diễn', 
-    profileUrl: "https://image.tmdb.org/t/p/original/mjReG6rR7NPMEIWb1T4YWtV11ty.jpg",
-  },
-  {
-    id: "tom-hanks",
-    name: "Tom Hanks",
-    character: 'Nhiều vai diễn', 
-    profileUrl: "https://image.tmdb.org/t/p/original/eKF1sGJRrZJbfBG1KirPt1cfNd3.jpg",
-  },
-  {
-    id: "margot-robbie",
-    name: "Margot Robbie",
-    character: 'Nhiều vai diễn', 
-    profileUrl: "https://image.tmdb.org/t/p/original/euDPyqLnuwaWMHajcU3oZ9uZezR.jpg",
-  },
-  {
-    id: "chris-hemsworth",
-    name: "Chris Hemsworth",
-    character: 'Nhiều vai diễn', 
-    profileUrl: "https://image.tmdb.org/t/p/original/jpurJ9jAcLCYjgHHfYF32m3zJYm.jpg",
-  },
-  {
-    id: "zendaya",
-    name: "Zendaya",
-    character: 'Nhiều vai diễn', 
-    profileUrl: "https://image.tmdb.org/t/p/original/3WdOloHpjtjL96uVOhFRRCcYSwq.jpg",
-  },
-  {
-    id: "dwayne-johnson",
-    name: "Dwayne Johnson",
-    character: 'Nhiều vai diễn', 
-    profileUrl: "https://image.tmdb.org/t/p/w500/kuqFzlYMc2IrsOyPznMd1FroeGq.jpg",
-  },
-  {
-    id: "florence-pugh",
-    name: "Florence Pugh",
-    character: 'Nhiều vai diễn', 
-    profileUrl: "https://image.tmdb.org/t/p/original/nuRLGEBCfUVXTjq9guz9OlTGjtL.jpg",
-  },
-  // Hàng 2
-  {
-    id: "ryan-gosling",
-    name: "Ryan Gosling",
-    character: 'Nhiều vai diễn', 
-    profileUrl: "https://image.tmdb.org/t/p/original/asoKC7CLCqpZKZDL6iovNurQUdf.jpg",
-  },
-  {
-    id: "anya-taylor-joy",
-    name: "Anya Taylor-Joy",
-    character: 'Nhiều vai diễn', 
-    profileUrl: "https://image.tmdb.org/t/p/original/qYNofOjlRke2MlJVihmJmEdQI4v.jpg",
-  },
-  {
-    id: "cillian-murphy",
-    name: "Cillian Murphy",
-    character: 'Nhiều vai diễn', 
-    profileUrl: "https://image.tmdb.org/t/p/original/llkbyWKwpfowZ6C8peBjIV9jj99.jpg",
-  },
-  
-];
-
-
-export default function ActorsPage() {
-  const allActors = MOCK_ACTORS;
+export default async function PeoplesPage({ searchParams }: { searchParams: { page?: string } }) {
+  const currentPage = Number(searchParams.page) || 1;
+  const { people, totalPages } = await getPeopleList(currentPage);
 
   return (
-    <main className="dark min-h-screen bg-black">
-      <Navbar />
-      <div className="pt-20">
-        <ActorListPage allActors={allActors} />
+    <main className="min-h-screen bg-black text-white">
+      <div className="fixed top-0 left-0 w-full z-50">
+        <Navbar />
+      </div>
+
+      <div className="pt-24 pb-12 container mx-auto px-4">
+        <div className="flex items-end justify-between mb-8">
+          <div>
+             <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                Người nổi tiếng
+             </h1>
+             <p className="text-gray-400 mt-2">
+                Danh sách diễn viên và đạo diễn
+             </p>
+          </div>
+        </div>
+
+        <ActorList people={people} />
+        <div className="mt-12 flex justify-center">
+           <ServerPagination 
+              currentPage={currentPage} 
+              totalPages={totalPages} 
+           />
+        </div>
       </div>
       <Footer />
-      <AIChatWidget />
     </main>
   );
 }
