@@ -11,7 +11,10 @@ export interface CommentData {
   comment: string;          
   parent_comment_id: string | null;
   is_deleted: boolean;
-  is_spoiler: boolean;     
+  is_spoiler: boolean;
+  is_hidden?: string;
+  toxicity_score?: number; 
+  message?: string;     
   created_at: string;      
   updated_at: string;
   user: CommentUser;

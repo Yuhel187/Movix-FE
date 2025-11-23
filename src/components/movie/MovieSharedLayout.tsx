@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Play, Clock, CalendarDays } from "lucide-react";
 import MovieCast from "@/components/movie/MovieCast";
@@ -17,27 +18,31 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Actor } from "@/types/actor";
 import type { SidebarData } from "@/services/movie.service";
-import type { Season } from "@/types/movie";
+import type { Season,Episode } from "@/types/movie";
 
 interface MovieSharedLayoutProps {
   castData: Actor[];
   sidebarData: SidebarData;
   movieId: string;
   seasons: Season[];
+  movieSlug: string;
   type?: string;
+  onEpisodeSelect?: (episode: Episode) => void;
 }
 
 export default function MovieSharedLayout({
   castData,
   sidebarData,
   movieId,
+  movieSlug,
   seasons = [],
   type,
+  onEpisodeSelect,
 }: MovieSharedLayoutProps) {
 
   const isSeries = type === "TV" || (seasons && seasons.length > 0);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>("");
-
+  const router = useRouter();
   useEffect(() => {
     if (isSeries && seasons.length > 0) {
       setSelectedSeasonId(seasons[0].id);
@@ -82,6 +87,14 @@ export default function MovieSharedLayout({
                     {currentSeason.episodes?.map((ep) => (
                       <div
                         key={ep.id}
+                        onClick={() => {
+                              if (onEpisodeSelect) {
+                                onEpisodeSelect(ep);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              } else {
+                                router.push(`/movies/${movieSlug}/watch?episodeId=${ep.id}`);
+                              }
+                            }}
                         className="group flex flex-col sm:flex-row gap-4 p-3 rounded-lg hover:bg-zinc-800/50 transition-colors cursor-pointer border border-transparent hover:border-zinc-700/50"
                       >
                         {/* Thumbnail Tập */}

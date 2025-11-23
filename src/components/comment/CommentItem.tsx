@@ -32,6 +32,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { toast } from "sonner";
 
 interface CommentItemProps {
   comment: CommentData | CommentWithReplies; 
@@ -63,18 +64,23 @@ export function CommentItem({
   const isAuthor = user?.id === comment.user.id;
   const timeAgo = formatTimeAgo(comment.created_at);
 
-  const handleReplySubmit = async (
-    replyText: string,
-    isSpoiler: boolean,
-  ) => {
-    await commentService.postComment({
-      movieId: movieId,
-      comment: replyText,
-      parentCommentId: comment.id,
-      isSpoiler: isSpoiler,
-    });
-    onCommentUpdated();
-    setIsReplying(false);
+  const handleReplySubmit = async (text: string, isSpoiler: boolean) => {
+    try {
+      const parentId = comment.parent_comment_id || comment.id;
+      const result = await commentService.postComment({
+        movieId,
+        comment: text,
+        isSpoiler,
+        parentCommentId: parentId,
+      });
+      onCommentUpdated();
+      setIsReplying(false);
+      return result; 
+
+    } catch (error) {
+      console.error(error);
+      throw error; 
+    }
   };
 
   const handleEditSubmit = async (

@@ -1,103 +1,110 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { MovieCard } from "@/components/movie/MovieCard";
-import { Movie } from "@/types/movie";
-import { Actor } from "@/types/actor";
-import { Skeleton } from "@/components/ui/skeleton";
-import { User } from "lucide-react";
+import Link from "next/link";
+import { Calendar, User, Briefcase, Film } from "lucide-react";
+import type { Person } from "@/types/person";
+import { Badge } from "@/components/ui/badge";
 
-interface ActorDetailPageProps {
-  actor: Actor;
-  movies: Movie[];
-  isLoading?: boolean;
-}
-
-export default function ActorDetailPage({ actor, movies, isLoading }: ActorDetailPageProps) {
-  const router = useRouter();
-
-  if (isLoading) {
-    return <ActorDetailSkeleton />;
-  }
-  
-  const displayUrl = actor.avatar_url || actor.profileUrl || actor.imageUrl;
-
+export default function ActorDetailPage({ person }: { person: Person }) {
   return (
-    <div className="container mx-auto px-4 pb-12 text-white">
-      <div className="flex flex-col md:flex-row gap-8 md:gap-12">
-        {/* Cột trái: Thông tin diễn viên */}
-        <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0">
-          <div className="relative aspect-[2/3] w-full max-w-sm mx-auto md:mx-0 rounded-lg overflow-hidden shadow-2xl bg-slate-800">
-            {displayUrl ? (
+    <div className="pt-24 pb-12 container mx-auto px-4">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        
+        <div className="lg:col-span-1 space-y-6">
+          <div className="relative aspect-[2/3] w-full rounded-xl overflow-hidden border border-zinc-800 shadow-2xl bg-zinc-900">
+            {person.avatarUrl ? (
               <Image
-                src={displayUrl}
-                alt={`Poster of ${actor.name}`}
+                src={person.avatarUrl}
+                alt={person.name}
                 fill
                 className="object-cover"
-                sizes="(max-width: 768px) 80vw, (max-width: 1024px) 30vw, 25vw"
               />
             ) : (
-               <div className="flex items-center justify-center w-full h-full">
-                 <User className="w-1/2 h-1/2 text-gray-500" />
-               </div>
+              <div className="flex items-center justify-center h-full w-full text-gray-600">
+                 <User size={64} />
+              </div>
             )}
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-center md:text-left mt-6">
-            {actor.name}
-          </h1>
-          {actor.biography && (
-             <div className="mt-4 text-gray-300 text-sm space-y-3">
-              <h3 className="text-lg font-semibold text-white">Tiểu sử</h3>
-              <p className="leading-relaxed">{actor.biography}</p>
-            </div>
-          )}
+
+          <div className="bg-zinc-900/80 backdrop-blur rounded-xl p-5 space-y-4 border border-zinc-800">
+            <h3 className="text-lg font-bold text-white border-b border-zinc-800 pb-2">
+               Thông tin cá nhân
+            </h3>
+            <InfoRow icon={<Briefcase size={16}/>} label="Nghề nghiệp" value={person.role} />
+            <InfoRow icon={<User size={16}/>} label="Giới tính" value={person.gender || "N/A"} />
+            <InfoRow icon={<Calendar size={16}/>} label="Ngày sinh" value={person.birthday || "N/A"} />
+          </div>
         </div>
-        <div className="flex-1">
-          <h2 className="text-2xl font-semibold mb-6">Các phim đã tham gia</h2>
-          {movies.length === 0 ? (
-             <div className="flex flex-col items-center justify-center h-60 text-gray-400">
-                <p className="mt-4 text-lg">Không tìm thấy phim nào.</p>
-             </div>
-          ) : (
-            <div className="dark grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-              {movies.map((movie) => (
-                <MovieCard 
-                  key={movie.id} 
-                  movie={movie} 
-                  disablePreview={true} 
-                />
-              ))}
-            </div>
-          )}
+
+        <div className="lg:col-span-3 space-y-8">
+          <div>
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">{person.name}</h1>
+            <Badge variant="outline" className="text-zinc-400 border-zinc-700">
+               {person.role}
+            </Badge>
+          </div>
+          
+          <div className="space-y-3">
+            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+              <span className="w-1 h-6 bg-red-600 rounded-full block"></span>
+              Tiểu sử
+            </h2>
+            <p className="text-gray-300 leading-relaxed whitespace-pre-line text-sm md:text-base">
+              {person.biography}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+              <span className="w-1 h-6 bg-red-600 rounded-full block"></span>
+              Các phim đã tham gia
+            </h2>
+            
+            {person.credits && person.credits.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {person.credits.map((movie) => (
+                  <Link 
+                    href={`/movies/${movie.slug}`} 
+                    key={movie.id}
+                    className="group relative aspect-[2/3] rounded-lg overflow-hidden bg-zinc-800 border border-transparent hover:border-zinc-600 transition-all"
+                  >
+                    {movie.posterUrl ? (
+                       <Image
+                         src={movie.posterUrl}
+                         alt={movie.title}
+                         fill
+                         className="object-cover group-hover:scale-105 transition-transform duration-500"
+                       />
+                    ) : (
+                       <div className="flex items-center justify-center h-full w-full text-gray-600">
+                          <Film size={32} />
+                       </div>
+                    )}
+                    
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
+                      <p className="text-white font-bold text-sm line-clamp-2">{movie.title}</p>
+                      <p className="text-gray-300 text-xs mt-1 line-clamp-1 italic">{movie.roleName}</p>
+                      <p className="text-red-500 text-xs font-bold mt-1">{movie.year}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 italic">Chưa có thông tin phim tham gia.</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
-const ActorDetailSkeleton = () => (
-  <div className="container mx-auto px-4 py-12">
-    <div className="flex flex-col md:flex-row gap-8 md:gap-12">
-      <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0">
-        <Skeleton className="aspect-[2/3] w-full max-w-sm mx-auto md:mx-0 rounded-lg bg-slate-700" />
-        <Skeleton className="h-10 w-3/4 mt-6 bg-slate-700" />
-        <Skeleton className="h-4 w-full mt-4 bg-slate-700" />
-        <Skeleton className="h-4 w-full mt-2 bg-slate-700" />
-        <Skeleton className="h-4 w-5/6 mt-2 bg-slate-700" />
-      </div>
-      <div className="flex-1">
-        <Skeleton className="h-8 w-1/2 mb-6 bg-slate-700" />
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i}>
-              <Skeleton className="aspect-[2/3] w-full rounded-md bg-slate-700" />
-              <Skeleton className="h-4 w-3/4 mt-2 bg-slate-700" />
-              <Skeleton className="h-3 w-1/2 mt-1 bg-slate-700" />
-            </div>
-          ))}
-        </div>
-      </div>
+const InfoRow = ({ icon, label, value }: { icon: any, label: string, value: string }) => (
+  <div className="flex items-center gap-3 group">
+    <div className="text-zinc-500 group-hover:text-red-500 transition-colors">{icon}</div>
+    <div>
+      <p className="text-xs text-zinc-500 uppercase font-bold tracking-wider">{label}</p>
+      <p className="text-sm text-gray-200 font-medium">{value}</p>
     </div>
   </div>
 );
