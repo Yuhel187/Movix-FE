@@ -8,9 +8,10 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Send } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext'; 
+import { toast } from "sonner";
 
 interface CommentFormProps {
-  onSubmit: (text: string, isSpoiler: boolean) => Promise<void> | void;
+  onSubmit: (text: string, isSpoiler: boolean) => Promise<any>;
   initialText?: string;
   onCancel?: () => void;
   showAvatar?: boolean; 
@@ -34,12 +35,26 @@ export function CommentForm({
 
     setIsLoading(true);
     try {
-      await onSubmit(text, isSpoiler);
+      const response = await onSubmit(text, isSpoiler);
+      if (response && response.is_hidden) {
+        toast.warning("Thông báo", {
+          description: response.message || "Bình luận đang chờ duyệt do nội dung nhạy cảm.",
+          duration: 5000, 
+        });
+      } else {
+        toast.success("Thành công", {
+          description: "Đăng bình luận thành công!",
+        });
+      }
       setText('');
       setIsSpoiler(false);
       if (onCancel) onCancel(); 
-    } catch (error) {
-      console.error('Không thể gửi bình luận:', error);
+
+    } catch (error: any) {
+      console.error('Lỗi gửi bình luận:', error);
+      toast.error("Lỗi", {
+        description: error.response?.data?.message || "Không thể gửi bình luận. Vui lòng thử lại.",
+      });
     } finally {
       setIsLoading(false);
     }

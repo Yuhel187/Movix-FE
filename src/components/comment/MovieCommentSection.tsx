@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CommentForm } from './CommentForm';
 import { CommentList } from './CommentList';
 import { MessageSquare, Star } from 'lucide-react';
-import { CommentWithReplies } from '@/types/comment'; 
+import { CommentWithReplies } from '@/types/comment';
 import * as commentService from '@/services/comment.service';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
@@ -20,12 +20,12 @@ export function MovieCommentSection({ movieId }: MovieCommentSectionProps) {
 
   const [comments, setComments] = useState<CommentWithReplies[]>([]);
   const { user } = useAuth();
-  
+
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchComments = useCallback(async () => {
     try {
-      setIsLoading(true);
+      //setIsLoading(true);
       const data = await commentService.getComments(movieId);
       setComments(data);
     } catch (error) {
@@ -35,6 +35,7 @@ export function MovieCommentSection({ movieId }: MovieCommentSectionProps) {
     }
   }, [movieId]);
   useEffect(() => {
+    setIsLoading
     fetchComments();
   }, [fetchComments]);
 
@@ -42,12 +43,13 @@ export function MovieCommentSection({ movieId }: MovieCommentSectionProps) {
     commentText: string,
     isSpoiler: boolean,
   ) => {
-    await commentService.postComment({
+    const result = await commentService.postComment({
       movieId: movieId,
       comment: commentText,
       isSpoiler: isSpoiler,
     });
-    await fetchComments(); 
+    await fetchComments();
+    return result;
   };
 
   return (
@@ -62,22 +64,20 @@ export function MovieCommentSection({ movieId }: MovieCommentSectionProps) {
           <Button
             variant={activeTab === "comments" ? "secondary" : "ghost"}
             onClick={() => setActiveTab("comments")}
-            className={`rounded-md ${
-              activeTab === "comments"
+            className={`rounded-md ${activeTab === "comments"
                 ? "bg-red-600 text-white"
                 : "text-gray-400"
-            }`}
+              }`}
           >
             Bình luận
           </Button>
           <Button
             variant={activeTab === "reviews" ? "secondary" : "ghost"}
             onClick={() => setActiveTab("reviews")}
-            className={`rounded-md ${
-              activeTab === "reviews"
+            className={`rounded-md ${activeTab === "reviews"
                 ? "bg-red-600 text-white"
                 : "text-gray-400"
-            }`}
+              }`}
           >
             Đánh giá
           </Button>
@@ -105,9 +105,9 @@ export function MovieCommentSection({ movieId }: MovieCommentSectionProps) {
               <CommentSkeleton />
             ) : (
               <CommentList
-                comments={comments} 
+                comments={comments}
                 movieId={movieId}
-                onCommentUpdated={fetchComments} 
+                onCommentUpdated={fetchComments}
               />
             )}
           </>
