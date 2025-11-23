@@ -120,6 +120,9 @@ const Navbar = () => {
     } else if (item === 'Phim bộ') {
       router.push('/filter?type=phim-bo');
     }
+    else if (item === 'Diễn viên') {
+      router.push('/peoples');
+    }
   };
 
   const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {

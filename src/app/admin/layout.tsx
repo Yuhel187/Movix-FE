@@ -1,11 +1,9 @@
 "use client";
 
 import clsx from "clsx";
-import { Menu } from "lucide-react";
 import React, { useState, useEffect } from "react"; 
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import AdminTopbar from "@/components/layout/AdminTopbar";
 import { Toaster } from "@/components/ui/sonner";
@@ -40,7 +38,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex min-h-screen bg-[#141414] text-white overflow-hidden">
+    <div className="dark flex min-h-screen bg-[#141414] text-white overflow-hidden">
       <AdminSidebar open={sidebarOpen} onToggle={setSidebarOpen} />
       {sidebarOpen && (
         <div
@@ -51,19 +49,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div
         className={clsx(
           "flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out min-w-0",
-          sidebarOpen ? "md:ml-64" : "md:ml-16"
+          sidebarOpen ? "md:ml-64" : "ml-16"
         )}
       >
         <div className="sticky top-0 z-20 bg-[#141414] flex items-center p-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden text-white mr-2"
-            onClick={() => setSidebarOpen((prev) => !prev)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-
           <AdminTopbar />
         </div>
 

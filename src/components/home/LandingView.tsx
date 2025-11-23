@@ -184,7 +184,7 @@ export default function LandingView() {
   };
 
   const handleGenreClick = (genreName: string) => {
-    router.push(`/register`);
+    router.push(`/login`);
   };
 
 
@@ -216,7 +216,7 @@ export default function LandingView() {
           đặc sắc — miễn phí, tốc độ cao, không giới hạn.
         </p>
         <Button className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full w-35 text-md">
-         <a href="/register">
+         <a href="/login">
         ▶ Xem ngay</a>
         </Button>
       </div>
@@ -379,7 +379,7 @@ export default function LandingView() {
                       <p className="text-sm sm:text-base text-center sm:text-left max-w-xl">
                         Hãy tạo tài khoản để sử dụng những tính năng nâng cao tăng thêm trải nghiệm xem phim của bạn!
                       </p>
-                      <a href="/register" className="bg-red-600 hover:bg-red-700 px-8 py-3 rounded-md text-md font-bold sm:text-md">
+                      <a href="/login" className="bg-red-600 hover:bg-red-700 px-8 py-3 rounded-md text-md font-bold sm:text-md">
                         Đăng ký ngay
                       </a>
                     </div>

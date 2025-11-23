@@ -1,27 +1,98 @@
+import { Actor } from "./actor";
+import { Director } from "./director";
+
+// BACKEND RESPONSE TYPES
+
+export interface GenreResponse {
+  id: string;
+  genre: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface PersonResponse {
+  id: string;
+  character?: string;
+  job?: string;
+  credit_type?: 'cast' | 'crew' | string; 
+  
+  person: {
+    id: string;
+    name: string;
+    avatar_url: string | null;
+    role_type: string;
+  };
+}
+export interface EpisodeResponse {
+  id: string;
+  episode_number: number;
+  title: string;
+  runtime: number;
+  video_url: string;
+}
+
+export interface SeasonResponse {
+  id: string;
+  season_number: number;
+  title: string;
+  episodes: EpisodeResponse[];
+}
+
+export interface MovieResponse {
+  id: string;
+  slug: string;
+  original_title: string;
+  title: string;
+  description: string | null;
+  poster_url: string | null;
+  backdrop_url: string | null;
+  trailer_url: string | null;
+  release_date: string | null;
+  media_type: "MOVIE" | "TV";
+  movie_genres?: GenreResponse[];
+  movie_people?: PersonResponse[];
+  seasons?: SeasonResponse[]; 
+  
+  metadata?: {
+    duration?: string;
+    tmdb_rating?: number;
+  };
+}
+
+//FRONTEND UI TYPES 
+
+export interface Episode {
+  id: string;
+  number: number;
+  title: string;
+  videoUrl: string;
+  runtime: number;
+}
+
+export interface Season {
+  id: string;
+  number: number;
+  title: string;
+  episodes: Episode[];
+}
+
 export interface Movie {
-  id: string | number
-  slug?: string
-  title: string
-  subTitle?: string
-  posterUrl: string
-  backdropUrl?: string
-  poster_url?: string
-  backdrop_url?: string
-  original_title?: string 
-  description?: string
-  videoUrl?: string
-  year?: number
-  type?: string
-  episode?: string
-  tags?: string[]
-  rating?: number
-  duration?: string
-  country?: string
-  views?: number
-metadata?: {
-    tmdb_rating?: number
-    duration?: string
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    [key: string]: any
-  }       
+  id: string;
+  slug: string;
+  title: string;
+  subTitle: string;
+  description: string;
+  posterUrl: string;
+  backdropUrl: string;
+  trailerUrl: string | null; 
+  videoUrl: string | null;   
+  seasons: Season[];
+  releaseYear: number | string;
+  tags: string[];
+  cast: Actor[];
+  director: Director | undefined;
+  rating: number;
+  duration: string;
+  type: "MOVIE" | "TV";
 }

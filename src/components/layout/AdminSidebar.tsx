@@ -11,13 +11,16 @@ import {
   Users,
   Settings,
   LogOut,
+  Book,
+  MessageSquare,
   BoxIcon,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/contexts/AuthContext";
-import apiClient from "@/lib/apiClient";
+// Bỏ import không dùng nữa
+// import apiClient from "@/lib/apiClient"; 
 import { toast } from "sonner";
 
 type NavItem = {
@@ -27,13 +30,37 @@ type NavItem = {
   icon: React.ElementType;
 };
 
-const navItems: NavItem[] = [
-  { id: "dashboard", label: "Dashboard", href: "/admin", icon: LayoutGrid },
-  { id: "movies", label: "Quản lý phim", href: "/admin/movie-management", icon: Film },
-  { id: "storage", label: "Kho phim", href: "/admin/movie-storage", icon: BoxIcon },
-  { id: "users", label: "Quản lý user", href: "/admin/user-management", icon: Users },
-  { id: "settings", label: "Cấu hình", href: "/admin/config-admin", icon: Settings },
+// --- BẮT ĐẦU THAY ĐỔI: Tái cấu trúc navItems thành navGroups ---
+type NavGroup = {
+  title?: string; // Tiêu đề nhóm (không bắt buộc)
+  items: NavItem[];
+};
+
+const navGroups: NavGroup[] = [
+  {
+    // Nhóm đầu tiên (Tổng quan) không cần tiêu đề
+    items: [
+      { id: "dashboard", label: "Dashboard", href: "/admin", icon: LayoutGrid },
+      { id: "report", label: "Báo cáo thống kê", href: "/admin/report", icon: Book },
+    ]
+  },
+  {
+    title: "Quản lý Phim",
+    items: [
+      { id: "storage", label: "Kho phim", href: "/admin/movie-storage", icon: BoxIcon },
+      { id: "movies", label: "Quản lý phim", href: "/admin/movie-management", icon: Film }, 
+      { id: "banner", label: "Quản lý banner", href: "/admin/banner-management", icon: Settings },
+    ]
+  },
+  {
+    title: "Quản lý Cộng đồng",
+    items: [
+      { id: "users", label: "Quản lý user", href: "/admin/user-management", icon: Users },
+      { id: "comment", label: "Quản lý bình luận", href: "/admin/comment-management", icon: MessageSquare }, 
+    ]
+  }
 ];
+// --- KẾT THÚC THAY ĐỔI ---
 
 interface AdminSidebarProps {
   className?: string;
@@ -48,7 +75,7 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({
   className = "",
-  avatarUrl = "/avatar.jpg",
+  avatarUrl = "/images/placeholder-avatar.png",
   userName = "Administrator",
   defaultActive = "dashboard",
   defaultOpen = true,
@@ -67,7 +94,9 @@ export default function AdminSidebar({
 
   useEffect(() => {
     if (!pathname) return;
-    const matched = navItems.find((n) => {
+
+    const allNavItems = navGroups.flatMap(group => group.items);
+    const matched = allNavItems.find((n) => {
       if (n.href === "/admin") return pathname === "/admin" || pathname === "/admin/";
       return pathname.startsWith(n.href);
     });
@@ -150,33 +179,53 @@ export default function AdminSidebar({
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="mt-6 flex-1 overflow-hidden">
-        <ul className="flex flex-col gap-3">
-          {navItems.map(({ id, label, href, icon: Icon }) => {
-            const isActive =
-              id === active ||
-              pathname === href ||
-              (href !== "/admin" && pathname?.startsWith(href));
-            return (
-              <li key={id}>
-                <Link
-                    href={href}
-                    onClick={() => handleSelect(id)}
-                    title={!showLabels ? label : undefined}
-                    className={clsx(
-                        "flex items-center gap-3 w-full text-md rounded-md px-2 py-2 transition-colors duration-150 whitespace-nowrap",
-                        isActive ? "bg-slate-800 text-white" : "text-slate-200 hover:bg-slate-800"
-                    )}
-                    >
-                    <Icon className="h-5 w-5 flex-shrink-0" />
-                    {showLabels && <span className="truncate">{label}</span>}
-                    </Link>
-              </li>
-            );
-          })}
+      <nav className="mt-6 flex-1 overflow-y-auto no-scrollbar">
+        <ul className="flex flex-col gap-1">
+          {navGroups.map((group, groupIndex) => (
+            <li key={group.title || `group-${groupIndex}`}>
+              
+              {groupIndex > 0 && (
+                  <div className={clsx(
+                    "my-2 h-px bg-slate-700",
+                    !showLabels && "mx-2"
+                  )} />
+              )}
+              
+              {group.title && showLabels && (
+                <h3 className="px-2 pt-1 pb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider truncate">
+                  {group.title}
+                </h3>
+              )}
+
+              <ul className="flex flex-col gap-1">
+                {group.items.map(({ id, label, href, icon: Icon }) => {
+                  const isActive =
+                    id === active ||
+                    pathname === href ||
+                    (href !== "/admin" && pathname?.startsWith(href));
+                  return (
+                    <li key={id}>
+                      <Link
+                          href={href}
+                          onClick={() => handleSelect(id)}
+                          title={!showLabels ? label : undefined}
+                          className={clsx(
+                              "flex items-center gap-3 w-full text-md rounded-md px-2 py-2 transition-colors duration-150 whitespace-nowrap",
+                              isActive ? "bg-slate-800 text-white" : "text-slate-200 hover:bg-slate-800"
+                          )}
+                          >
+                          <Icon className="h-5 w-5 flex-shrink-0" />
+                          {showLabels && <span className="truncate">{label}</span>}
+                          </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </li>
+          ))}
         </ul>
       </nav>
+
 
       {/* Footer */}
       <div className="mt-auto">

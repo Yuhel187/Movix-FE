@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Bell, MoreVertical } from "lucide-react";
-import { SearchBar } from "../common/search-bar";
 
 interface NotificationItem {
   id: string;
@@ -21,7 +20,7 @@ interface AdminTopbarProps {
 
 export default function AdminTopbar({
   userName = "Nguyễn Quang Khải",
-  avatarUrl = "/avatar.jpg",
+  avatarUrl = "/images/placeholder-avatar.png",
   notifications = [],
 }: AdminTopbarProps) {
   const [open, setOpen] = useState(false);

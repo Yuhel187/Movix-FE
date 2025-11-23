@@ -33,7 +33,7 @@ export default function LoginPage() {
         password,
       });
 
-      const { ...user } = res.data.data;
+      const { accessToken, refreshToken, ...user } = res.data.data;
 
       login(user);
 
