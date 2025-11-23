@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -124,12 +125,10 @@ const AddMovieSearch = ({ sectionId, onMovieSelected, onCancel }: {
                 setIsSearching(true);
                 try {
                     const res = await apiClient.get(`/movies/search?q=${encodeURIComponent(searchTerm)}`);
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const movies = res.data.movies.map((m: any) => ({
                         id: m.id,
                         title: m.title,
                         posterUrl: m.poster_url,
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         genres: m.genres || [] 
                     }));
                     setSearchResults(movies);

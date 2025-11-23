@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
+import { useRouter } from "next/navigation";
 
 // --- Types ---
 interface KpiData {
@@ -74,6 +75,7 @@ const ActiveSectorMark = ({ cx, cy, innerRadius, outerRadius, startAngle, endAng
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [activeDonutIndex, setActiveDonutIndex] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -167,7 +169,13 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 bg-[#262626] border-slate-800 text-white h-full">
           <CardHeader>
-            <CardTitle>Top Phim Được Yêu Thích Nhất</CardTitle>
+            <CardTitle 
+                className="cursor-pointer hover:text-primary transition-colors"
+                onClick={() => router.push('/admin/movie-storage')}
+                title="Nhấn để đi tới Kho phim"
+            >
+                Top Phim Được Yêu Thích Nhất
+            </CardTitle>
             <CardDescription>Dựa trên số lượt thêm vào danh sách yêu thích</CardDescription>
           </CardHeader>
           <CardContent>
@@ -223,7 +231,13 @@ export default function DashboardPage() {
         {/* Cột phải (1/3): Pie Chart (Genre) */}
         <Card className="lg:col-span-1 bg-[#262626] border-slate-800 text-white h-full flex flex-col">
           <CardHeader>
-            <CardTitle>Phân bố Thể loại</CardTitle>
+            <CardTitle 
+                 className="cursor-pointer hover:text-primary transition-colors"
+                 onClick={() => router.push('/admin/movie-storage')}
+                 title="Nhấn để đi tới Kho phim"
+            >
+                Phân bố Thể loại
+            </CardTitle>
             <CardDescription>Top 5 thể loại phổ biến</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 flex items-center justify-center min-h-[350px]">
@@ -269,7 +283,12 @@ export default function DashboardPage() {
       <Card className="bg-[#262626] border-slate-800 text-white">
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>Người dùng mới đăng ký</CardTitle>
+            <CardTitle
+                className="cursor-pointer hover:text-primary transition-colors"
+                onClick={() => router.push('/admin/user-management')}
+            >
+                Người dùng mới đăng ký
+            </CardTitle>
           </div>
           <CardDescription>Danh sách 5 thành viên mới nhất gia nhập hệ thống</CardDescription>
         </CardHeader>
@@ -292,7 +311,11 @@ export default function DashboardPage() {
                     </TableRow>
                  ))
               ) : recentUsers.map((user) => (
-                <TableRow key={user.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                <TableRow 
+                    key={user.id} 
+                    className="border-slate-800 hover:bg-slate-800/50 transition-colors cursor-pointer"
+                    onClick={() => router.push(`/admin/user-management/${user.id}`)}
+                >
                   <TableCell className="py-4 pl-6">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10 border border-slate-600">

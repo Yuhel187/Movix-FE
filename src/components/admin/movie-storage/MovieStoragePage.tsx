@@ -27,7 +27,6 @@ import {
   Plus,
   Trash,
   Edit,
-  ArrowRight,
   MoreHorizontal,
   AlertCircle,
   Filter as FilterIcon,
@@ -91,7 +90,6 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
   const movieData = movie as any; 
   const isDeleted = movieData.is_deleted;
   const isActive = movieData.is_active;
-  const status: 'hiện' | 'ẩn' = movieData.is_active ? 'hiện' : 'ẩn';
   let contentInfo = { icon: <FilmIcon className="w-4 h-4 mr-2" />, text: "Phim lẻ" };
   if (movieData.media_type === 'TV') {
     const totalSeasons = movieData.seasons?.length || 0;
@@ -103,7 +101,7 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
   }
   const genres: string[] = movieData.movie_genres?.map((mg: any) => mg.genre.name) || [];
   
-  const displayPoster =  movie.posterUrl || "/images/placeholder-poster.png"; 
+  const displayPoster =  movie.posterUrl || movie.poster_url || "/images/placeholder-poster.png"; 
 
   const handleDelete = async () => {
     if (!movie || !movie.id) return;
@@ -303,7 +301,7 @@ const RenderListView = ({
             <TableCell className="font-medium">
               <div className="flex items-center gap-3">
                 <Image
-                  src={movie.posterUrl || "/images/placeholder-poster.png"} 
+                  src={movie.posterUrl || movie.poster_url || "/images/placeholder-poster.png"} 
                   alt={movie.title}
                   width={40}
                   height={56}

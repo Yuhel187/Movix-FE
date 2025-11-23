@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -23,6 +24,7 @@ import {
   AlertCircle,
   ListMusic,
   Play,
+  Clock,
   Heart,
   Flag,
   Save,
@@ -34,6 +36,10 @@ import { ArrowNavigation } from "@/components/movie/ArrowNavigation";
 import { Card, CardContent } from "@/components/ui/card";
 import apiClient from "@/lib/apiClient";
 import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+const DEFAULT_BACKDROP = "/images/placeholder-backdrop.png";
+const DEFAULT_AVATAR = "/images/placeholder-avatar.png";
 
 interface WatchHistoryItem {
   id: string;
@@ -238,7 +244,6 @@ export default function UserDetail() {
     setIsEditing(false);
   }
 
-  // 4. Gắn cờ / Bỏ cờ
   const handleToggleFlag = async () => {
       try {
           const res = await apiClient.put(`/profile/admin/users/${userId}/flag`);
@@ -274,18 +279,22 @@ export default function UserDetail() {
             )}
             onClick={() => isEditing && backdropInputRef.current?.click()}
           >
-            {backdropPreview ? (
-              <Image 
-                src={backdropPreview} 
-                alt="User Backdrop" 
-                fill 
-                className="object-cover opacity-60 group-hover:opacity-80 transition-opacity" 
-              />
-            ) : (
-              <div className="flex flex-col items-center text-zinc-600 group-hover:text-zinc-400">
-                <ImageIcon className="w-12 h-12 mb-2" />
-                <p className="text-sm font-medium">{isEditing ? "Nhấn để thêm ảnh bìa" : "Không có ảnh bìa"}</p>
-              </div>
+            <Image 
+              src={backdropPreview || DEFAULT_BACKDROP} 
+              alt="User Backdrop" 
+              fill 
+              className="object-cover opacity-60 group-hover:opacity-80 transition-opacity"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = DEFAULT_BACKDROP;
+              }}
+            />
+            
+            {(!backdropPreview && isEditing) && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-10 text-white/70 pointer-events-none">
+                     <ImageIcon className="w-12 h-12 mb-2 opacity-80" />
+                     <p className="text-sm font-medium shadow-black drop-shadow-md">Nhấn để thay đổi ảnh bìa</p>
+                </div>
             )}
             <input
               ref={backdropInputRef}
@@ -327,7 +336,6 @@ export default function UserDetail() {
 
           <div className="px-6 pb-6 md:px-10 relative">
             <div className="flex flex-col md:flex-row gap-6 items-start -mt-12 md:-mt-16">
-                
                 {/* Avatar Circle */}
                 <div 
                     className={cn(
@@ -336,11 +344,16 @@ export default function UserDetail() {
                     )}
                     onClick={() => isEditing && avatarInputRef.current?.click()}
                 >
-                    {avatarPreview ? (
-                        <Image src={avatarPreview} alt="Avatar" fill className="object-cover" />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center text-zinc-500"><ImageIcon className="w-10 h-10"/></div>
-                    )}
+                    <Avatar className="w-full h-full">
+                        <AvatarImage 
+                            src={avatarPreview || DEFAULT_AVATAR} 
+                            alt="Avatar" 
+                            className="object-cover w-full h-full"
+                        />
+                        <AvatarFallback className="bg-slate-700 text-3xl font-bold text-white">
+                             {user.fullName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                    </Avatar>
                     
                     {isEditing && (
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -359,11 +372,9 @@ export default function UserDetail() {
 
                 {/* User Info Fields */}
                 <div className="flex-1 pt-2 md:pt-16 space-y-6 w-full">
-                    
-                    {/* Hàng 1: Tên & Username */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <Label className="text-zinc-400 text-xs uppercase font-semibold tracking-wider">Tên hiển thị</Label>
+                            <Label className="text-zinc-400 text-xs uppercase font-semibold tracking-wider mt-2">Tên hiển thị</Label>
                             <Input
                                 value={user.fullName}
                                 disabled={!isEditing} 
@@ -371,7 +382,7 @@ export default function UserDetail() {
                             />
                         </div>
                         <div>
-                            <Label className="text-zinc-400 text-xs uppercase font-semibold tracking-wider">Username</Label>
+                            <Label className="text-zinc-400 text-xs uppercase font-semibold tracking-wider mt-2">Username</Label>
                             <div className="mt-1.5 px-3 py-2 bg-zinc-900/30 border border-zinc-800 rounded-md text-zinc-300 text-sm">
                                 @{user.username}
                             </div>
@@ -400,6 +411,9 @@ export default function UserDetail() {
                                     <SelectContent className="bg-zinc-900 border-zinc-700 text-white">
                                         <SelectItem value="active">
                                             <span className="flex items-center text-green-500"><CheckCircle className="w-4 h-4 mr-2"/> Hoạt động</span>
+                                        </SelectItem>
+                                        <SelectItem value="pending_verification">
+                                            <span className="flex items-center text-blue-400"><Clock className="w-4 h-4 mr-2"/> Chờ xác thực</span>
                                         </SelectItem>
                                         <SelectItem value="inactive">
                                             <span className="flex items-center text-yellow-500"><AlertCircle className="w-4 h-4 mr-2"/> Không hoạt động</span>

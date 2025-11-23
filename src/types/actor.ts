@@ -6,4 +6,6 @@ export  interface Actor{
     imageUrl?: string;   
     avatar_url?: string | null;
     biography?: string | null;
+    birthday?: string | null; 
+    gender?: number | null;
 }

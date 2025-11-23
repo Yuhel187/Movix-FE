@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -28,15 +28,9 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Search,
-  MoreHorizontal,
-  LogOut,
   CheckCircle,
   XCircle,
   AlertCircle,
-  Edit,
-  Trash, 
-  ArrowRight, 
   Flag
 } from "lucide-react";
 
@@ -46,6 +40,9 @@ import apiClient from "@/lib/apiClient";
 import { toast } from "sonner";
 import { Eye, Lock, Unlock } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const DEFAULT_BACKDROP = "/images/placeholder-backdrop.png";
+const DEFAULT_AVATAR = "/images/placeholder-avatar.png";
 
 interface User {
   id: string;
@@ -76,7 +73,7 @@ const UserDetailCard = ({ user }: { user: User | null }) => {
   }
 
   const isLocked = user.status === 'locked';
-  const backgroundImageUrl = user.avatarUrl || "/images/background-homepage.jpg"; 
+  const backgroundImageUrl = user.avatarUrl || DEFAULT_BACKDROP;
   const handleToggleLock = async () => {
     const newStatus = isLocked ? 'active' : 'locked';
     try {
@@ -98,13 +95,17 @@ const UserDetailCard = ({ user }: { user: User | null }) => {
               fill
               className="object-cover opacity-50" 
               sizes="450px" 
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = DEFAULT_BACKDROP;
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#262626] via-transparent to-transparent"></div>
           </div>
 
           <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 z-10"> 
             <Avatar className="w-24 h-24 border-4 border-[#262626] bg-slate-700"> 
-              <AvatarImage src={user.avatarUrl} alt={user.fullName} />
+              <AvatarImage src={user.avatarUrl || DEFAULT_AVATAR} alt={user.fullName} />
               <AvatarFallback className="text-2xl bg-slate-700 text-white">
                 {user.fullName
                   .split(" ")
