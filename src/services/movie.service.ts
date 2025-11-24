@@ -88,6 +88,7 @@ export async function getMovieData(slug: string) {
     director: director || undefined,
     rating: raw.metadata?.tmdb_rating || 0,
     duration: raw.metadata?.duration || "N/A",
+    views:0,
   };
 
   const sidebarData: SidebarData = {

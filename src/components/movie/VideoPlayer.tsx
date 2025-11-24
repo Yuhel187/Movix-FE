@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import Hls from "hls.js";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -12,13 +12,17 @@ import {
     RotateCcw,
     RotateCw,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { syncWatchHistory } from "@/services/history.service";
 
 export default function VideoPlayer({
     src,
     poster,
+    episodeId,
 }: {
     src: string;
     poster?: string;
+    episodeId?: string;
 }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -31,6 +35,52 @@ export default function VideoPlayer({
     const [showPoster, setShowPoster] = useState(true);
     const [showCenterIcon, setShowCenterIcon] = useState(false);
 
+    const { user } = useAuth();
+    const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const saveProgress = useCallback(async (isFinished = false) => {
+        if (!user || !episodeId || !videoRef.current) return;
+
+        const currentSec = Math.floor(videoRef.current.currentTime);
+        if (currentSec > 5) {
+            try {
+                await syncWatchHistory(episodeId, currentSec, isFinished);
+                console.log(`✅ Đã lưu: ${currentSec}s`);
+            } catch (error) {
+                console.error("❌ Lỗi lưu history:", error);
+            }
+        }
+    }, [user, episodeId]);
+    const handleTimeUpdate = () => {
+        if (videoRef.current) {
+            setCurrentTime(videoRef.current.currentTime);
+        }
+        if (!syncTimeoutRef.current) {
+            syncTimeoutRef.current = setTimeout(() => {
+                saveProgress(false);
+                syncTimeoutRef.current = null;
+            }, 10000);
+        }
+    };
+
+    const handleLoadedMetadata = () => {
+        if (videoRef.current) {
+            setDuration(videoRef.current.duration);
+        }
+    };
+
+    const handleEnded = () => {
+        setIsPlaying(false);
+        saveProgress(true); 
+    };
+
+    const handlePause = () => {
+        setIsPlaying(false);
+        saveProgress(false); 
+    };
+
+    const handlePlay = () => setIsPlaying(true);
+
     useEffect(() => {
         const video = videoRef.current;
         if (!video || !src) return;
@@ -39,19 +89,21 @@ export default function VideoPlayer({
             const hls = new Hls();
             hls.loadSource(src);
             hls.attachMedia(video);
-            return () => hls.destroy();
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+            video.src = src;
         } else {
             video.src = src;
         }
+        return () => {
+            if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+        };
     }, [src]);
 
-    const handleTimeUpdate = () => {
-        const video = videoRef.current;
-        if (!video) return;
-        setProgress((video.currentTime / video.duration) * 100);
-        setCurrentTime(video.currentTime);
-        setDuration(video.duration);
-    };
+    useEffect(() => {
+        const handleBeforeUnload = () => saveProgress(false);
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [saveProgress]);
 
     const togglePlay = () => {
         const video = videoRef.current;
@@ -63,7 +115,7 @@ export default function VideoPlayer({
         } else {
             video.play();
             setIsPlaying(true);
-            setShowPoster(false); 
+            setShowPoster(false);
         }
 
         setShowCenterIcon(true);
@@ -143,8 +195,8 @@ export default function VideoPlayer({
             {poster && (
                 <div
                     className={`absolute inset-0 flex items-center justify-center transition-all duration-700 ${showPoster
-                            ? "opacity-100 pointer-events-auto z-20"
-                            : "opacity-0 pointer-events-none z-0"
+                        ? "opacity-100 pointer-events-auto z-20"
+                        : "opacity-0 pointer-events-none z-0"
                         }`}
                 >
                     <img
@@ -165,11 +217,14 @@ export default function VideoPlayer({
             {/* Video */}
             <video
                 ref={videoRef}
-                className="w-full h-full rounded-xl select-none"
+                className="w-full h-full rounded-xl select-none cursor-pointer"
                 onClick={togglePlay}
+                poster={poster}
                 onTimeUpdate={handleTimeUpdate}
-                playsInline
-                controls={false}
+                onLoadedMetadata={handleLoadedMetadata}
+                onEnded={handleEnded}
+                onPause={handlePause}
+                onPlay={handlePlay}
             />
 
             {/* play/pause icon */}

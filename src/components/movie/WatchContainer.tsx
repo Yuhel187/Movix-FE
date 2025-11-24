@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import VideoPlayer from "@/components/movie/VideoPlayer";
 import MovieSharedLayout from "@/components/movie/MovieSharedLayout";
@@ -18,17 +18,26 @@ export default function WatchContainer({ movie, sidebarData }: WatchContainerPro
   const episodeIdFromUrl = searchParams.get("episodeId");
   const findInitialUrl = () => {
     if (episodeIdFromUrl && movie.seasons) {
-       for (const season of movie.seasons) {
-          const ep = season.episodes.find(e => e.id === episodeIdFromUrl);
-          if (ep?.videoUrl) return ep.videoUrl;
-       }
+      for (const season of movie.seasons) {
+        const ep = season.episodes.find(e => e.id === episodeIdFromUrl);
+        if (ep?.videoUrl) return ep.videoUrl;
+      }
     }
     return movie.videoUrl || movie.seasons?.[0]?.episodes?.[0]?.videoUrl || "";
   };
+  const currentEpisode = useMemo(() => {
+    if (episodeIdFromUrl && movie.seasons) {
+      for (const season of movie.seasons) {
+        const ep = season.episodes.find((e) => e.id === episodeIdFromUrl);
+        if (ep) return ep;
+      }
+    }
+    return movie.seasons?.[0]?.episodes?.[0];
+  }, [episodeIdFromUrl, movie.seasons]);
 
   const [currentVideoUrl, setCurrentVideoUrl] = useState<string>(findInitialUrl());
-  
-  
+
+
   useEffect(() => {
     const newUrl = findInitialUrl();
     if (newUrl && newUrl !== currentVideoUrl) {
@@ -37,7 +46,7 @@ export default function WatchContainer({ movie, sidebarData }: WatchContainerPro
   }, [episodeIdFromUrl]);
 
   const handleEpisodeSelect = (episode: Episode) => {
-     if (episode.videoUrl) setCurrentVideoUrl(episode.videoUrl);
+    if (episode.videoUrl) setCurrentVideoUrl(episode.videoUrl);
   };
 
   return (
@@ -46,6 +55,7 @@ export default function WatchContainer({ movie, sidebarData }: WatchContainerPro
         <VideoPlayer
           src={currentVideoUrl}
           poster={movie.posterUrl || ""}
+          episodeId={currentEpisode?.id || ""}
         />
       </section>
       <MovieSharedLayout
