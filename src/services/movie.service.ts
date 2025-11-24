@@ -11,7 +11,38 @@ export interface SidebarData {
   genres: string[];
   director: Director | null;
 }
+function mapToMovie(raw: MovieResponse): Movie {
+  const releaseYear = raw.release_date
+    ? new Date(raw.release_date).getFullYear()
+    : "N/A";
+  
+  const tags = raw.movie_genres?.map((mg) => mg.genre?.name).filter(Boolean) || [];
 
+  return {
+    id: raw.id,
+    slug: raw.slug,
+    title: raw.title || raw.original_title || "Chưa có tên",
+    subTitle: raw.original_title || "",
+    description: raw.description || "",
+    
+    posterUrl: getTmdbImageUrl(raw.poster_url, "poster"),
+    backdropUrl: getTmdbImageUrl(raw.backdrop_url, "backdrop"),
+    
+    trailerUrl: raw.trailer_url || null,
+    videoUrl: null,
+    
+    type: raw.media_type === "TV" ? "TV" : "MOVIE",
+    releaseYear: releaseYear,
+    tags: tags,
+    
+    rating: raw.metadata?.tmdb_rating || 0,
+    duration: raw.metadata?.duration || "N/A",
+    views: 0,
+    cast: [],
+    director: undefined,
+    seasons: []
+  };
+}
 export async function getMovieData(slug: string) {
   let raw: MovieResponse;
   
@@ -103,4 +134,34 @@ export async function getMovieData(slug: string) {
   };
 
   return { movie, sidebarData };
+}
+export async function getTrendingMovies(): Promise<Movie[]> {
+  try {
+    const { data } = await api.get<MovieResponse[]>('/movies/trending');
+    return data.map(mapToMovie);
+  } catch (error) {
+    console.error("Lỗi lấy phim Trending:", error);
+    return [];
+  }
+}
+export interface MovieSection {
+  id: string;
+  title: string;
+  movies: Movie[];
+}
+
+export async function getDynamicSections(): Promise<MovieSection[]> {
+  try {
+    const { data } = await api.get<any[]>('/homepage');
+    return data.map((section: any) => ({
+      id: section.id,
+      title: section.title,
+      movies: section.movie_links
+        .map((link: any) => link.movie ? mapToMovie(link.movie) : null)
+        .filter(Boolean) as Movie[]
+    }));
+  } catch (error) {
+    console.error("Lỗi lấy dynamic sections:", error);
+    return [];
+  }
 }
