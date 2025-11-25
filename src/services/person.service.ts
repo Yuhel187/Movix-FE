@@ -33,9 +33,9 @@ export async function getPersonDetail(id: string) {
   try {
     const res = await api.get<PersonDetailResponse>(`/people/${id}`);
     const raw = res.data;
-    let genderStr = "N/A";
-    if (raw.gender === 2) genderStr = "Nam";
-    else if (raw.gender === 1) genderStr = "Nữ";
+    // let genderStr = "N/A";
+    // if (raw.gender === 2) genderStr = "Nam";
+    // else if (raw.gender === 1) genderStr = "Nữ";
 
     const credits = raw.movies?.map((m) => ({
        id: m.id,
@@ -57,7 +57,7 @@ export async function getPersonDetail(id: string) {
       role: raw.role_type === "director" ? "Đạo diễn" : "Diễn viên",
       biography: raw.biography || "Chưa có tiểu sử.",
       birthday: raw.birthday ? new Date(raw.birthday).toLocaleDateString("vi-VN") : "N/A",
-      gender: genderStr,
+      gender: raw.gender,
       credits: credits
     };
 

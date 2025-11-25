@@ -73,6 +73,7 @@ interface UserDetailData {
   watchHistory: WatchHistoryItem[];
   favorites: FavoriteItem[];
   playlists: PlaylistItem[];
+  role: string;
 }
 
 const HorizontalScrollSection = ({ title, icon: Icon, children }: { title: string, icon?: any, children: React.ReactNode }) => {
@@ -137,6 +138,7 @@ export default function UserDetail() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<string>("");
   const [isFlagged, setIsFlagged] = useState(false);
+  const [currentRole, setCurrentRole] = useState<string>("User");
   
   const [backdropPreview, setBackdropPreview] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -161,6 +163,7 @@ export default function UserDetail() {
                 avatarUrl: u.avatar_url,
                 backdropUrl: u.preferences?.backdrop_url || null, 
                 isFlagged: u.is_flagged,
+                role: u.role?.name || "User",
                 
                 // Map Lịch sử
                 watchHistory: u.watch_history?.map((wh: any) => ({
@@ -191,6 +194,7 @@ export default function UserDetail() {
             setIsFlagged(u.is_flagged);
             setAvatarPreview(mappedUser.avatarUrl);
             setBackdropPreview(mappedUser.backdropUrl);
+            setCurrentRole(mappedUser.role);
 
         } catch (err) {
             console.error(err);
@@ -228,16 +232,27 @@ export default function UserDetail() {
             status: currentStatus 
         });
 
+        if (user && currentRole !== user.role) {
+            await apiClient.put(`/profile/admin/users/${userId}/role`, {
+                role: currentRole
+            });
+        }
+        if (user) {
+            setUser({ ...user, status: currentStatus, role: currentRole });
+        }
+
         setIsEditing(false);
         toast.success("Cập nhật thông tin thành công!");
     } catch (error) {
-        toast.error("Cập nhật thất bại");
+        console.error(error);
+        toast.error("Cập nhật thất bại. Vui lòng thử lại.");
     }
   };
 
   const handleCancelEdit = () => {
     if (user) {
         setCurrentStatus(user.status);
+        setCurrentRole(user.role);
         setAvatarPreview(user.avatarUrl);
         setBackdropPreview(user.backdropUrl);
     }
@@ -421,6 +436,25 @@ export default function UserDetail() {
                                         <SelectItem value="locked">
                                             <span className="flex items-center text-red-500"><XCircle className="w-4 h-4 mr-2"/> Đã khóa</span>
                                         </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <Label className="text-zinc-400 text-xs uppercase font-semibold tracking-wider">Vai trò người dùng</Label>
+                            <div className="mt-1.5">
+                                <Select
+                                    value={currentRole}
+                                    onValueChange={(value) => setCurrentRole(value)}
+                                    disabled={!isEditing}
+                                >
+                                    <SelectTrigger className="w-full bg-zinc-900/50 border-zinc-700 h-10 text-white disabled:opacity-100">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-zinc-900 border-zinc-700 text-white">
+                                        <SelectItem value="User">Thành viên (User)</SelectItem>
+                                        <SelectItem value="Admin">Quản trị viên (Admin)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

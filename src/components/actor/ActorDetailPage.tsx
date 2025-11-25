@@ -7,6 +7,11 @@ import type { Person } from "@/types/person";
 import { Badge } from "@/components/ui/badge";
 
 export default function ActorDetailPage({ person }: { person: Person }) {
+  const getGenderLabel = (g?: number | null) => {
+    if (g === 2) return "Nam";
+    if (g === 1) return "Nữ";
+    return "N/A";
+};
   return (
     <div className="pt-24 pb-12 container mx-auto px-4">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -32,7 +37,7 @@ export default function ActorDetailPage({ person }: { person: Person }) {
                Thông tin cá nhân
             </h3>
             <InfoRow icon={<Briefcase size={16}/>} label="Nghề nghiệp" value={person.role} />
-            <InfoRow icon={<User size={16}/>} label="Giới tính" value={person.gender || "N/A"} />
+            <InfoRow icon={<User size={16}/>} label="Giới tính" value={getGenderLabel(person.gender)} />
             <InfoRow icon={<Calendar size={16}/>} label="Ngày sinh" value={person.birthday || "N/A"} />
           </div>
         </div>

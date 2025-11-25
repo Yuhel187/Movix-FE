@@ -202,6 +202,7 @@ const UserListSkeleton = () => (
                             <TableHead className="text-white">Mã User</TableHead>
                             <TableHead className="text-white">Username</TableHead>
                             <TableHead className="text-white">Tên người dùng</TableHead>
+                            <TableHead className="text-white">Vai trò</TableHead>
                             <TableHead className="text-white">Đăng nhập gần nhất</TableHead>
                             <TableHead className="text-white">Trạng thái</TableHead>
                             <TableHead className="text-white text-right">Thao tác</TableHead>
@@ -380,6 +381,7 @@ export default function UserManagementPage() {
                             <TableHead className="text-white">Mã User</TableHead>
                             <TableHead className="text-white">Username</TableHead>
                             <TableHead className="text-white">Tên người dùng</TableHead>
+                            <TableHead className="text-white">Vai trò</TableHead>
                             <TableHead className="text-white">Đăng nhập gần nhất</TableHead>
                             <TableHead className="text-white">Trạng thái</TableHead>
                             <TableHead className="text-white text-right">Thao tác</TableHead>
@@ -395,6 +397,16 @@ export default function UserManagementPage() {
                                 <TableCell className="font-medium">{user.maUser}</TableCell>
                                 <TableCell className="text-gray-300">{user.username}</TableCell>
                                 <TableCell className="text-gray-300">{user.fullName}</TableCell>
+                                <TableCell>
+                                  <span className={cn(
+                                      "text-xs px-2 py-1 rounded font-medium border",
+                                      user.role === 'Admin' 
+                                          ? "bg-purple-500/10 text-purple-400 border-purple-500/50" 
+                                          : "bg-slate-800 text-slate-400 border-slate-700"
+                                  )}>
+                                      {user.role || 'User'}
+                                  </span>
+                              </TableCell>
                                 <TableCell className="text-gray-300 text-xs">{user.lastLogin}</TableCell>
                                 <TableCell>
                                 <span className={`flex items-center text-xs px-2 py-1 rounded-full w-fit ${

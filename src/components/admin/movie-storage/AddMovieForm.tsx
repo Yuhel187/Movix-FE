@@ -116,7 +116,6 @@ type Person = {
     biography?: string;
     birthday?: string;
     gender?: number;
-    place_of_birth?: string;
 };
 
 export default function AddMovieForm({ onClose }: AddMovieFormProps) {
@@ -254,7 +253,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                   biography: person.biography,
                   birthday: person.birthday,
                   gender: person.gender,
-                  place_of_birth: person.place_of_birth
             }));
     const directorFromTmdb = data.director ? [{
             	  id: data.director.id.toString(),
@@ -265,7 +263,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                   biography: data.director.biography,
                   birthday: data.director.birthday,
                   gender: data.director.gender,
-                  place_of_birth: data.director.place_of_birth
             }] : [];
             setPeople([...directorFromTmdb, ...castFromTmdb]);
             
