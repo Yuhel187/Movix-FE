@@ -1,50 +1,133 @@
 'use client';
-import { useState } from "react";
+
+import { useEffect, useState } from "react";
 import { MovieCard } from "@/components/movie/MovieCard";
-import type { Movie } from "@/types/movie";
+import { getWatchHistory, HistoryItem } from "@/services/history.service";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Clock, PlayCircle } from "lucide-react";
+import Link from "next/link";
+import type { Movie } from "@/types/movie"; // Import type Movie
 
 export default function HistoryPage() {
-    const [history] = useState<Movie[]>([
-        {
-            id: 1,
-            title: "Inception",
-            subTitle: "Giấc mơ trong mơ",
-            posterUrl: "https://image.tmdb.org/t/p/original/ljsZTbVsrQSqZgWeep2B1QiDKuh.jpg",
-            year: 2010,
-            duration: "2h 28m",
-            views: 2500000,
-            type: "Movie",
-            tags: ["Sci-Fi", "Thriller"],
-            description: "Một tay trộm chuyên xâm nhập giấc mơ để đánh cắp bí mật.",
-        },
-        {
-            id: 2,
-            title: "Interstellar",
-            subTitle: "Du hành giữa các vì sao",
-            posterUrl: "https://image.tmdb.org/t/p/original/if4TI9LbqNIrzkoOgWjX5PZYDYe.jpg",
-            year: 2014,
-            duration: "2h 49m",
-            views: 4000000,
-            type: "Movie",
-            tags: ["Adventure", "Drama", "Sci-Fi"],
-            description: "Một nhóm phi hành gia tìm kiếm hành tinh mới cho nhân loại.",
-        },
-    ]);
+    const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setIsLoading(true);
+                const response = await getWatchHistory();
+                setHistoryItems(response.data);
+            } catch (error) {
+                console.error("Lỗi tải lịch sử:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    const calculateProgress = (current: number, total: number | null) => {
+        if (!total || total === 0) return 0;
+        const percentage = (current / (total * 60)) * 100; 
+        return Math.min(percentage, 100); 
+    };
+
+    const formatTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        return `${m} phút`;
+    };
 
     return (
-        <div className="max-w-4xl">
-            <h1 className="text-3xl font-bold text-white">Lịch sử xem</h1>
-            <p className="mt-1 text-gray-400">
-                Danh sách phim bạn đã xem.
+        <div className="max-w-6xl mx-auto px-4 py-8">
+            <div className="flex items-center gap-3 mb-2">
+                <Clock className="w-8 h-8 text-red-600" />
+                <h1 className="text-3xl font-bold text-white">Lịch sử xem</h1>
+            </div>
+            <p className="text-gray-400 mb-8">
+                Tiếp tục theo dõi các bộ phim bạn đang xem dở.
             </p>
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-12"></div>
-            {history.length === 0 ? (
-                <p className="text-gray-400">Bạn chưa thêm phim nào vào danh sách yêu thích.</p>
-            ) : (
-                <div className="dark grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                    {history.map((movie) => (
-                        <MovieCard key={movie.id} movie={movie} />
+
+            {isLoading ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="space-y-2">
+                            <Skeleton className="aspect-[2/3] w-full rounded-lg" />
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-3 w-1/2" />
+                        </div>
                     ))}
+                </div>
+            ) : historyItems.length === 0 ? (
+                <div className="text-center py-20 bg-zinc-900/50 rounded-xl border border-zinc-800">
+                    <PlayCircle className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                    <p className="text-xl text-gray-300 font-medium">Bạn chưa xem phim nào</p>
+                    <p className="text-gray-500 mt-2">Hãy bắt đầu thưởng thức các bộ phim bom tấn ngay!</p>
+                    <Link 
+                        href="/" 
+                        className="inline-block mt-6 px-6 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition"
+                    >
+                        Khám phá ngay
+                    </Link>
+                </div>
+            ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-8">
+                    {historyItems.map((item) => {
+                        const movieData = item.episode.season.movie;
+                        const episode = item.episode;
+                        const progressPercent = calculateProgress(item.progress_seconds, episode.runtime);
+                        
+                        // Tạo link xem tiếp
+                        const watchLink = `/movies/${movieData.slug}/watch?episodeId=${episode.id}`;
+
+                        // 👇 CẤU TRÚC LẠI DỮ LIỆU ĐỂ KHỚP VỚI TYPE 'Movie' CỦA MOVIECARD
+                        // Vì API lịch sử có thể trả về thiếu trường, ta cần map thủ công
+                        const mappedMovie: Movie = {
+                            id: movieData.id,
+                            slug: movieData.slug,
+                            title: movieData.title,
+                            subTitle: movieData.original_title,
+                            description: "", // API history chưa trả về desc, để trống tạm
+                            posterUrl: movieData.poster_url || "/images/placeholder-poster.png",
+                            backdropUrl: movieData.poster_url || "/images/placeholder-backdrop.png",
+                            trailerUrl: null,
+                            videoUrl: null,
+                            type: "MOVIE", // Mặc định, hoặc cần API trả về media_type
+                            releaseYear: "N/A", // API history chưa trả về
+                            tags: [],
+                            // Các trường phụ nếu cần
+                            duration: episode.runtime ? `${episode.runtime} phút` : undefined
+                        };
+
+                        return (
+                            <div key={item.id} className="relative group">
+                                <MovieCard
+                                    movie={mappedMovie}
+                                    // 👇 Truyền các thông tin riêng của lịch sử qua các prop phụ này
+                                    subTitle={`Tập ${episode.episode_number} - Đã xem ${formatTime(item.progress_seconds)}`}
+                                    watchUrl={watchLink}
+                                />
+                                
+                                {/* Thanh tiến trình (Progress Bar) */}
+                                <div className="absolute bottom-[70px] left-0 right-0 h-1 bg-gray-700 mx-2 rounded-full overflow-hidden z-10">
+                                    <div 
+                                        className="h-full bg-red-600" 
+                                        style={{ width: `${progressPercent}%` }}
+                                    />
+                                </div>
+                                
+                                {/* Nút Play đè lên (trải nghiệm UX tốt hơn) */}
+                                <Link
+                                    href={watchLink}
+                                    className="absolute inset-0 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-lg"
+                                >
+                                    <div className="bg-red-600 p-3 rounded-full transform scale-0 group-hover:scale-100 transition-transform duration-200 shadow-lg">
+                                        <PlayCircle className="w-8 h-8 text-white fill-current" />
+                                    </div>
+                                </Link>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>

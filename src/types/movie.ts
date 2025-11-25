@@ -90,12 +90,13 @@ export interface Movie {
   backdropUrl: string;
   trailerUrl: string | null; 
   videoUrl: string | null;   
-  seasons: Season[];
-  releaseYear: number | string;
+  seasons?: Season[];
+  releaseYear?: number | string;
   tags: string[];
-  cast: Actor[];
-  director: Director | undefined;
-  rating: number;
-  duration: string;
+  cast?: Actor[];
+  director?: Director | undefined;
+  rating?: number;
+  duration?: string;
   type: "MOVIE" | "TV";
+  views?: number; 
 }

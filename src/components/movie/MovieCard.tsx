@@ -5,7 +5,7 @@ import { useRef, useState, useEffect, MouseEvent } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence, m } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Heart, Info, Play, Eye, Clock,Loader2 } from "lucide-react"
+import { Heart, Info, Play, Eye, Clock, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Movie } from "@/types/movie"
 import { useAuth } from "@/contexts/AuthContext"
@@ -19,6 +19,8 @@ interface MovieCardProps {
     onDetail?: (movie: Movie) => void
     className?: string
     disablePreview?: boolean
+    subTitle?: string
+    watchUrl?: string
 }
 
 export function MovieCard({
@@ -36,21 +38,22 @@ export function MovieCard({
     const [isFavorite, setIsFavorite] = useState(false)
     const [isLoadingFav, setIsLoadingFav] = useState(true)
     const {
+        id,
         title,
-        //subTitle,
-        //posterUrl,
-        year,
-        type,
-        episode,
-        tags = [],
+        posterUrl,
         description,
-        //duration,
+        tags,
         views,
-        slug,
-        metadata
-    } = movie
-    const subTitle= movie.subTitle||movie.original_title||"";
-    const displayDuration = movie.duration || metadata?.duration;
+        duration,
+        releaseYear,
+        type,
+        rating,
+        seasons,
+        slug
+    } = movie;
+
+    const subTitle = movie.subTitle || "";
+    const displayDuration = duration || (type === 'TV' ? `${seasons?.length || 0} Mùa` : 'Phim lẻ');
     const displayPoster = movie.posterUrl || movie.poster_url || "https://static.vecteezy.com/system/resources/previews/020/276/914/non_2x/404-internet-error-page-icon-404-number-symbol-free-vector.jpg";
     const handleMouseEnter = () => {
         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
@@ -81,7 +84,7 @@ export function MovieCard({
         if (isLoggedIn) {
             checkFavoriteStatus(movie.id.toString())
                 .then((data) => setIsFavorite(data.isFavorite))
-                .catch(() => {})
+                .catch(() => { })
                 .finally(() => setIsLoadingFav(false))
         } else {
             setIsFavorite(false)
@@ -99,13 +102,13 @@ export function MovieCard({
         }
 
         const oldState = isFavorite
-        setIsFavorite(!oldState) 
+        setIsFavorite(!oldState)
 
         try {
             const { message } = await toggleFavorite(movie.id.toString())
             toast.success(message)
         } catch (error) {
-            setIsFavorite(oldState) 
+            setIsFavorite(oldState)
             toast.error("Có lỗi xảy ra, vui lòng thử lại.")
         }
     }
@@ -127,7 +130,7 @@ export function MovieCard({
             <div
                 className="relative"
                 onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave} 
+                onMouseLeave={handleMouseLeave}
             >
                 <div
                     className={cn(
@@ -187,10 +190,10 @@ export function MovieCard({
                                             {isLoadingFav ? (
                                                 <Loader2 className="h-4 w-4 animate-spin" />
                                             ) : (
-                                                <Heart 
-                                                    className={cn("h-4 w-4 transition-colors", 
+                                                <Heart
+                                                    className={cn("h-4 w-4 transition-colors",
                                                         isFavorite ? "fill-red-500 text-red-500" : "text-white"
-                                                    )} 
+                                                    )}
                                                 />
                                             )}
                                         </Button>
@@ -204,22 +207,30 @@ export function MovieCard({
                                         </Button>
                                     </div>
 
+                                    {/* Metadata Tags (Layout bạn muốn giữ) */}
                                     <div className="flex flex-wrap gap-1 text-[12px] text-muted-foreground">
-                                        {type && (
-                                            <span className="bg-muted/20 px-2 py-0.5 rounded">{type}</span>
-                                        )}
-                                        {year && (
-                                            <span className="bg-muted/20 px-2 py-0.5 rounded">{year}</span>
-                                        )}
-                                        {episode && (
-                                            <span className="bg-muted/20 px-2 py-0.5 rounded">
-                                                {episode}
+
+                                        {releaseYear && (
+                                            <span className="bg-zinc-800 border border-zinc-700 px-1.5 py-0.5 rounded">
+                                                {releaseYear}
                                             </span>
                                         )}
-                                        {tags.map((tag) => (
+
+                                        {displayDuration && (
+                                            <span className="bg-zinc-800 border border-zinc-700 px-1.5 py-0.5 rounded">
+                                                {displayDuration}
+                                            </span>
+                                        )}
+
+                                        {rating && rating > 0 ? (
+                                            <span className="bg-yellow-500/20 border border-yellow-600/50 text-yellow-500 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
+                                                IMDb {rating.toFixed(1)}
+                                            </span>
+                                        ) : null}
+                                        {(tags || []).slice(0, 2).map((tag) => (
                                             <span
                                                 key={tag}
-                                                className="bg-muted/20 px-2 py-0.5 rounded"
+                                                className="bg-zinc-800 border border-zinc-700 px-1.5 py-0.5 rounded"
                                             >
                                                 {tag}
                                             </span>
