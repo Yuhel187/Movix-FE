@@ -35,6 +35,18 @@ export const mapTmdbToMovie = (tmdbMovie: any): Movie => {
   const releaseDate = tmdbMovie.release_date || tmdbMovie.first_air_date;
   const year = releaseDate ? parseInt(releaseDate.split('-')[0]) : undefined;
 
+  let mediaType = tmdbMovie.media_type;
+
+  if (!mediaType) {
+      if (tmdbMovie.name || tmdbMovie.first_air_date || tmdbMovie.number_of_seasons) {
+          mediaType = 'TV';
+      } else {
+          mediaType = 'MOVIE';
+      }
+  }
+
+  const normalizedType = String(mediaType).toUpperCase() === 'TV' ? 'TV' : 'MOVIE';
+
   return {
     id: tmdbMovie.id,
     title: tmdbMovie.title || tmdbMovie.name, 
@@ -42,9 +54,13 @@ export const mapTmdbToMovie = (tmdbMovie: any): Movie => {
     posterUrl: getTmdbImageUrl(tmdbMovie.poster_path, "poster"),
     backdropUrl: getTmdbImageUrl(tmdbMovie.backdrop_path, "backdrop"),
     description: tmdbMovie.overview,
-    year: year,
-    type: tmdbMovie.media_type,
+    releaseYear: year,
+    type: normalizedType,
     rating: tmdbMovie.vote_average,
-    views: tmdbMovie.vote_count, 
+    views: tmdbMovie.vote_count,
+    slug: tmdbMovie.id.toString(), 
+    trailerUrl: null,
+    videoUrl: null,
+    tags: [], 
   };
 };

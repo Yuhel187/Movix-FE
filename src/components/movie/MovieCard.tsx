@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import Image from "next/image"
@@ -52,8 +53,18 @@ export function MovieCard({
         slug
     } = movie;
 
+    const rawType = movie.type || (movie as any).media_type;
+
+    const getTypeLabel = (t: string | undefined) => {
+        if (!t) return "Phim lẻ"; 
+        const upper = t.toUpperCase();
+        if (upper === 'TV' || upper === 'SERIES') return "Phim bộ";
+        return "Phim lẻ";
+    };
+    const displayType = getTypeLabel(rawType);
+
     const subTitle = movie.subTitle || "";
-    const displayDuration = duration || (type === 'TV' ? `${seasons?.length || 0} Mùa` : 'Phim lẻ');
+    const displayDuration = duration || (displayType === 'Phim bộ' ? `${seasons?.length || 0} Mùa` : 'Phim lẻ');
     const displayPoster = movie.posterUrl || movie.poster_url || "https://static.vecteezy.com/system/resources/previews/020/276/914/non_2x/404-internet-error-page-icon-404-number-symbol-free-vector.jpg";
     const handleMouseEnter = () => {
         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
@@ -209,6 +220,8 @@ export function MovieCard({
 
                                     {/* Metadata Tags (Layout bạn muốn giữ) */}
                                     <div className="flex flex-wrap gap-1 text-[12px] text-muted-foreground">
+
+                                        <span className="bg-muted/20 px-2 py-0.5 rounded">{displayType}</span>
 
                                         {releaseYear && (
                                             <span className="bg-zinc-800 border border-zinc-700 px-1.5 py-0.5 rounded">
