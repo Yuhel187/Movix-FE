@@ -61,7 +61,12 @@ export async function getMovieData(slug: string) {
       name: mp.person.name || "Không rõ",
       character: mp.character || "Unknown",
       profileUrl: getPersonAvatarUrl(mp.person.avatar_url),
+      avatar_url: getPersonAvatarUrl(mp.person.avatar_url),
+      biography: mp.person.biography || "",
+      birthday: mp.person.birthday,
+      gender: mp.person.gender,
     })) || [];
+    
   const directorRaw = raw.movie_people?.find(
     (mp) => mp.person.role_type === "director" || mp.credit_type === "crew" 
   );
@@ -71,6 +76,7 @@ export async function getMovieData(slug: string) {
       avatarUrl: getPersonAvatarUrl(directorRaw.person.avatar_url),
       origin: "Unknown"
   } : null;
+  
   const seasons: Season[] = raw.seasons?.map(s => ({
     id: s.id,
     number: s.season_number,

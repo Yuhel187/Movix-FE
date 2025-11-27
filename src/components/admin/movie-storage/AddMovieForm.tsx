@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,8 +28,6 @@ import {
     ChevronLeft, 
     Plus,
     Trash2,
-    Upload,
-    FileUp,
     Info, 
     Pencil, 
     Download,
@@ -82,11 +80,6 @@ const countryMap: { [key: string]: string } = {
   "Vietnam": "việt nam"
 };
 
-const MOCK_GENRES_DB: Genre[] = [
-  { id: "g1", name: "Hành động" },
-  { id: "g2", name: "Phiêu lưu" },
-];
-
 const steps = [
     { id: 1, title: 'Thông tin phim' },
     { id: 2, title: 'Tải phim lên' },
@@ -120,6 +113,9 @@ type Person = {
     character: string;
     avatarUrl: string | null;
     role: 'actor' | 'director';
+    biography?: string;
+    birthday?: string;
+    gender?: number;
 };
 
 export default function AddMovieForm({ onClose }: AddMovieFormProps) {
@@ -138,13 +134,26 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     const backdropInputRef = useRef<HTMLInputElement>(null);
     const [posterPreview, setPosterPreview] = useState<string | null>(null);
     const [backdropPreview, setBackdropPreview] = useState<string | null>(null);
-    const [allGenres, setAllGenres] = useState<Genre[]>(MOCK_GENRES_DB);
+    const [allGenres, setAllGenres] = useState<Genre[]>([]);
     const [selectedGenres, setSelectedGenres] = useState<Genre[]>([]);
     const [isTmdbDataLoaded, setIsTmdbDataLoaded] = useState(false);
     const [trailerUrl, setTrailerUrl] = useState("");
 
+    useEffect(() => {
+        const fetchGenres = async () => {
+            try {
+                const res = await apiClient.get('/movies/genres');
+                if (Array.isArray(res.data)) {
+                    setAllGenres(res.data);
+                }
+            } catch (error) {
+                console.error("Lỗi tải thể loại:", error);
+            }
+        };
+        fetchGenres();
+    }, []);
+
     // --- State Step 2 ---
-    const singleFileRef = useRef<HTMLInputElement>(null);
     const [singleMovieFile, setSingleMovieFile] = useState<string>("");
     const [seasons, setSeasons] = useState<Season[]>([
         { 
@@ -167,7 +176,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     ]);
     const [newSeasonName, setNewSeasonName] = useState("");
     const [selectedSeasonId, setSelectedSeasonId] = useState('client-id-1');
-    const episodeFileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
     // --- State Step 3 ---
     const [people, setPeople] = useState<Person[]>([]);
@@ -218,15 +226,12 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                     setSelectedCountry(undefined); 
                 }
             }
-
-            // (Các logic khác cho Genres và People giữ nguyên)
             const genresFromTmdb = data.genres.map((g: {id: number, name: string}) => ({
                 id: g.name, 
                 name: g.name
             }));
 
             setTrailerUrl(data.trailer_url || "");
-            // ... (setAllGenres)
             setAllGenres(prevDB => {
                 const newGenres = [...prevDB];
                 genresFromTmdb.forEach((tmdbGenre: Genre) => {
@@ -245,6 +250,9 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
             	  character: person.character,
             	  avatarUrl: getPersonAvatarUrl(person.profile_path),
             	  role: 'actor',
+                  biography: person.biography,
+                  birthday: person.birthday,
+                  gender: person.gender,
             }));
     const directorFromTmdb = data.director ? [{
             	  id: data.director.id.toString(),
@@ -252,6 +260,9 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
             	  character: 'Đạo diễn',
             	  avatarUrl: getPersonAvatarUrl(data.director.profile_path), 
             	  role: 'director',
+                  biography: data.director.biography,
+                  birthday: data.director.birthday,
+                  gender: data.director.gender,
             }] : [];
             setPeople([...directorFromTmdb, ...castFromTmdb]);
             
@@ -450,6 +461,9 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
             character: data.characterName || 'Chưa rõ', 
             avatarUrl: data.person.avatarUrl || null,
             role: data.person.roles?.includes('Đạo diễn') ? 'director' : 'actor',
+            biography: data.person.biography || null,
+            birthday: data.person.birthday || null,
+            gender: data.person.gender || 0,
         };
 
         setPeople(prev => [newPerson, ...prev]);
@@ -513,7 +527,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                 {/* --- Step 1 Content --- */}
                 {currentStep === 1 && (
                     <div className="space-y-6"> 
-                        {/* ... (Backdrop) ... */}
                         <div className="relative w-full">
                             <div
                                 className="relative w-full h-96 rounded-md overflow-hidden bg-slate-800/50 border border-dashed border-slate-600 flex items-center justify-center cursor-pointer hover:border-primary group"
@@ -537,7 +550,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                 />
                             </div>
                             <div className="flex flex-col md:flex-row gap-8 -mt-[120px] relative z-10 px-6 md:px-12">
-                                {/* ... (Poster) ... */}
                                 <div className="w-full md:w-[300px] flex-shrink-0 space-y-2 mx-auto md:mx-0 md:ml-4 lg:ml-8">
                                     <div
                                         className="aspect-[2/3] relative w-full rounded-md overflow-hidden bg-slate-700 border-4 border-[#1F1F1F] shadow-lg cursor-pointer group hover:border-primary" 
@@ -569,6 +581,43 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                 </div>
                                 {/* ... (Movie Title, Release Date) ... */}
                                 <div className="flex-1 space-y-6 pt-20 md:pt-28 lg:pt-32">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Loại phim</label>
+                                        <div className="flex flex-col sm:flex-row gap-4">
+                                            <Card
+                                                className={`flex-1 p-4 cursor-pointer transition-all border ${
+                                                    selectedMovieType === 'single'
+                                                        ? 'bg-[#E50914]/20 border-[#E50914]'
+                                                        : 'bg-[#262626] border-slate-700 hover:border-slate-500'
+                                                }`}
+                                                onClick={() => !isDisabled && setSelectedMovieType('single')}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <Film className={`w-6 h-6 ${selectedMovieType === 'single' ? 'text-[#E50914]' : 'text-gray-400'}`} />
+                                                    <div>
+                                                        <h3 className="font-semibold text-white">Phim lẻ</h3>
+                                                        <p className="text-xs text-gray-400">Phim chỉ có một tập.</p>
+                                                    </div>
+                                                </div>
+                                            </Card>
+                                            <Card
+                                                className={`flex-1 p-4 cursor-pointer transition-all border ${
+                                                    selectedMovieType === 'series'
+                                                        ? 'bg-[#E50914]/20 border-[#E50914]'
+                                                        : 'bg-[#262626] border-slate-700 hover:border-slate-500'
+                                                }`}
+                                                onClick={() => !isDisabled && setSelectedMovieType('series')}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <Tv className={`w-6 h-6 ${selectedMovieType === 'series' ? 'text-[#E50914]' : 'text-gray-400'}`} />
+                                                    <div>
+                                                        <h3 className="font-semibold text-white">Phim bộ</h3>
+                                                        <p className="text-xs text-gray-400">Loạt phim dài tập.</p>
+                                                    </div>
+                                                </div>
+                                            </Card>
+                                        </div>
+                                    </div>
                                     {/*  Thêm TMDB ID Input  */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -595,6 +644,17 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                             </InputGroupButton>
                                         </InputGroup>
                                     </div>
+                                    
+                                    <div>
+                                        <label htmlFor="movieTitle" className="block text-sm font-medium text-gray-300 mb-1">Tên phim</label>
+                                        <Input
+                                            id="movieTitle"
+                                            value={movieTitle}
+                                            onChange={(e) => setMovieTitle(e.target.value)}
+                                            className="bg-[#262626] border-slate-700 focus:border-primary "
+                                        />
+                                    </div>
+                                    
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
                                             <label htmlFor="posterUrlInput" className="block text-sm font-medium text-gray-300 mb-1">Poster URL</label>
@@ -617,23 +677,21 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                             />
                                         </div>
                                     </div>
-                                    <div>
-                                        <label htmlFor="movieTitle" className="block text-sm font-medium text-gray-300 mb-1">Tên phim</label>
-                                        <Input
-                                            id="movieTitle"
-                                            value={movieTitle}
-                                            onChange={(e) => setMovieTitle(e.target.value)}
-                                            className="bg-[#262626] border-slate-700 focus:border-primary "
-                                        />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="trailerUrlInput" className="block text-sm font-medium text-gray-300 mb-1">Trailer URL</label>
-                                        <Input
-                                            id="trailerUrlInput"
-                                            placeholder="https://www.youtube.com/watch?v=..."
-                                            value={trailerUrl || ''} 
-                                            onChange={(e) => setTrailerUrl(e.target.value)}
-                                            className="bg-[#262626] border-slate-700 focus:border-primary"
+                                    
+
+                                    
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ... (Overview, Genre, Movie Type) ... */}
+                        <div className="space-y-6 px-6 md:px-12"> 
+                            <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-1">Quốc gia</label>
+                                        <CountrySelect 
+                                            value={selectedCountry}
+                                            onValueChange={setSelectedCountry}
+                                           
                                         />
                                     </div>
                                     <div>
@@ -662,34 +720,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                             </PopoverContent>
                                         </Popover>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-1">Quốc gia</label>
-                                        <CountrySelect 
-                                            value={selectedCountry}
-                                            onValueChange={setSelectedCountry}
-                                           
-                                        />
-                                    </div>
-
-                                    
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* ... (Overview, Genre, Movie Type) ... */}
-                        <div className="space-y-6 px-6 md:px-12"> 
-                            <div>
-                                <label htmlFor="overview" className="block text-sm font-medium text-gray-300 mb-2">Tổng quan</label>
-                                <Textarea
-                                    id="overview"
-                                    value={overview}
-                                    onChange={(e) => setOverview(e.target.value)}
-                                    className="bg-[#262626] border-slate-700 focus:border-primary focus:ring-primary min-h-[100px]"
-                                    maxLength={1000}
-                                />
-                                <p className="text-xs text-gray-500 text-right mt-1">{overview.length}/1000 từ</p>
-                            </div>
-
                             <div>
                                 <label className="text-sm text-slate-300">Thể loại</label>
                                 <GenreCombobox
@@ -702,43 +732,30 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                 />
                             </div>
 
+                                    <div>
+                                        <label htmlFor="trailerUrlInput" className="block text-sm font-medium text-gray-300 mb-1">Trailer URL</label>
+                                        <Input
+                                            id="trailerUrlInput"
+                                            placeholder="https://www.youtube.com/watch?v=..."
+                                            value={trailerUrl || ''} 
+                                            onChange={(e) => setTrailerUrl(e.target.value)}
+                                            className="bg-[#262626] border-slate-700 focus:border-primary"
+                                        />
+                                    </div>
+
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Loại phim</label>
-                                <div className="flex flex-col sm:flex-row gap-4">
-                                       <Card
-                                        className={`flex-1 p-4 cursor-pointer transition-all border ${
-                                            selectedMovieType === 'single'
-                                                ? 'bg-[#E50914]/20 border-[#E50914]'
-                                                : 'bg-[#262626] border-slate-700 hover:border-slate-500'
-                                        }`}
-                                        onClick={() => !isDisabled && setSelectedMovieType('single')}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <Film className={`w-6 h-6 ${selectedMovieType === 'single' ? 'text-[#E50914]' : 'text-gray-400'}`} />
-                                            <div>
-                                                <h3 className="font-semibold text-white">Phim lẻ</h3>
-                                                <p className="text-xs text-gray-400">Phim chỉ có một tập.</p>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                       <Card
-                                        className={`flex-1 p-4 cursor-pointer transition-all border ${
-                                            selectedMovieType === 'series'
-                                                ? 'bg-[#E50914]/20 border-[#E50914]'
-                                                : 'bg-[#262626] border-slate-700 hover:border-slate-500'
-                                        }`}
-                                        onClick={() => !isDisabled && setSelectedMovieType('series')}
-                                    >
-                                           <div className="flex items-center gap-3">
-                                            <Tv className={`w-6 h-6 ${selectedMovieType === 'series' ? 'text-[#E50914]' : 'text-gray-400'}`} />
-                                            <div>
-                                                <h3 className="font-semibold text-white">Phim bộ</h3>
-                                                <p className="text-xs text-gray-400">Loạt phim dài tập.</p>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                </div>
+                                <label htmlFor="overview" className="block text-sm font-medium text-gray-300 mb-2">Tổng quan</label>
+                                <Textarea
+                                    id="overview"
+                                    value={overview}
+                                    onChange={(e) => setOverview(e.target.value)}
+                                    className="bg-[#262626] border-slate-700 focus:border-primary focus:ring-primary min-h-[100px]"
+                                    maxLength={1000}
+                                />
+                                <p className="text-xs text-gray-500 text-right mt-1">{overview.length}/1000 từ</p>
                             </div>
+
+                            
                         </div>
                     </div>
                 )}

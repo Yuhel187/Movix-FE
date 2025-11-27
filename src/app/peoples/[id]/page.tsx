@@ -4,8 +4,13 @@ import ActorDetailPage from "@/components/actor/ActorDetailPage";
 import AIChatWidget from "@/components/ai/AIChatWidget";
 import { getPersonDetail } from "@/services/person.service";
 
-export default async function PersonDetailPage({ params }: { params: { id: string } }) {
-  const person = await getPersonDetail(params.id);
+export default async function PersonDetailPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
+  const { id } = await params; 
+  const person = await getPersonDetail(id);
 
   return (
     <main className="min-h-screen bg-black text-white">

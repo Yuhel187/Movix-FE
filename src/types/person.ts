@@ -47,9 +47,10 @@ export interface Person {
   name: string;
   avatarUrl: string;
   role: string;
-  biography?: string;
-  birthday?: string;
-  gender?: string;
+  character?: string;
+  biography?: string | null;
+  birthday?: string | null; 
+  gender?: number | null;
   credits?: {
     id: string;
     title: string;

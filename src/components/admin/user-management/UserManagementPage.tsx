@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -27,20 +28,21 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Search,
-  MoreHorizontal,
-  LogOut,
   CheckCircle,
   XCircle,
   AlertCircle,
-  Edit,
-  Trash, 
-  ArrowRight 
+  Flag
 } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
+import apiClient from "@/lib/apiClient";
+import { toast } from "sonner";
+import { Eye, Lock, Unlock } from "lucide-react";
+import { cn } from "@/lib/utils";
 
+const DEFAULT_BACKDROP = "/images/placeholder-backdrop.png";
+const DEFAULT_AVATAR = "/images/placeholder-avatar.png";
 
 interface User {
   id: string;
@@ -56,30 +58,6 @@ interface User {
   isFlagged?: boolean;
 }
 
-const baseMockUsers: User[] = Array.from({ length: 15 }).map((_, i) => ({
-  id: `user-${i + 1}`,
-  maUser: `U${101 + i}`,
-  username: `khainq${205 + i}`,
-  fullName: `Nguyễn Quang Khải ${i + 1}`,
-  email: `khainq${205 + i}@email.com`,
-  lastLogin: i % 3 === 0 ? "01/01/2025 (30 ngày trước)" : `khainq${205+i}@gmail.com`,
-  status: i % 4 === 0 ? "locked" : i % 3 === 0 ? "inactive" : "active",
-  avatarUrl: i % 5 === 0 ? "/images/logo.png" : undefined,
-  role: "User",
-  type: "Người dùng thông thường",
-  isFlagged: i % 6 === 0,
-}));
-
-const mockUsers: User[] = Array.from({ length: 3 }, (_, k) =>
-    baseMockUsers.map((user, j) => ({
-        ...user,
-        id: `user-${k}-${j+1}`,
-        maUser: `U${101 + k*15 + j}`,
-        username: `user${k}${j}`,
-        fullName: `${user.fullName} (${k+1})`,
-        email: `user${k}${j}@email.com`,
-    }))
-).flat();
 const UserDetailCard = ({ user }: { user: User | null }) => {
   const router = useRouter();
   if (!user) {
@@ -95,7 +73,16 @@ const UserDetailCard = ({ user }: { user: User | null }) => {
   }
 
   const isLocked = user.status === 'locked';
-  const backgroundImageUrl = user.avatarUrl || "/images/background-homepage.jpg"; 
+  const backgroundImageUrl = user.avatarUrl || DEFAULT_BACKDROP;
+  const handleToggleLock = async () => {
+    const newStatus = isLocked ? 'active' : 'locked';
+    try {
+        await apiClient.put(`/profile/admin/users/${user.id}/status`, { status: newStatus });
+        toast.success(isLocked ? "Đã kích hoạt user" : "Đã khóa user");
+    } catch (e) {
+        toast.error("Lỗi thao tác");
+    }
+}
 
   return (
     <Card className="bg-[#262626] border-slate-800 text-white flex flex-col h-full overflow-hidden">
@@ -108,13 +95,17 @@ const UserDetailCard = ({ user }: { user: User | null }) => {
               fill
               className="object-cover opacity-50" 
               sizes="450px" 
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = DEFAULT_BACKDROP;
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#262626] via-transparent to-transparent"></div>
           </div>
 
           <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 z-10"> 
             <Avatar className="w-24 h-24 border-4 border-[#262626] bg-slate-700"> 
-              <AvatarImage src={user.avatarUrl} alt={user.fullName} />
+              <AvatarImage src={user.avatarUrl || DEFAULT_AVATAR} alt={user.fullName} />
               <AvatarFallback className="text-2xl bg-slate-700 text-white">
                 {user.fullName
                   .split(" ")
@@ -129,21 +120,42 @@ const UserDetailCard = ({ user }: { user: User | null }) => {
 
         <div className="h-16 flex-shrink-0"></div>
         <h2 className="text-xl font-semibold text-center flex-shrink-0">{user.fullName}</h2>
-        <div className="w-full mt-6 space-y-3 text-sm flex-shrink-0 px-4"> 
-           <div className="flex justify-between">
-             <span className="text-gray-400">Vai trò:</span>
-             <span>{user.role || 'N/A'}</span>
-           </div>
-           <div className="flex justify-between">
-             <span className="text-gray-400">Loại:</span>
-             <span>{user.type || 'N/A'}</span>
-           </div>
-           <div className="flex justify-between">
-             <span className="text-gray-400">Email:</span>
-             <span className="truncate max-w-[180px] sm:max-w-[220px]">{user.email}</span> 
-           </div>
-        </div>
+        <p className="text-xs text-gray-500 mb-6">@{user.username}</p>
 
+        <div className="w-full px-6 space-y-4">
+            <div className="bg-[#1F1F1F] p-4 rounded-lg space-y-3 border border-slate-700/50">
+                <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Vai trò:</span>
+                    <span className="font-medium text-white">{user.role || 'User'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Trạng thái:</span>
+                    <span className={cn("font-medium", 
+                        user.status === 'active' ? "text-green-400" : 
+                        user.status === 'locked' ? "text-red-400" : "text-yellow-400"
+                    )}>
+                        {user.status === 'active' ? 'Hoạt động' : user.status === 'locked' ? 'Đã khóa' : 'Không hoạt động'}
+                    </span>
+                </div>
+                 <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Gắn cờ:</span>
+                    <span className={cn("font-medium", user.isFlagged ? "text-red-500" : "text-gray-500")}>
+                        {user.isFlagged ? "Có" : "Không"}
+                    </span>
+                </div>
+                <div className="border-t border-slate-700 pt-2 flex justify-between text-sm">
+                    <span className="text-gray-400">Đăng nhập cuối:</span>
+                    <span className="text-white text-xs">{user.lastLogin}</span>
+                </div>
+            </div>
+            
+            <div className="space-y-2">
+                <span className="text-xs text-gray-500 uppercase font-bold">Email liên hệ</span>
+                <div className="bg-[#1F1F1F] p-3 rounded-md text-sm text-gray-300 truncate border border-slate-700/50">
+                    {user.email}
+                </div>
+            </div>
+        </div>
 
         <div className="flex-grow min-h-[1rem]"></div>
 
@@ -157,11 +169,20 @@ const UserDetailCard = ({ user }: { user: User | null }) => {
             >
               Xem chi tiết thông tin tài khoản
             </Button>
-              <Button
-                variant={isLocked ? "default": "destructive"}
-                className={`w-full ${isLocked ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+              <Button 
+                  className={cn(
+                      "w-full transition-colors duration-200",
+                      isLocked 
+                        ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                        : "bg-red-600 hover:bg-red-700 text-white"   
+                  )}
+                  onClick={handleToggleLock}
               >
-                {isLocked ? "Kích hoạt" : "Khóa tài khoản"}
+                  {isLocked ? (
+                      <><Unlock className="w-4 h-4 mr-2" /> Kích hoạt</>
+                  ) : (
+                      <><Lock className="w-4 h-4 mr-2" /> Khóa tài khoản</>
+                  )}
               </Button>
             </div>
         </div>
@@ -181,6 +202,7 @@ const UserListSkeleton = () => (
                             <TableHead className="text-white">Mã User</TableHead>
                             <TableHead className="text-white">Username</TableHead>
                             <TableHead className="text-white">Tên người dùng</TableHead>
+                            <TableHead className="text-white">Vai trò</TableHead>
                             <TableHead className="text-white">Đăng nhập gần nhất</TableHead>
                             <TableHead className="text-white">Trạng thái</TableHead>
                             <TableHead className="text-white text-right">Thao tác</TableHead>
@@ -214,26 +236,73 @@ export default function UserManagementPage() {
   const [sortBy, setSortBy] = useState("lastLoginDesc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const fetchUsers = async () => {
+    try {
+      const params = {
+        page: currentPage,
+        take: 15,
+        q: searchTerm,
+        sortBy: sortBy,
+        flagged: showFlaggedOnly,
+      };
+      const res = await apiClient.get('/profile/admin/users', { params });
+      
+      const mappedUsers = res.data.data.map((u: any) => ({
+        id: u.id,
+        maUser: u.id.substring(0, 8).toUpperCase(), 
+        username: u.username,
+        fullName: u.display_name,
+        email: u.email,
+        lastLogin: u.last_login_at ? new Date(u.last_login_at).toLocaleDateString('vi-VN') : 'Chưa đăng nhập',
+        status: u.status, // active, inactive, locked
+        avatarUrl: u.avatar_url,
+        role: u.role?.name,
+        isFlagged: u.is_flagged
+      }));
+
+      setUsers(mappedUsers);
+      setTotalPages(res.data.pagination.totalPages);
+      
+      if (!selectedUser && mappedUsers.length > 0) setSelectedUser(mappedUsers[0]);
+      
+    } catch (err) {
+      setError("Failed to load users.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-      const loadUsers = async () => {
-          setLoading(true);
-          setError(null);
-          try {
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              setUsers(mockUsers);
-              if (mockUsers.length > 0) {
-                  setSelectedUser(mockUsers[0]);
-              }
-          } catch (err) {
-              setError("Failed to load users.");
-              console.error(err);
-          } finally {
-              setLoading(false);
+    const timer = setTimeout(() => {
+        fetchUsers();
+    }, 500); // Debounce 500ms
+    return () => clearTimeout(timer);
+  }, [searchTerm, sortBy, showFlaggedOnly, currentPage]);
+
+  const handleQuickToggleFlag = async (user: User, e: React.MouseEvent) => {
+      e.stopPropagation(); 
+      const toastId = toast.loading("Đang cập nhật...");
+
+      try {
+          const res = await apiClient.put(`/profile/admin/users/${user.id}/flag`);
+          const newFlagStatus = res.data.isFlagged;
+
+          setUsers(prevUsers => prevUsers.map(u => 
+              u.id === user.id ? { ...u, isFlagged: newFlagStatus } : u
+          ));
+
+          if (selectedUser?.id === user.id) {
+              setSelectedUser(prev => prev ? { ...prev, isFlagged: newFlagStatus } : null);
           }
-      };
-      loadUsers();
-  }, []);
+
+          toast.success(res.data.message, { id: toastId });
+      } catch (err) {
+          toast.error("Lỗi cập nhật cờ", { id: toastId });
+      }
+  };
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -312,6 +381,7 @@ export default function UserManagementPage() {
                             <TableHead className="text-white">Mã User</TableHead>
                             <TableHead className="text-white">Username</TableHead>
                             <TableHead className="text-white">Tên người dùng</TableHead>
+                            <TableHead className="text-white">Vai trò</TableHead>
                             <TableHead className="text-white">Đăng nhập gần nhất</TableHead>
                             <TableHead className="text-white">Trạng thái</TableHead>
                             <TableHead className="text-white text-right">Thao tác</TableHead>
@@ -327,6 +397,16 @@ export default function UserManagementPage() {
                                 <TableCell className="font-medium">{user.maUser}</TableCell>
                                 <TableCell className="text-gray-300">{user.username}</TableCell>
                                 <TableCell className="text-gray-300">{user.fullName}</TableCell>
+                                <TableCell>
+                                  <span className={cn(
+                                      "text-xs px-2 py-1 rounded font-medium border",
+                                      user.role === 'Admin' 
+                                          ? "bg-purple-500/10 text-purple-400 border-purple-500/50" 
+                                          : "bg-slate-800 text-slate-400 border-slate-700"
+                                  )}>
+                                      {user.role || 'User'}
+                                  </span>
+                              </TableCell>
                                 <TableCell className="text-gray-300 text-xs">{user.lastLogin}</TableCell>
                                 <TableCell>
                                 <span className={`flex items-center text-xs px-2 py-1 rounded-full w-fit ${
@@ -340,9 +420,28 @@ export default function UserManagementPage() {
                                 </span>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
+                                <div className="flex justify-end items-center gap-1">
+                                  <Button 
+                                      variant="ghost" size="icon" 
+                                      className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                                      title="Xem chi tiết"
+                                      onClick={(e) => {
+                                          e.stopPropagation();
+                                          router.push(`/admin/user-management/${user.id}`);
+                                      }}
+                                  >
+                                      <Eye className="h-4 w-4" />
+                                  </Button>
+                                  
+                                  <Button 
+                                            variant="ghost" size="icon" 
+                                            className={cn("h-8 w-8 hover:bg-slate-800", user.isFlagged ? "text-red-500" : "text-gray-400")}
+                                            title={user.isFlagged ? "Bỏ cờ (Tài khoản sạch)" : "Gắn cờ (Tài khoản vi phạm)"}
+                                            onClick={(e) => handleQuickToggleFlag(user, e)}
+                                        >
+                                             <Flag className={cn("h-4 w-4", user.isFlagged && "fill-current")} />
+                                        </Button>
+                              </div>
                                 </TableCell>
                             </TableRow>
                             ))}

@@ -27,7 +27,6 @@ import {
   Plus,
   Trash,
   Edit,
-  ArrowRight,
   MoreHorizontal,
   AlertCircle,
   Filter as FilterIcon,
@@ -89,7 +88,8 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
   }
 
   const movieData = movie as any; 
-  const status: 'hiện' | 'ẩn' = movieData.is_active ? 'hiện' : 'ẩn';
+  const isDeleted = movieData.is_deleted;
+  const isActive = movieData.is_active;
   let contentInfo = { icon: <FilmIcon className="w-4 h-4 mr-2" />, text: "Phim lẻ" };
   if (movieData.media_type === 'TV') {
     const totalSeasons = movieData.seasons?.length || 0;
@@ -101,7 +101,7 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
   }
   const genres: string[] = movieData.movie_genres?.map((mg: any) => mg.genre.name) || [];
   
-  const displayPoster = movie.poster_url || movie.posterUrl || "/images/placeholder-poster.png"; 
+  const displayPoster =  movie.posterUrl || movie.poster_url || "/images/placeholder-poster.png"; 
 
   const handleDelete = async () => {
     if (!movie || !movie.id) return;
@@ -139,16 +139,20 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
           <h2 className="text-lg font-semibold text-center mt-4">{movie.title}</h2>
           
           <div className="flex justify-center mt-3">
-            {status === 'hiện' ? (
-              <Badge className="bg-green-700/30 text-green-400 border border-green-600/50">
-                <Check className="w-3 h-3 mr-1.5" /> Đang hiện
-              </Badge>
-            ) : (
-              <Badge className="bg-gray-700/30 text-gray-400 border border-gray-600/50">
-                <X className="w-3 h-3 mr-1.5" /> Đang ẩn
-              </Badge>
-            )}
-          </div>
+          {isDeleted ? (
+            <Badge className="bg-red-900/30 text-red-500 border border-red-600/50">
+              <Trash className="w-3 h-3 mr-1.5" /> Đã xóa
+            </Badge>
+          ) : isActive ? (
+            <Badge className="bg-green-700/30 text-green-400 border border-green-600/50">
+              <Check className="w-3 h-3 mr-1.5" /> Đang hiện
+            </Badge>
+          ) : (
+            <Badge className="bg-gray-700/30 text-gray-400 border border-gray-600/50">
+              <X className="w-3 h-3 mr-1.5" /> Đang ẩn
+            </Badge>
+          )}
+        </div>
 
           <div className="border-t border-slate-700 my-4"></div>
           <div className="space-y-2 text-sm">
@@ -163,7 +167,7 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
             <div className="flex justify-between items-center">
               <span className="text-gray-400">Năm SX:</span>
               <span className="font-medium">
-                {(movie as any).release_date ? new Date((movie as any).release_date).getFullYear() : movie.year || 'N/A'}
+                {(movie as any).release_date ? new Date((movie as any).release_date).getFullYear() : movie.releaseYear || 'N/A'}
               </span>
             </div>
             <div className="flex justify-between items-center">
@@ -205,14 +209,20 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
               variant="outline"
               className="bg-amber-600 border-amber-600 text-white hover:bg-amber-700 hover:text-white"
               onClick={() => onEditMovie(movie.slug as string)}
+              disabled={isDeleted}
             >
               <Edit className="h-4 w-4 mr-2" />
               Chỉnh sửa thông tin
             </Button>
-            <Button variant="destructive" onClick={() => setIsAlertOpen(true)}>
-              <Trash className="h-4 w-4 mr-2" />
-              Xóa phim
-            </Button>
+            <Button 
+            variant="destructive" 
+            onClick={() => setIsAlertOpen(true)}
+            disabled={isDeleted}
+            className={isDeleted ? "opacity-50 cursor-not-allowed" : ""}
+          >
+            <Trash className="h-4 w-4 mr-2" />
+            {isDeleted ? "Đã xóa" : "Xóa phim"}
+          </Button>
           </div>
         </div> 
       </CardContent>
@@ -291,7 +301,7 @@ const RenderListView = ({
             <TableCell className="font-medium">
               <div className="flex items-center gap-3">
                 <Image
-                  src={movie.poster_url || movie.posterUrl || "/images/placeholder-poster.png"} 
+                  src={movie.posterUrl || movie.poster_url || "/images/placeholder-poster.png"} 
                   alt={movie.title}
                   width={40}
                   height={56}
@@ -307,7 +317,7 @@ const RenderListView = ({
               {(movie as any).media_type === 'TV' ? 'Phim bộ' : 'Phim lẻ'}
             </TableCell>
             <TableCell className="text-gray-300">
-              {(movie as any).release_date ? new Date((movie as any).release_date).getFullYear() : movie.year}
+              {(movie as any).release_date ? new Date((movie as any).release_date).getFullYear() : movie.releaseYear}
             </TableCell>
             <TableCell className="text-gray-300">2025-10-26</TableCell>
             <TableCell className="text-right">
@@ -503,13 +513,21 @@ export default function MovieStoragePage() {
     // 6. Cập nhật dependencies
   }, [showAddForm, appliedFilters, currentPage, searchTerm]);
 
-const handleRemoveMovieFromState = (movieId: string) => {
-    const newMovies = movies.filter(m => m.id.toString() !== movieId);
+const handleMarkMovieAsDeleted = (movieId: string) => {
+    const newMovies = movies.map(m => {
+        if (m.id.toString() === movieId) {
+            return { ...m, is_deleted: true, is_active: false } as any;
+        }
+        return m; 
+    });
+    
     setMovies(newMovies);
+
+    // Cập nhật phim đang chọn (nếu đang xem đúng phim vừa xóa)
     if (selectedMovie?.id.toString() === movieId) {
-      setSelectedMovie(newMovies.length > 0 ? newMovies[0] : null);
+        setSelectedMovie(prev => prev ? ({ ...prev, is_deleted: true, is_active: false } as any) : null);
     }
-  };
+};
 
   const renderContent = () => {
     if (loading) {
@@ -683,7 +701,7 @@ const handleRemoveMovieFromState = (movieId: string) => {
             <aside className={`hidden lg:block fixed right-0 ${sidebarTopOffset} ${sidebarHeight} lg:w-80 xl:w-96 2xl:w-[450px] pr-6 pl-0 py-0 z-40`}>
                 <div className="h-full overflow-y-auto no-scrollbar">
                 <RenderPreviewCard movie={selectedMovie}
-                 onMovieDeleted={handleRemoveMovieFromState}
+                 onMovieDeleted={handleMarkMovieAsDeleted}
                  onEditMovie={handleGoToEditPage}
                 />
                 </div>

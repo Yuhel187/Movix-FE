@@ -1,3 +1,6 @@
+/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -11,9 +14,10 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SearchBar } from "@/components/common/search-bar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Plus, Trash, Save, X, AlertCircle, GripVertical, ChevronDown,
-    Loader2
+    Loader2, Image as ImageIcon, Link as LinkIcon, LayoutTemplate, MonitorPlay
 } from "lucide-react";
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -27,7 +31,6 @@ import { CSS } from '@dnd-kit/utilities';
 import apiClient from "@/lib/apiClient";
 import { toast } from "sonner";
 
-// --- Types ---
 interface MovieInfo {
   id: string;
   title: string;
@@ -51,7 +54,6 @@ interface HomepageSection {
   linkedMovies: SectionMovieLink[];
 }
 
-// --- Component: Tiêu đề Section có thể sửa ---
 const EditableSectionTitle = ({ section, onSave }: { section: HomepageSection, onSave: (id: string, newTitle: string) => void }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [title, setTitle] = useState(section.title);
@@ -108,7 +110,6 @@ const EditableSectionTitle = ({ section, onSave }: { section: HomepageSection, o
     );
 };
 
-// --- Component: Tìm kiếm phim để thêm vào Section ---
 const AddMovieSearch = ({ sectionId, onMovieSelected, onCancel }: {
     sectionId: string;
     onMovieSelected: (sectionId: string, movieId: string, movieInfo: MovieInfo) => void;
@@ -124,12 +125,10 @@ const AddMovieSearch = ({ sectionId, onMovieSelected, onCancel }: {
                 setIsSearching(true);
                 try {
                     const res = await apiClient.get(`/movies/search?q=${encodeURIComponent(searchTerm)}`);
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const movies = res.data.movies.map((m: any) => ({
                         id: m.id,
                         title: m.title,
                         posterUrl: m.poster_url,
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         genres: m.genres || [] 
                     }));
                     setSearchResults(movies);
@@ -189,7 +188,6 @@ const AddMovieSearch = ({ sectionId, onMovieSelected, onCancel }: {
     );
 };
 
-// --- Component: Dòng Phim trong bảng (Có thể kéo thả) ---
 const SortableMovieRow = ({ link, sectionId, isSelected, onSelectMovie, onRemoveMovie }: {
     link: SectionMovieLink;
     sectionId: string;
@@ -245,7 +243,6 @@ const SortableMovieRow = ({ link, sectionId, isSelected, onSelectMovie, onRemove
     );
 };
 
-// --- Component: Bảng danh sách phim trong Section ---
 const SectionMoviesTable = ({
     section,
     onRemoveMovie,
@@ -255,21 +252,11 @@ const SectionMoviesTable = ({
     onBulkRemoveMovies,
     isAddingMovie,
     onToggleAddMovieSearch,
-    onAddMovie // Thêm prop này để xử lý việc thêm phim
-}: {
-    section: HomepageSection;
-    onRemoveMovie: (sectionId: string, linkId: string) => void;
-    selectedMovies: Set<string>;
-    onSelectMovie: (sectionId: string, linkId: string, checked: boolean) => void;
-    onSelectAllMovies: (sectionId: string, checked: boolean) => void;
-    onBulkRemoveMovies: (sectionId: string) => void;
-    isAddingMovie: boolean;
-    onToggleAddMovieSearch: (sectionId: string) => void;
-    onAddMovie: (sectionId: string, movieId: string, movieInfo: MovieInfo) => void;
-}) => {
-    const movieLinkIds = useMemo(() => section.linkedMovies.map(link => link.id), [section.linkedMovies]);
-    const isAllSelected = movieLinkIds.length > 0 && movieLinkIds.every(id => selectedMovies.has(id));
-    const isIndeterminate = !isAllSelected && movieLinkIds.some(id => selectedMovies.has(id));
+    onAddMovie
+}: any) => {
+    const movieLinkIds = useMemo(() => section.linkedMovies.map((link: any) => link.id), [section.linkedMovies]);
+    const isAllSelected = movieLinkIds.length > 0 && movieLinkIds.every((id: string) => selectedMovies.has(id));
+    const isIndeterminate = !isAllSelected && movieLinkIds.some((id: string) => selectedMovies.has(id));
 
     return (
         <div className="space-y-4">
@@ -313,7 +300,7 @@ const SectionMoviesTable = ({
                     <SortableContext items={movieLinkIds} strategy={verticalListSortingStrategy}>
                         <TableBody>
                             {section.linkedMovies.length > 0 ? (
-                                section.linkedMovies.map((link) => (
+                                section.linkedMovies.map((link: any) => (
                                     <SortableMovieRow
                                         key={link.id}
                                         link={link}
@@ -347,7 +334,6 @@ const SectionMoviesTable = ({
                 </Button>
             </div>
             
-            {/* Fix: Search Bar chỉ nằm trong đây, không bị duplicate */}
             {isAddingMovie && (
                 <AddMovieSearch
                     sectionId={section.id}
@@ -359,16 +345,7 @@ const SectionMoviesTable = ({
     );
 };
 
-// --- Component: Item Section có thể kéo thả ---
-const SortableSectionItem = ({ section, isOpen, onToggleOpen, onToggleVisibility, onDeleteSection, onUpdateTitle, children }: {
-    section: HomepageSection;
-    isOpen: boolean;
-    onToggleOpen: (id: string) => void;
-    onToggleVisibility: (id: string, isVisible: boolean) => void;
-    onDeleteSection: (id: string) => void;
-    onUpdateTitle: (id: string, newTitle: string) => void;
-    children: React.ReactNode;
-}) => {
+const SortableSectionItem = ({ section, isOpen, onToggleOpen, onToggleVisibility, onDeleteSection, onUpdateTitle, children }: any) => {
      const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
 
     const style = {
@@ -382,15 +359,12 @@ const SortableSectionItem = ({ section, isOpen, onToggleOpen, onToggleVisibility
         <div ref={setNodeRef} style={style} className={`mb-3 border rounded-md bg-[#262626] transition-all duration-200 ${isOpen ? "border-[#E50914]" : "border-slate-700"}`}>
             <Collapsible open={isOpen} onOpenChange={() => onToggleOpen(section.id)}>
                 <div className="flex items-center gap-3 px-4 py-3 text-white w-full bg-[#262626] rounded-t-md">
-                    {/* Drag Handle */}
                     <div {...attributes} {...listeners} className="cursor-grab p-1 hover:bg-slate-700 rounded text-gray-500 hover:text-white">
                         <GripVertical className="h-5 w-5" />
                     </div>
                     
-                    {/* Title Editable */}
                     <EditableSectionTitle section={section} onSave={onUpdateTitle} />
 
-                    {/* Actions Right */}
                     <div className="flex items-center gap-3 ml-auto flex-shrink-0">
                          <Switch
                             checked={section.isVisible}
@@ -407,7 +381,6 @@ const SortableSectionItem = ({ section, isOpen, onToggleOpen, onToggleVisibility
                             <Trash className="h-4 w-4" />
                         </Button>
                         
-                        {/* Trigger Expand/Collapse */}
                         <CollapsibleTrigger asChild>
                             <Button variant="ghost" size="icon" className="w-8 h-8 hover:bg-slate-700 text-gray-400">
                                 <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
@@ -424,8 +397,163 @@ const SortableSectionItem = ({ section, isOpen, onToggleOpen, onToggleVisibility
     );
 };
 
-// --- MAIN COMPONENT ---
-export default function BannerManagementPage() {
+interface Banner {
+    id: string;
+    title: string;
+    image_url: string;
+    link_url: string | null;
+    is_active: boolean;
+}
+
+const HeroBannerManager = () => {
+    const [banners, setBanners] = useState<Banner[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    // Form state
+    const [newBanner, setNewBanner] = useState({ title: "", image_url: "", link_url: "" });
+
+    const fetchBanners = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const res = await apiClient.get('/banners');
+            setBanners(res.data);
+        } catch (e) { 
+            console.error(e);
+            toast.error("Không thể tải danh sách banner.");
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchBanners();
+    }, [fetchBanners]);
+
+    const handleCreate = async () => {
+        if(!newBanner.title || !newBanner.image_url) {
+            return toast.error("Vui lòng nhập Tiêu đề và URL Ảnh nền.");
+        }
+        try {
+            await apiClient.post('/banners', newBanner);
+            toast.success("Đã thêm Banner mới!");
+            setNewBanner({ title: "", image_url: "", link_url: "" });
+            fetchBanners();
+        } catch(e) { toast.error("Lỗi khi thêm banner"); }
+    };
+
+    const handleDelete = async (id: string) => {
+        if(!confirm("Bạn có chắc chắn muốn xóa banner này?")) return;
+        try {
+            await apiClient.delete(`/banners/${id}`);
+            setBanners(prev => prev.filter(b => b.id !== id));
+            toast.success("Đã xóa banner");
+        } catch(e) { toast.error("Lỗi khi xóa banner"); }
+    };
+
+    const handleToggleActive = async (id: string) => {
+        try {
+            await apiClient.put(`/banners/${id}/active`);
+            setBanners(prev => prev.map(b => b.id === id ? { ...b, is_active: !b.is_active } : b));
+            toast.success("Đã cập nhật trạng thái");
+        } catch(e) { toast.error("Lỗi cập nhật"); }
+    }
+
+    return (
+        <div className="space-y-8 animate-fade-in">
+            {/* 1. Form Thêm Banner */}
+            <Card className="bg-[#262626] border-slate-800 text-white">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                        <ImageIcon className="w-5 h-5 text-blue-400" /> 
+                        Thêm Hero Banner Mới
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                        <div className="md:col-span-4 space-y-1.5">
+                            <label className="text-xs text-gray-400 font-semibold uppercase">Tiêu đề phim</label>
+                            <Input 
+                                placeholder="VD: Spider-Man: No Way Home" 
+                                value={newBanner.title}
+                                onChange={e => setNewBanner({...newBanner, title: e.target.value})}
+                                className="bg-white/5 border-slate-700 text-white focus:border-blue-500"
+                            />
+                        </div>
+                        <div className="md:col-span-4 space-y-1.5">
+                            <label className="text-xs text-gray-400 font-semibold uppercase">URL Ảnh nền (Backdrop)</label>
+                            <Input 
+                                placeholder="https://image.tmdb.org/..." 
+                                value={newBanner.image_url}
+                                onChange={e => setNewBanner({...newBanner, image_url: e.target.value})}
+                                className="bg-white/5 border-slate-700 text-white focus:border-blue-500"
+                            />
+                        </div>
+                        <div className="md:col-span-3 space-y-1.5">
+                            <label className="text-xs text-gray-400 font-semibold uppercase">Link đích (Optional)</label>
+                            <div className="relative">
+                                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"/>
+                                <Input 
+                                    placeholder="/movies/slug..." 
+                                    value={newBanner.link_url}
+                                    onChange={e => setNewBanner({...newBanner, link_url: e.target.value})}
+                                    className="bg-white/5 border-slate-700 text-white pl-9 focus:border-blue-500"
+                                />
+                            </div>
+                        </div>
+                        <div className="md:col-span-1">
+                            <Button onClick={handleCreate} className="w-full bg-green-600 hover:bg-green-700 text-white">
+                                <Plus className="w-5 h-5"/>
+                            </Button>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* 2. Danh sách Banner */}
+            <div>
+                <h3 className="text-lg font-semibold text-white mb-4 pl-1">Danh sách Banner đang hiển thị</h3>
+                {isLoading ? (
+                    <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-blue-500"/></div>
+                ) : banners.length === 0 ? (
+                    <div className="text-center py-10 text-gray-500 border border-dashed border-slate-700 rounded-lg">Chưa có banner nào.</div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {banners.map(banner => (
+                            <div key={banner.id} className="relative group aspect-video rounded-xl overflow-hidden border border-slate-800 bg-black shadow-lg transition-all hover:border-slate-600">
+                                {/* Ảnh nền */}
+                                <img src={banner.image_url} alt={banner.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-40 transition-opacity duration-300" />
+                                
+                                {/* Overlay thông tin */}
+                                <div className="absolute inset-0 p-4 flex flex-col justify-between">
+                                    <div className="flex justify-between items-start">
+                                        <Badge className={`${banner.is_active ? "bg-green-500 hover:bg-green-600" : "bg-gray-500 hover:bg-gray-600"} cursor-pointer shadow-md`} onClick={() => handleToggleActive(banner.id)}>
+                                            {banner.is_active ? "Active" : "Inactive"}
+                                        </Badge>
+                                        
+                                        <Button 
+                                            variant="destructive" 
+                                            size="icon" 
+                                            className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                            onClick={() => handleDelete(banner.id)}
+                                        >
+                                            <Trash className="w-4 h-4"/>
+                                        </Button>
+                                    </div>
+
+                                    <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                                        <h4 className="text-white font-bold text-lg drop-shadow-md line-clamp-1">{banner.title}</h4>
+                                        <p className="text-xs text-gray-300 line-clamp-1">{banner.link_url || "Chưa có liên kết"}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+const HomepageSectionManager = () => {
     const [sections, setSections] = useState<HomepageSection[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -438,19 +566,16 @@ export default function BannerManagementPage() {
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
-    // Load Data Real
     useEffect(() => {
         const fetchData = async () => {
           setLoading(true);
           try {
             const res = await apiClient.get('/homepage');
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const mappedData: HomepageSection[] = res.data.map((sec: any) => ({
                 id: sec.id,
                 title: sec.title,
                 displayOrder: sec.display_order,
                 isVisible: sec.is_visible,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 linkedMovies: sec.movie_links.map((link: any) => ({
                     id: link.id,
                     sectionId: sec.id,
@@ -460,8 +585,6 @@ export default function BannerManagementPage() {
                         id: link.movie.id,
                         title: link.movie.title,
                         posterUrl: link.movie.poster_url,
-                        // Map genres để hiển thị
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         genres: link.movie.movie_genres?.map((mg: any) => mg.genre.name) || []
                     }
                 }))
@@ -469,7 +592,6 @@ export default function BannerManagementPage() {
 
             setSections(mappedData);
             
-            // Init selection sets (quan trọng để checkbox hoạt động)
             const initialSelected: { [sectionId: string]: Set<string> } = {};
             mappedData.forEach(sec => initialSelected[sec.id] = new Set<string>());
             setSelectedMoviesInSection(initialSelected);
@@ -484,8 +606,6 @@ export default function BannerManagementPage() {
         fetchData();
     }, []);
 
-    // --- Handlers ---
-
     const handleAddSection = async () => {
         const newTitle = `Chủ đề mới ${sections.length + 1}`;
         const newOrder = sections.length > 0 ? Math.max(...sections.map(s => s.displayOrder)) + 1 : 1;
@@ -493,7 +613,6 @@ export default function BannerManagementPage() {
             const res = await apiClient.post('/homepage', { title: newTitle, displayOrder: newOrder });
             const newSec = { ...res.data, linkedMovies: [] };
             setSections(prev => [...prev, newSec]);
-            // Init state select cho section mới
             setSelectedMoviesInSection(prev => ({...prev, [newSec.id]: new Set<string>()}));
             setOpenSectionId(newSec.id);
             toast.success("Đã thêm chủ đề mới");
@@ -517,7 +636,6 @@ export default function BannerManagementPage() {
         if (!confirm("Bạn có chắc muốn xóa chủ đề này?")) return;
         const oldSections = [...sections];
         setSections(prev => prev.filter(s => s.id !== id));
-        // Xóa state select của section bị xóa
         setSelectedMoviesInSection(prev => {
             const newState = {...prev};
             delete newState[id];
@@ -559,14 +677,11 @@ export default function BannerManagementPage() {
                 displayOrder: newOrder,
                 movie: {
                     ...movieInfo,
-                    // Fix hiển thị genre: dùng genre từ API search hoặc API response
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     genres: res.data.movie?.movie_genres?.map((mg: any) => mg.genre.name) || movieInfo.genres || []
                 }
             };
             setSections(prev => prev.map(s => s.id === sectionId ? { ...s, linkedMovies: [...s.linkedMovies, newLink] } : s));
             toast.success("Đã thêm phim");
-            // Không đóng search box để user có thể thêm tiếp
         } catch (err) {
             toast.error("Lỗi thêm phim");
         }
@@ -576,7 +691,6 @@ export default function BannerManagementPage() {
         const oldSections = [...sections];
         setSections(prev => prev.map(s => s.id === sectionId ? { ...s, linkedMovies: s.linkedMovies.filter(l => l.id !== linkId) } : s));
         
-        // Xóa khỏi selection nếu đang chọn
         setSelectedMoviesInSection(prev => {
             const newSet = new Set(prev[sectionId]);
             newSet.delete(linkId);
@@ -586,12 +700,11 @@ export default function BannerManagementPage() {
         try {
             await apiClient.delete(`/homepage/${sectionId}/movie/${linkId}`);
         } catch (err) { 
-            setSections(oldSections); // Hoàn tác nếu lỗi
+            setSections(oldSections);
             toast.error("Lỗi xóa phim"); 
         }
     };
     
-    // --- Logic Select Checkbox ---
     const handleSelectMovie = (sectionId: string, linkId: string, checked: boolean) => {
         setSelectedMoviesInSection(prev => {
             const currentSet = prev[sectionId] || new Set();
@@ -629,7 +742,6 @@ export default function BannerManagementPage() {
             : s
         ));
         
-        // Clear selection
         setSelectedMoviesInSection(prev => ({ ...prev, [sectionId]: new Set() }));
 
         try {
@@ -638,7 +750,7 @@ export default function BannerManagementPage() {
             ));
             toast.success("Đã xóa các phim đã chọn");
         } catch (err) {
-            setSections(oldSections); // Hoàn tác
+            setSections(oldSections);
             toast.error("Lỗi khi xóa nhiều phim");
         }
     };
@@ -647,12 +759,10 @@ export default function BannerManagementPage() {
         setAddingMovieToSectionId(prev => (prev === sectionId ? null : sectionId));
     };
 
-    // Drag & Drop Logic
     const handleDragEnd = useCallback((event: DragEndEvent) => {
         const { active, over } = event;
         if (!over || active.id === over.id) return;
 
-        // Sort Sections
         if (active.id.toString().startsWith('sec-') || sections.some(s => s.id === active.id)) {
             setSections((items) => {
                 const oldIndex = items.findIndex((i) => i.id === active.id);
@@ -665,7 +775,6 @@ export default function BannerManagementPage() {
                 return newItems;
             });
         } 
-        // Sort Movies
         else {
             const activeSection = sections.find(s => s.linkedMovies.some(m => m.id === active.id));
             if (activeSection) {
@@ -692,9 +801,9 @@ export default function BannerManagementPage() {
 
     return (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <div className="w-full text-white pb-20">
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold">Quản lý Trang chủ</h1>
+            <div className="space-y-6 animate-fade-in">
+                <div className="flex justify-between items-center">
+                    <div className="text-sm text-gray-400">Sắp xếp và quản lý các mục hiển thị trên trang chủ.</div>
                     <Button onClick={handleAddSection} className="bg-green-600 hover:bg-green-700">
                         <Plus className="h-4 w-4 mr-2" /> Thêm Chủ đề
                     </Button>
@@ -707,14 +816,12 @@ export default function BannerManagementPage() {
                                 key={section.id}
                                 section={section}
                                 isOpen={openSectionId === section.id}
-                                onToggleOpen={(id) => setOpenSectionId(prev => prev === id ? null : id)}
+                                onToggleOpen={(id: string) => setOpenSectionId(prev => prev === id ? null : id)}
                                 onToggleVisibility={handleToggleVisibility}
                                 onDeleteSection={handleDeleteSection}
                                 onUpdateTitle={handleUpdateSectionTitle}
                             >
-                                {/* Nội dung bên trong Section (List phim + Search) */}
                                 <div className="bg-[#1F1F1F] px-4 pb-4 pt-2">
-                                    
                                     <SectionMoviesTable
                                         section={section}
                                         selectedMovies={selectedMoviesInSection[section.id] || new Set()}
@@ -724,7 +831,7 @@ export default function BannerManagementPage() {
                                         onBulkRemoveMovies={handleBulkRemoveMovies}
                                         isAddingMovie={addingMovieToSectionId === section.id}
                                         onToggleAddMovieSearch={handleToggleAddMovieSearch}
-                                        onAddMovie={handleAddMovie} // Đã thêm prop này
+                                        onAddMovie={handleAddMovie}
                                     />
                                 </div>
                             </SortableSectionItem>
@@ -734,10 +841,50 @@ export default function BannerManagementPage() {
 
                 {sections.length === 0 && !loading && (
                     <div className="text-center text-gray-400 py-8 border border-dashed border-slate-700 rounded-lg">
-                        Chưa có chủ đề nào. Nhấn &quot;Thêm Chủ đề&quot; để bắt đầu xây dựng trang chủ.
+                        Chưa có chủ đề nào.
                     </div>
                 )}
             </div>
         </DndContext>
+    );
+};
+
+export default function BannerManagementPage() {
+    const [activeTab, setActiveTab] = useState<"homepage" | "hero">("homepage");
+
+    return (
+        <div className="w-full text-white pb-20">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div>
+                    <h1 className="text-2xl font-bold">Quản lý Giao diện</h1>
+                    <p className="text-gray-400 text-sm mt-1">Tùy chỉnh banner và các mục hiển thị trên trang chủ.</p>
+                </div>
+                
+                <div className="flex bg-[#1F1F1F] p-1 rounded-lg border border-slate-800">
+                    <Button 
+                        variant="ghost" 
+                        className={`gap-2 ${activeTab === "homepage" ? "bg-slate-700 text-white shadow-sm" : "text-gray-400 hover:text-white hover:bg-slate-800"}`}
+                        onClick={() => setActiveTab("homepage")}
+                    >
+                        <LayoutTemplate className="w-4 h-4" />
+                        Trang chủ (Sections)
+                    </Button>
+                    <Button 
+                        variant="ghost" 
+                        className={`gap-2 ${activeTab === "hero" ? "bg-slate-700 text-white shadow-sm" : "text-gray-400 hover:text-white hover:bg-slate-800"}`}
+                        onClick={() => setActiveTab("hero")}
+                    >
+                        <MonitorPlay className="w-4 h-4" />
+                        Hero Banner (Slider)
+                    </Button>
+                </div>
+            </div>
+
+            {activeTab === "homepage" ? (
+                <HomepageSectionManager /> 
+            ) : (
+                <HeroBannerManager />
+            )}
+        </div>
     );
 }

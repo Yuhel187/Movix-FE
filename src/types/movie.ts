@@ -22,6 +22,9 @@ export interface PersonResponse {
     name: string;
     avatar_url: string | null;
     role_type: string;
+    biography?: string | null;
+    birthday?: string | null;
+    gender?: number | null;
   };
 }
 export interface EpisodeResponse {

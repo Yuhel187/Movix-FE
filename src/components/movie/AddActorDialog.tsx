@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -35,28 +35,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils"; 
+import { cn } from "@/lib/utils";
 import {
   Plus,
   ChevronsUpDown,
   Check,
   ImageIcon,
   Calendar as CalendarIconLucide,
+  Link as LinkIcon
 } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-
+import apiClient from "@/lib/apiClient";
+import { getPersonAvatarUrl } from "@/lib/tmdb";
 interface Person {
-  id: string;
+  id: string | number;
   name: string;
-  avatarUrl?: string;
-  roles?: string; 
+  avatarUrl?: string | null;
+  roles?: string;
+  biography?: string | null;
+  birthday?: string | null;
+  gender?: number | null; // 1: Nữ, 2: Nam
 }
-const allPeopleSearchList: Person[] = [
-  { id: "p1", name: "Robert Downey Jr.", avatarUrl: "/avatars/rdj.jpg", roles: "Diễn viên" },
-  { id: "p2", name: "Chris Evans", avatarUrl: "/avatars/ce.jpg", roles: "Diễn viên" },
-  { id: "p3", name: "Jon Favreau", avatarUrl: "/avatars/jf.jpg", roles: "Đạo diễn, Diễn viên" },
-];
 
 interface AddActorDialogProps {
   open: boolean;
@@ -65,38 +65,91 @@ interface AddActorDialogProps {
 }
 
 export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialogProps) {
-  // === State cho Dialog chính (Thêm thành viên) ===
   const [popoverSearchOpen, setPopoverSearchOpen] = useState(false);
   const [searchPersonValue, setSearchPersonValue] = useState("");
   const [selectedPersonForRole, setSelectedPersonForRole] = useState<Person | null>(null);
   const [characterName, setCharacterName] = useState("");
+  
+  // State chứa kết quả tìm kiếm từ API
+  const [foundPeople, setFoundPeople] = useState<Person[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // === State cho Dialog lồng (Thêm hồ sơ) ===
+  // === State cho Dialog lồng  ===
   const [isCreatePersonOpen, setCreatePersonOpen] = useState(false);
   const [profileNgaySinh, setProfileNgaySinh] = useState<Date | undefined>();
   const [profileMoTa, setProfileMoTa] = useState("");
+  const [avatarUrlInput, setAvatarUrlInput] = useState("");
+  const [genderValue, setGenderValue] = useState("2");
 
+  // 3.1 LOGIC TÌM KIẾM TỪ API
+  useEffect(() => {
+    const fetchPeople = async () => {
+      if (!searchPersonValue || searchPersonValue.trim().length < 2) {
+        setFoundPeople([]);
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        const res = await apiClient.get(`/movies/search?q=${encodeURIComponent(searchPersonValue)}`);
+      
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mappedPeople: Person[] = res.data.people.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            avatarUrl: getPersonAvatarUrl(p.avatar_url),
+            roles: "Diễn viên / Đạo diễn", 
+            biography: p.biography,
+            birthday: p.birthday,
+            gender: p.gender,
+        }));
+        setFoundPeople(mappedPeople);
+      } catch (error) {
+        console.error("Lỗi tìm kiếm người:", error);
+        setFoundPeople([]);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const timeoutId = setTimeout(fetchPeople, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchPersonValue]);
+
+
+  // 3.2 LOGIC TẠO HỒ SƠ MỚI
   const handleCreateAndAddPerson = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    
+    let genderInt = 0;
+    if (genderValue === "Nam") genderInt = 2;
+    if (genderValue === "Nu") genderInt = 1;
+
     const newPerson: Person = {
-      id: `p${Date.now()}`, 
+      id: `new-${Date.now()}`, 
       name: formData.get("nghe_danh") as string,
       roles: formData.get("nghe_nghiep") as string,
-      avatarUrl: "",
+      avatarUrl: avatarUrlInput || null,
+      
+      biography: profileMoTa,
+      birthday: profileNgaySinh ? profileNgaySinh.toISOString() : null,
+      gender: genderInt,
     };
     
-    console.log("Đang tạo hồ sơ mới:", newPerson);
-    allPeopleSearchList.push(newPerson); 
     setSelectedPersonForRole(newPerson);
+    
     setCreatePersonOpen(false);
     setPopoverSearchOpen(false);
+    
+    setAvatarUrlInput("");
+    setProfileMoTa("");
+    setProfileNgaySinh(undefined);
+    setGenderValue("2");
   };
-
 
   const handleAddPersonToList = () => {
     if (!selectedPersonForRole) {
-      alert("Vui lòng chọn một diễn viên/đạo diễn.");
       return;
     }
     
@@ -105,7 +158,6 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
       characterName: characterName || "N/A", 
     });
     
-    // Reset state và đóng dialog
     onOpenChange(false);
     setSelectedPersonForRole(null);
     setCharacterName("");
@@ -114,13 +166,13 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* Nội dung Dialog "THÊM THÀNH VIÊN" */}
       <DialogContent className="bg-[#1F1F1F] border-slate-700 text-white max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl">THÊM THÀNH VIÊN</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4 py-4">
+          {/* Combobox Tìm kiếm */}
           <div>
             <Popover open={popoverSearchOpen} onOpenChange={setPopoverSearchOpen}>
               <PopoverTrigger asChild>
@@ -136,148 +188,178 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-[#262626] border-slate-700 text-white">
-                <Command>
+                <Command shouldFilter={false}> 
                   <CommandInput 
-                    placeholder="Tìm theo tên..."
+                    placeholder="Nhập tên để tìm..."
                     className="text-black border-b-slate-700 focus:ring-0"
                     value={searchPersonValue}
                     onValueChange={setSearchPersonValue}
                   />
                   <CommandList>
-                    <CommandEmpty>
-                      {/* Nút Thêm hồ sơ mới (Dialog lồng) */}
+                    {isSearching ? (
+                        <div className="py-6 text-center text-sm text-gray-400">Đang tìm kiếm...</div>
+                    ) : foundPeople.length === 0 && searchPersonValue ? (
+                        <div className="py-6 text-center text-sm text-gray-400">Không tìm thấy kết quả</div>
+                    ) : (
+                        <CommandGroup>
+                            {foundPeople.map((person) => (
+                                <CommandItem
+                                key={person.id}
+                                value={person.name + person.id}
+                                onSelect={() => {
+                                    setSelectedPersonForRole(person);
+                                    setPopoverSearchOpen(false); 
+                                    setSearchPersonValue(''); 
+                                }}
+                                className="hover:bg-slate-700 cursor-pointer data-[selected=true]:bg-slate-700"
+                                >
+                                <Check className={cn("mr-2 h-4 w-4", selectedPersonForRole?.id === person.id ? "opacity-100" : "opacity-0")} />
+                                <Avatar className="h-8 w-8 mr-3 border border-slate-600">
+                                    <AvatarImage src={person.avatarUrl || ''} />
+                                    <AvatarFallback className="bg-slate-700 text-xs">
+                                        {person.name?.charAt(0)}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="text-white">{person.name}</p>
+                                    <p className="text-xs text-gray-400">{person.roles || 'Nghệ sĩ'}</p>
+                                </div>
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    )}
+
+                    <div className="p-2 border-t border-slate-700">
+                      {/* Nút mở Dialog thêm mới */}
                       <Dialog open={isCreatePersonOpen} onOpenChange={setCreatePersonOpen}>
                         <DialogTrigger asChild>
-                          <Button variant="link" className="text-black">
+                          <Button variant="ghost" className="w-full justify-start text-blue-400 hover:text-blue-300 hover:bg-white/5">
                             <Plus className="w-4 h-4 mr-2" />
-                            Không tìm thấy? Thêm hồ sơ mới...
+                            Tạo hồ sơ thủ công...
                           </Button>
                         </DialogTrigger>
                         
-                        {/* (MỚI) Dialog "THÊM HỒ SƠ" */}
+                        {/* --- DIALOG CON: THÊM HỒ SƠ --- */}
                         <DialogContent className="bg-[#1F1F1F] border-slate-700 text-white max-w-lg">
                           <DialogHeader>
-                            <DialogTitle className="text-xl">THÊM HỒ SƠ</DialogTitle>
+                            <DialogTitle className="text-xl">THÊM HỒ SƠ MỚI</DialogTitle>
                           </DialogHeader>
                           <form onSubmit={handleCreateAndAddPerson}>
-                            <div className="py-4">
+                            <div className="py-4 space-y-6">
                               <div className="flex flex-col md:flex-row gap-6">
-                                {/* Cột trái: Ảnh đại diện */}
-                                <div className="w-full md:w-40 flex-shrink-0">
-                                  <div className="w-full h-full bg-slate-700 rounded-lg flex items-center justify-center cursor-pointer hover:bg-slate-600">
-                                    <ImageIcon className="w-20 h-20 text-slate-500" />
+                                {/* Cột trái: Ảnh đại diện & Input URL */}
+                                <div className="w-full md:w-40 flex-shrink-0 space-y-3">
+                                  <div className="w-full h-40 bg-slate-700 rounded-lg overflow-hidden flex items-center justify-center border border-slate-600 relative group">
+                                    {avatarUrlInput ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={avatarUrlInput} alt="Preview" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <ImageIcon className="w-16 h-16 text-slate-500" />
+                                    )}
+                                  </div>
+                                  <div className="relative">
+                                    <LinkIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                                    <Input 
+                                        placeholder="Dán URL ảnh..." 
+                                        className="bg-white/10 border-slate-600 pl-9 text-xs h-9 focus:border-primary"
+                                        value={avatarUrlInput}
+                                        onChange={(e) => setAvatarUrlInput(e.target.value)}
+                                    />
                                   </div>
                                 </div>
+
                                 {/* Cột phải: Thông tin chính */}
                                 <div className="flex-1 space-y-4">
                                   <div>
-                                    <label htmlFor="nghe_danh" className="text-sm font-medium text-gray-300 mb-1 block">Nghệ danh</label>
-                                    <Input id="nghe_danh" name="nghe_danh" className="bg-white/10 border-slate-600" defaultValue={searchPersonValue} required />
+                                    <label htmlFor="nghe_danh" className="text-sm font-medium text-gray-300 mb-1 block">Tên nghệ danh <span className="text-red-500">*</span></label>
+                                    <Input id="nghe_danh" name="nghe_danh" className="bg-white/10 border-slate-600 focus:border-primary" defaultValue={searchPersonValue} required />
                                   </div>
                                   <div>
-                                    <label htmlFor="nghe_nghiep" className="text-sm font-medium text-gray-300 mb-1 block">Nghề nghiệp</label>
-                                    <Input id="nghe_nghiep" name="nghe_nghiep" className="bg-white/10 border-slate-600" placeholder="Vd: Diễn viên, Đạo diễn" required />
+                                    <label htmlFor="nghe_nghiep" className="text-sm font-medium text-gray-300 mb-1 block">Vai trò <span className="text-red-500">*</span></label>
+                                    <Input id="nghe_nghiep" name="nghe_nghiep" className="bg-white/10 border-slate-600 focus:border-primary" placeholder="Vd: Diễn viên" required />
                                   </div>
-                                  <div>
-                                    <label htmlFor="ho_ten" className="text-sm font-medium text-gray-300 mb-1 block">Họ tên</label>
-                                    <Input id="ho_ten" name="ho_ten" className="bg-white/10 border-slate-600" placeholder="Tên thật (nếu có)" />
+                                  <div className='grid grid-cols-2 gap-4'>
+                                      <div> 
+                                          <label className="text-sm font-medium text-gray-300 mb-1 block">Giới tính</label>
+                                          <Select value={genderValue} onValueChange={setGenderValue}>
+                                              <SelectTrigger className="w-full bg-white/10 border-slate-600 focus:ring-0">
+                                                  <SelectValue placeholder="Chọn" />
+                                              </SelectTrigger>
+                                              <SelectContent className="bg-[#262626] border-slate-700 text-white">
+                                                  <SelectItem value="Nam">Nam</SelectItem>
+                                                  <SelectItem value="Nu">Nữ</SelectItem>
+                                                  <SelectItem value="Khac">Khác</SelectItem>
+                                              </SelectContent>
+                                          </Select>
+                                      </div>
                                   </div>
                                 </div>
                               </div>
                               
-                              <div className="space-y-4 mt-6">
-                                <div className='grid grid-cols-3 gap-4'> 
-                                    <div className='col-span-2'> 
-                                        <label htmlFor="ngay_sinh" className="text-sm font-medium text-gray-300 mb-1 block">Ngày sinh</label>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant={"outline"}
-                                                    className={cn(
-                                                        "w-full justify-start text-left font-normal bg-white/10 border-slate-600 hover:bg-white/20 hover:text-white", 
-                                                        !profileNgaySinh && "text-muted-foreground"
-                                                    )}
-                                                >
-                                                    <CalendarIconLucide className="mr-2 h-4 w-4" />
-                                                    {profileNgaySinh ? format(profileNgaySinh, "PPP", { locale: vi }) : <span>Chọn ngày</span>}
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0 bg-[#262626] border-slate-700 text-white" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={profileNgaySinh}
-                                                    onSelect={setProfileNgaySinh}
-                                                    initialFocus
-                                                    locale={vi}
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                    <div className='col-span-1'> 
-                                        <label htmlFor="gioi_tinh" className="text-sm font-medium text-gray-300 mb-1 block">Giới tính</label>
-                                        <Select name="gioi_tinh" defaultValue="Nam">
-                                            <SelectTrigger className="w-full bg-white/10 border-slate-600">
-                                                <SelectValue placeholder="Chọn giới tính" />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-[#262626] border-slate-700 text-white">
-                                                <SelectItem value="Nam">Nam</SelectItem>
-                                                <SelectItem value="Nu">Nữ</SelectItem>
-                                                <SelectItem value="Khac">Khác</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div> 
+                              {/* Hàng dưới: Ngày sinh & Mô tả */}
+                              <div className="space-y-4">
+                                <div> 
+                                    <label className="text-sm font-medium text-gray-300 mb-1 block">Ngày sinh</label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "w-full justify-start text-left font-normal bg-white/10 border-slate-600 hover:bg-white/20 hover:text-white", 
+                                                    !profileNgaySinh && "text-muted-foreground"
+                                                )}
+                                            >
+                                                <CalendarIconLucide className="mr-2 h-4 w-4" />
+                                                {profileNgaySinh ? format(profileNgaySinh, "PPP", { locale: vi }) : <span>Chọn ngày sinh</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0 bg-[#262626] border-slate-700 text-white" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={profileNgaySinh}
+                                                onSelect={setProfileNgaySinh}
+                                                locale={vi}
+                                                captionLayout="dropdown"
+                                                fromYear={1900} 
+                                                toYear={new Date().getFullYear()}
+                                                classNames={{
+                                                  caption_dropdowns: "flex gap-2 items-center justify-center",
+                                                  dropdown: "bg-[#262626] text-white border-slate-600 h-8 text-sm rounded-md px-2 cursor-pointer",
+                                                  dropdown_month: "order-1",
+                                                  dropdown_year: "order-2",
+                                                  caption_label: "hidden", 
+                                                  caption: "flex justify-center pt-1 relative items-center",
+                                                }}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>                
                                 <div>
-                                  <label htmlFor="mo_ta" className="text-sm font-medium text-gray-300 mb-1 block">Mô tả</label>
+                                  <label htmlFor="mo_ta" className="text-sm font-medium text-gray-300 mb-1 block">Tiểu sử / Mô tả</label>
                                   <Textarea
                                     id="mo_ta"
                                     name="mo_ta"
                                     value={profileMoTa} 
                                     onChange={(e) => setProfileMoTa(e.target.value)}
                                     className="bg-white/10 border-slate-600 focus:border-primary focus:ring-primary min-h-[80px]"
-                                    placeholder="Mô tả về tiểu sử, sự nghiệp..."
+                                    placeholder="Mô tả ngắn về diễn viên..."
                                     maxLength={1000}
                                   />
-                                  <p className="text-xs text-gray-500 text-right mt-1">{profileMoTa.length}/1000</p>
                                 </div>
                               </div>
                             </div>
                             <DialogFooter>
-                              <DialogClose asChild>
-                                <Button type="button" variant="outline" className="text-white bg-primary border-slate-600 hover:bg-slate-700">
-                                  Hủy
-                                </Button>
-                              </DialogClose>
-                              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Lưu hồ sơ</Button>
+                              <Button type="button" variant="ghost" onClick={() => setCreatePersonOpen(false)} className="text-gray-400 hover:text-white hover:bg-white/10">
+                                Hủy bỏ
+                              </Button>
+                              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                                Lưu hồ sơ
+                              </Button>
                             </DialogFooter>
                           </form>
                         </DialogContent>
                       </Dialog>
-                    </CommandEmpty>
-                    <CommandGroup>
-                      {allPeopleSearchList.map((person) => (
-                        <CommandItem
-                          key={person.id}
-                          value={person.name} 
-                          onSelect={() => {
-                            setSelectedPersonForRole(person);
-                            setPopoverSearchOpen(false); 
-                            setSearchPersonValue(''); 
-                          }}
-                          className="hover:bg-slate-700 cursor-pointer"
-                        >
-                          <Check className={cn("mr-2 h-4 w-4", selectedPersonForRole?.id === person.id ? "opacity-100" : "opacity-0")} />
-                          <Avatar className="h-8 w-8 mr-3 border border-slate-600">
-                            <AvatarImage src={person.avatarUrl || ''} />
-                            <AvatarFallback className="bg-slate-700 text-xs">?</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p>{person.name}</p>
-                            <p className="text-xs text-gray-400">{person.roles}</p>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
+                    </div>
                   </CommandList>
                 </Command>
               </PopoverContent>
@@ -286,10 +368,10 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
           
           {/* Input "Tên nhân vật" */}
           <div>
-            <label htmlFor="character_name" className="text-sm font-medium text-gray-300 mb-1 block">Tên nhân vật</label>
+            <label htmlFor="character_name" className="text-sm font-medium text-gray-300 mb-1 block">Tên nhân vật trong phim</label>
             <Input 
               id="character_name" 
-              className="bg-white/10 border-slate-600" 
+              className="bg-white/10 border-slate-600 focus:border-primary" 
               placeholder="VD: Iron Man"
               value={characterName}
               onChange={(e) => setCharacterName(e.target.value)}
@@ -299,10 +381,10 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
 
         <DialogFooter>
           <Button 
-            className="bg-[#E50914] hover:bg-[#b80710]"
+            className="bg-[#E50914] hover:bg-[#b80710] w-full sm:w-auto"
             onClick={handleAddPersonToList}
           >
-            Lưu
+            Thêm vào danh sách
           </Button>
         </DialogFooter>
       </DialogContent>

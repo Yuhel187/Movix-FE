@@ -1,4 +1,3 @@
-/* eslint-disable react/jsx-no-undef */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -33,7 +32,6 @@ import { SearchBar } from "@/components/common/search-bar";
 import { ApiSearchResult, SearchResultDropdown } from "@/components/common/SearchResultDropdown"; 
 import apiClient from "@/lib/apiClient"; 
 import { toast } from "sonner"; 
-import { useAuth } from "@/contexts/AuthContext"; 
 import { Skeleton } from "@/components/ui/skeleton"; 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -49,12 +47,6 @@ const useDebounce = (value: string, delay: number) => {
   }, [value, delay]);
   return debouncedValue;
 };
-
-const MOCK_GENRES_DB: Genre[] = [
-  { id: "g1", name: "Hành động" }, { id: "g2", name: "Phiêu lưu" }, { id: "g3", name: "Hoạt hình" },
-  { id: "g4", name: "Hài kịch" }, { id: "g5", name: "Tội phạm" }, { id: "g6", name: "Tài liệu" },
-  { id: "g7", name: "Kinh dị" }, { id: "g8", name: "Trinh thám" }, { id: "g9", name: "Tình cảm" },
-];
 
 interface MovieActor {
   id: string; name: string; avatar?: string; character: string; 
@@ -89,7 +81,7 @@ export default function MovieManagement() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  const [allGenres, setAllGenres] = useState<Genre[]>(MOCK_GENRES_DB);
+  const [allGenres, setAllGenres] = useState<Genre[]>([]);
   const [isAddActorOpen, setIsAddActorOpen] = useState(false);
 
   const [newSeasonName, setNewSeasonName] = useState("");
@@ -156,6 +148,21 @@ export default function MovieManagement() {
     setBackdropError(false);
     setPosterError(false);
   }, [movieToEdit?.id]);
+
+  useEffect(() => {
+    const fetchGenres = async () => {
+        try {
+            const res = await apiClient.get('/movies/genres');
+            if (Array.isArray(res.data)) {
+                setAllGenres(res.data);
+            }
+        } catch (error) {
+            console.error("Lỗi tải danh sách thể loại:", error);
+            toast.error("Không thể tải danh sách thể loại.");
+        }
+    };
+    fetchGenres();
+  }, []);
   
   const handleSelectMovieToEdit = async (slug: string) => {
     setIsDropdownOpen(false);
@@ -231,7 +238,7 @@ export default function MovieManagement() {
     const newPersonLink = {
       person: { id: data.person.id, name: data.person.name, avatar_url: data.person.avatarUrl },
       character: data.characterName,
-      credit_type: data.person.roles?.includes('Đạo diễn') ? 'director' : 'actor',
+      credit_type: data.person.roles?.includes('Đạo diễn') ? 'crew' : 'cast',
       ordering: (movieToEdit.movie_people?.length || 0) + 1
     };
     updateMovieField('movie_people', [...movieToEdit.movie_people, newPersonLink]);
