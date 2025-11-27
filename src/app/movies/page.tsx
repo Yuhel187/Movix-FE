@@ -5,6 +5,7 @@ import HeroBanner from "@/components/movie/HeroBanner";
 import { MovieCarousel } from "@/components/movie/MovieCarousel";
 import Navbar from "@/components/layout/NavBar";
 import Footer from "@/components/layout/Footer";
+import AIChatWidget from "@/components/ai/AIChatWidget";
 import { 
   getTrendingMovies, 
   getDynamicSections,
@@ -70,6 +71,8 @@ export default function MoviesPage() {
      
 
       <Footer />
+      <AIChatWidget />
     </main>
+    
   );
 }
