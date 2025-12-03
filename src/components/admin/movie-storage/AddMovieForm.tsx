@@ -27,6 +27,9 @@ import {
     ChevronRight,
     ChevronLeft, 
     Plus,
+    Bot,         
+    Sparkles,    
+    Loader2,
     Trash2,
     Info, 
     Pencil, 
@@ -47,6 +50,7 @@ import { GenreCombobox, Genre } from "@/components/movie/GenreCombobox";
 
 import { cn } from "@/lib/utils";
 import { AddActorDialog } from '@/components/movie/AddActorDialog';
+import { EditPersonDialog } from '@/components/movie/EditPersonDialog';
 
 const countryIsoMap: { [key: string]: string } = {
   "US": "mỹ",
@@ -138,6 +142,76 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     const [selectedGenres, setSelectedGenres] = useState<Genre[]>([]);
     const [isTmdbDataLoaded, setIsTmdbDataLoaded] = useState(false);
     const [trailerUrl, setTrailerUrl] = useState("");
+    const [aiQuery, setAiQuery] = useState("");
+    const [isAiLoading, setIsAiLoading] = useState(false);
+    const [isAiPopoverOpen, setIsAiPopoverOpen] = useState(false);
+
+    const [editingPerson, setEditingPerson] = useState<Person | null>(null);
+    const [isEditPersonOpen, setIsEditPersonOpen] = useState(false);
+
+    const handleAskAiForTmdb = async () => {
+        if (!aiQuery.trim()) return;
+        setIsAiLoading(true);
+        try {
+            const prompt = `
+                Tôi là Admin. Hãy tìm chính xác TMDB ID của phim: "${aiQuery}". 
+                Yêu cầu trả lời DUY NHẤT một chuỗi JSON hợp lệ với định dạng: 
+                { "id": "12345", "type": "movie" } nếu là phim lẻ, hoặc { "id": "67890", "type": "tv" } nếu là phim bộ/TV Series.
+                Nếu không tìm thấy, trả về { "id": null, "type": null }. 
+                Không thêm bất kỳ lời giải thích hay markdown (backticks) nào khác.
+            `;
+
+            const res = await apiClient.post("/ai/chat", { 
+                message: prompt,
+                mode: 'raw' 
+            });
+            
+            let reply = res.data.reply;
+            reply = reply.replace(/```json/g, "").replace(/```/g, "").trim();
+
+            try {
+                const data = JSON.parse(reply);
+
+                if (data.id) {
+                    setTmdbId(data.id.toString());
+
+                    if (data.type && (data.type.toLowerCase() === 'tv' || data.type.toLowerCase() === 'series')) {
+                        setSelectedMovieType('series');
+                        toast.success(`AI: Tìm thấy Phim bộ (ID: ${data.id}). Đã tự động chọn loại Phim bộ.`);
+                    } else {
+                        setSelectedMovieType('single');
+                        toast.success(`AI: Tìm thấy Phim lẻ (ID: ${data.id}). Đã tự động chọn loại Phim lẻ.`);
+                    }
+                    
+                    setIsAiPopoverOpen(false);
+                } else {
+                    toast.error("AI không tìm thấy phim này trên TMDB.");
+                }
+            } catch (parseError) {
+                console.error("Lỗi parse JSON từ AI:", reply);
+                toast.error("AI trả về định dạng không đúng. Vui lòng thử lại cụ thể hơn.");
+            }
+
+        } catch (error) {
+            console.error(error);
+            toast.error("Lỗi kết nối với dịch vụ AI.");
+        } finally {
+            setIsAiLoading(false);
+        }
+    };
+
+    const handleEditPersonClick = (id: string) => {
+        const p = people.find(item => item.id === id);
+        if (p) {
+            setEditingPerson(p);
+            setIsEditPersonOpen(true);
+        }
+    };
+
+    const handleSaveEditedPerson = (updated: Person) => {
+        setPeople(prev => prev.map(p => p.id === updated.id ? updated : p));
+        toast.success("Đã cập nhật thông tin.");
+    };
 
     useEffect(() => {
         const fetchGenres = async () => {
@@ -623,26 +697,54 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                                         <label className="block text-sm font-medium text-gray-300 mb-1">
                                             Tải dữ liệu từ TMDB (Movie)
                                         </label>
-                                        <InputGroup>
-                                            <InputGroupInput 
-                                                placeholder="Nhập TMDB Movie ID (ví dụ: 603)" 
-                                                className="h-full rounded-l-md bg-[#262626] border-none"
-                                                value={tmdbId}
-                                                onChange={(e) => {
-                                                    setTmdbId(e.target.value);
-                                                    if (e.target.value === '' && isTmdbDataLoaded) {
-                                                        setIsTmdbDataLoaded(false);
-                                                    }
-                                                }}
-                                            />
-                                            <InputGroupButton 
-                                                className="bg-blue-600 hover:bg-blue-700 text-white h-full rounded-md"
-                                                onClick={handleFetchTmdbData}
-                                                disabled={isFetching}
-                                            >
-                                                {isFetching ? "..." : <Download className="w-4 h-4" />}
-                                            </InputGroupButton>
-                                        </InputGroup>
+                                        <div className="flex gap-2">
+                                            {/* InputGroup Cũ */}
+                                            <InputGroup className="flex-1">
+                                                <InputGroupInput 
+                                                    placeholder="Nhập TMDB Movie ID (ví dụ: 603)" 
+                                                    className="h-full rounded-l-md bg-[#262626] border-none"
+                                                    value={tmdbId}
+                                                    onChange={(e) => setTmdbId(e.target.value)}
+                                                />
+                                                <InputGroupButton 
+                                                    className="bg-blue-600 hover:bg-blue-700 text-white h-full rounded-md"
+                                                    onClick={handleFetchTmdbData}
+                                                    disabled={isFetching}
+                                                >
+                                                    {isFetching ? <Loader2 className="w-4 h-4 animate-spin"/> : <Download className="w-4 h-4" />}
+                                                </InputGroupButton>
+                                            </InputGroup>
+
+                                            {/* --- NÚT HỎI AI --- */}
+                                            <Popover open={isAiPopoverOpen} onOpenChange={setIsAiPopoverOpen}>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant="outline" className="bg-[#262626] border-slate-700 hover:border-purple-500 text-purple-400" title="Hỏi AI tìm ID">
+                                                        <Sparkles className="w-4 h-4 mr-2" />
+                                                        Hỏi AI
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-80 bg-[#1F1F1F] border-slate-700 text-white p-4" side="right" align="start">
+                                                    <div className="space-y-3">
+                                                        <h4 className="font-semibold text-sm flex items-center gap-2 text-purple-400">
+                                                            <Bot className="w-4 h-4"/> Trợ lý tìm mã phim
+                                                        </h4>
+                                                        <p className="text-xs text-gray-400">Nhập tên phim, AI sẽ tìm ID giúp bạn.</p>
+                                                        <div className="flex gap-2">
+                                                            <Input 
+                                                                placeholder="Ví dụ: Đào, Phở và Piano" 
+                                                                className="h-9 text-sm bg-black/20 border-slate-600"
+                                                                value={aiQuery}
+                                                                onChange={(e) => setAiQuery(e.target.value)}
+                                                                onKeyDown={(e) => e.key === 'Enter' && handleAskAiForTmdb()}
+                                                            />
+                                                            <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={handleAskAiForTmdb} disabled={isAiLoading}>
+                                                                {isAiLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : "Tìm"}
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
                                     </div>
                                     
                                     <div>
@@ -998,22 +1100,22 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
 
                                 {/* Thao tác */}
                                 <div className="col-span-3 flex justify-end items-center gap-2">
-                                <Button 
-                                    variant="outline" 
-                                    size="icon" 
-                                    className="bg-blue-600/20 border-blue-500 text-blue-400 hover:bg-blue-600/40 hover:text-blue-300"
-                                    onClick={() => handleEditPerson(person.id)}
-                                >
-                                    <Pencil className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                    variant="outline" 
-                                    size="icon" 
-                                    className="bg-red-600/20 border-red-500 text-red-400 hover:bg-red-600/40 hover:text-red-300"
-                                    onClick={() => handleRemovePerson(person.id)}
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        className="bg-blue-600/20 border-blue-500 text-blue-400 hover:bg-blue-600/40 hover:text-blue-300"
+                                        onClick={() => handleEditPersonClick(person.id)}
+                                    >
+                                        <Pencil className="w-4 h-4" />
+                                    </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        className="bg-red-600/20 border-red-500 text-red-400 hover:bg-red-600/40 hover:text-red-300"
+                                        onClick={() => handleRemovePerson(person.id)}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
                                 </div>
                             </div>
                             ))}
@@ -1022,7 +1124,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                     </CardContent>
 
                     <CardFooter className="flex justify-end pt-4">
-                        {/* 5. Phân trang (Pagination) */}
+                        {/* 5. Phân trang */}
                         <div className="flex items-center gap-2">
                         <Button variant="outline" size="icon" className="bg-white/10 border-slate-700 hover:bg-white/20">
                             <ChevronLeft className="w-4 h-4" /> 
@@ -1034,10 +1136,16 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                         </div>
                     </CardFooter>
                     </Card>
+                    <EditPersonDialog 
+                        open={isEditPersonOpen}
+                        onOpenChange={setIsEditPersonOpen}
+                        person={editingPerson}
+                        onSave={handleSaveEditedPerson}
+                    />
                     <AddActorDialog 
-                    open={isAddPersonOpen}
-                    onOpenChange={setAddPersonOpen}
-                    onAddActor={handleAddPersonSubmit} 
+                        open={isAddPersonOpen}
+                        onOpenChange={setAddPersonOpen}
+                        onAddActor={handleAddPersonSubmit} 
                     />
                 </div>
                 )}
