@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'; 
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from "next/link";
 import { Search, Bell, ChevronDown, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { SearchResultDropdown, ApiSearchResult } from '@/components/common/SearchResultDropdown';
-import api from '@/lib/apiClient'; 
-import { useAuth } from '@/contexts/AuthContext'; 
+import api from '@/lib/apiClient';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Genre = { id: string; name: string };
 type Country = { id: string; name: string | null };
@@ -44,14 +44,14 @@ const Navbar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [genres, setGenres] = useState<Genre[]>([]);
   const [countries, setCountries] = useState<Country[]>([]);
-  
+
   const { user, isLoggedIn, isLoading, logout } = useAuth();
-  
+
   const [searchResults, setSearchResults] = useState<ApiSearchResult>({ movies: [], people: [] });
   const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -107,11 +107,11 @@ const Navbar = () => {
     };
   }, []);
 
-  const handleNavigate = (type: 'genre' | 'country'| 'q', value: string) => {
+  const handleNavigate = (type: 'genre' | 'country' | 'q', value: string) => {
     router.push(`/filter?${type}=${encodeURIComponent(value)}`);
     setIsMenuOpen(false);
   };
-  
+
   const handleClickNavItem = (item: string) => {
     if (item === 'Phim hay') {
       router.push('/movies');
@@ -126,11 +126,11 @@ const Navbar = () => {
   };
 
   const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
-  if (e.key === 'Enter' && searchText.trim()) {
-    handleNavigate('q', searchText.trim());
-    setIsDropdownOpen(false);
-  }
-};
+    if (e.key === 'Enter' && searchText.trim()) {
+      handleNavigate('q', searchText.trim());
+      setIsDropdownOpen(false);
+    }
+  };
 
   const handleMovieResultClick = (slug: string) => {
     router.push(`/movies/${slug}`);
@@ -179,9 +179,9 @@ const Navbar = () => {
       if (country) return 'Quốc gia';
     }
 
-    return ''; 
+    return '';
   };
-  
+
   const activeItem = getActiveItem();
 
   const renderNavItem = (item: string) => {
@@ -219,12 +219,9 @@ const Navbar = () => {
       </button>
     );
   };
-  if (isLoading) {
-    return (
-      <nav className="bg-[#0F0F0F] text-white flex items-center justify-between px-4 md:px-6 py-3 h-[68px]">
-      </nav>
-    );
-  }
+
+  // ĐÃ XÓA: Đoạn code return null khi loading làm mất Navbar
+  // if (isLoading) { return ... }
 
   return (
     <>
@@ -277,7 +274,12 @@ const Navbar = () => {
             )}
           </div>
 
-          {isLoggedIn ? (
+          {isLoading ? (
+            // Hiển thị Skeleton khi đang load user
+            <div className="flex items-center gap-4">
+              <div className="w-8 h-8 rounded-full bg-zinc-800 animate-pulse" />
+            </div>
+          ) : isLoggedIn ? (
             <>
               <NotificationDropdown />
               <DropdownMenu>
@@ -315,11 +317,11 @@ const Navbar = () => {
         {/* (Mobile Menu Button) */}
         <div className="md:hidden">
           <div className="flex items-center gap-2">
-             <Button variant="ghost" size="icon">
-                <Search className="h-6 w-6" />
-             </Button>
+            <Button variant="ghost" size="icon">
+              <Search className="h-6 w-6" />
+            </Button>
             {isLoggedIn ? (
-               <DropdownMenu>
+              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div className="flex items-center cursor-pointer">
                     <Avatar className="h-8 w-8">
@@ -340,12 +342,12 @@ const Navbar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-               <Button
-                  onClick={() => router.push('/login')}
-                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md text-sm font-medium"
-                >
-                  Đăng nhập
-                </Button>
+              <Button
+                onClick={() => router.push('/login')}
+                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md text-sm font-medium"
+              >
+                Đăng nhập
+              </Button>
             )}
             <Button
               variant="ghost"
@@ -367,19 +369,18 @@ const Navbar = () => {
         <div className="md:hidden bg-[#1A1A1A] px-4 py-3 space-y-2 border-t border-gray-800">
           {navItems.map(item => {
             const isActive = (item === activeItem);
-            
+
             return (
               <div
                 key={item}
                 onClick={() => {
-                  handleClickNavItem(item); 
+                  handleClickNavItem(item);
                   setIsMenuOpen(false);
                 }}
-                className={`block text-sm px-3 py-2 rounded-md ${
-                  isActive
+                className={`block text-sm px-3 py-2 rounded-md ${isActive
                     ? 'bg-red-600 text-white'
                     : 'text-gray-300 hover:bg-[#2A2A2A]'
-                }`}
+                  }`}
               >
                 {item}
               </div>

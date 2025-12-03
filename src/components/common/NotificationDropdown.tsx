@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Bell, Film, User, AlertTriangle, KeyRound } from "lucide-react";
+import React, { useEffect } from "react";
+import { Bell, Film, MessageSquare, Users, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,61 +11,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import type { Notification, NotificationType } from "@/types/notification"; // Dùng file type mới
-import apiClient from "@/lib/apiClient"; 
+import type { Notification, NotificationType } from "@/types/notification";
 import { Skeleton } from "@/components/ui/skeleton";
-
-// --- Mock Data (Sẽ thay bằng API) ---
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "new_comment",
-    title: "Bình luận mới",
-    message: "Huy Lê đã bình luận về phim John Wick 4.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 phút trước
-    isRead: false,
-    link: "/movies/john-wick-4",
-    actor: {
-      name: "Huy Lê",
-      avatarUrl: "https://i.pravatar.cc/150?u=a042581f4e29026704d",
-    },
-  },
-  {
-    id: "2",
-    type: "favorite_added",
-    title: "Đã thêm vào yêu thích",
-    message: "Bạn đã thêm Interstellar vào danh sách yêu thích của mình.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 giờ trước
-    isRead: false,
-    link: "/account/favorites",
-    actor: {
-      name: "Interstellar",
-      avatarUrl:
-        "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
-    },
-  },
-  {
-    id: "3",
-    type: "new_login",
-    title: "Đăng nhập mới",
-    message: "Phát hiện đăng nhập mới từ thiết bị Chrome trên Windows.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 ngày trước
-    isRead: true,
-    link: "/account/profile",
-  },
-  {
-    id: "4",
-    type: "system_alert",
-    title: "Bảo trì hệ thống",
-    message: "Hệ thống sẽ bảo trì vào lúc 3:00 AM. Vui lòng quay lại sau.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 ngày trước
-    isRead: true,
-  },
-];
-// --- End Mock Data ---
+import { useNotifications } from "@/hooks/useNotifications";
+import { useAuth } from "@/contexts/AuthContext";
+import { useWebPush } from "@/hooks/useWebPush";
 
 function formatTimeAgo(dateString: string) {
   const date = new Date(dateString);
@@ -87,69 +39,108 @@ function formatTimeAgo(dateString: string) {
 
 const NotificationIcon = ({ type }: { type: NotificationType }) => {
   switch (type) {
-    case "new_comment":
-      return (
-        <Film className="w-4 h-4 text-blue-400" />
-      );
-    case "favorite_added":
-      return (
-        <Film className="w-4 h-4 text-red-400" />
-      );
-    case "new_login":
-      return <KeyRound className="w-4 h-4 text-yellow-400" />;
-    case "system_alert":
+    case "NEW_MOVIE":
+      return <Film className="w-4 h-4 text-blue-400" />;
+    case "COMMENT_REPLY":
+      return <MessageSquare className="w-4 h-4 text-green-400" />;
+    case "WATCH_PARTY_INVITE":
+      return <Users className="w-4 h-4 text-purple-400" />;
+    case "SYSTEM":
       return <AlertTriangle className="w-4 h-4 text-orange-400" />;
     default:
       return <Bell className="w-4 h-4 text-gray-400" />;
   }
 };
 
+function WebPushToggle() {
+  const { isSupported, isSubscribed, isLoading, subscribeToPush, unsubscribeFromPush } = useWebPush();
+
+  if (!isSupported) return null;
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-8 w-8 p-0 ml-1"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        isSubscribed ? unsubscribeFromPush() : subscribeToPush();
+      }}
+      disabled={isLoading}
+      title={isSubscribed ? "Tắt thông báo đẩy (Web Push)" : "Bật thông báo đẩy (Web Push)"}
+    >
+      {isLoading ? (
+        <span className="text-[10px]">...</span>
+      ) : isSubscribed ? (
+        <Bell className="w-4 h-4 text-green-500 fill-green-500" />
+      ) : (
+        <Bell className="w-4 h-4 text-gray-500" />
+      )}
+    </Button>
+  );
+}
+
 export default function NotificationDropdown() {
-  const [notifications, setNotifications] =
-    useState<Notification[]>(mockNotifications);
-  const [isLoading, setIsLoading] = useState(false); // Sẽ đổi thành true khi dùng API
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = React.useState(false);
   const router = useRouter();
+  const { user, isLoggedIn } = useAuth();
 
-  // // Logic tải dữ liệu thật
-  // useEffect(() => {
-  //   if (isOpen) {
-  //     setIsLoading(true);
-  //     apiClient.get('/notifications?limit=5')
-  //       .then(res => setNotifications(res.data))
-  //       .catch(err => console.error("Failed to fetch notifications", err))
-  //       .finally(() => setIsLoading(false));
-  //   }
-  // }, [isOpen]);
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    isConnected,
+    fetchNotifications,
+    fetchUnreadCount,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications(isLoggedIn);
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  // Fetch notifications khi mở dropdown
+  useEffect(() => {
+    if (isOpen && isLoggedIn) {
+      fetchNotifications(1, 5); // Lấy 5 thông báo mới nhất
+    }
+  }, [isOpen, isLoggedIn, fetchNotifications]);
+
+  // Fetch unread count khi component mount
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchUnreadCount();
+    }
+  }, [isLoggedIn, fetchUnreadCount]);
 
   const handleNotificationClick = (notification: Notification) => {
-    // Gọi API đánh dấu đã đọc
-    // ...
+    // Đánh dấu đã đọc
+    if (!notification.isRead) {
+      markAsRead(notification.id);
+    }
 
-    // Cập nhật giao diện
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
-    );
+    // Đóng dropdown
+    setIsOpen(false);
 
     // Điều hướng
-    if (notification.link) {
-      router.push(notification.link);
+    if (notification.actionUrl) {
+      router.push(notification.actionUrl);
+    } else if (notification.data?.actionUrl) {
+      router.push(notification.data.actionUrl);
     }
   };
 
-  const markAllAsRead = () => {
-    // Gọi API đánh dấu tất cả đã đọc
-    // ...
-
-    // Cập nhật giao diện
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  const handleMarkAllAsRead = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    markAllAsRead();
   };
-  
+
   const viewAll = () => {
-    router.push('/account/notifications');
-  }
+    setIsOpen(false);
+    router.push("/account/notifications");
+  };
+
+  // Lấy top 5 notifications để hiển thị
+  const displayNotifications = notifications.slice(0, 5);
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -161,7 +152,13 @@ export default function NotificationDropdown() {
         >
           <Bell className="h-6 w-6" />
           {unreadCount > 0 && (
-            <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-[#0F0F0F]" />
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-[#0F0F0F]">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+          {/* Connection indicator */}
+          {isConnected && (
+            <span className="absolute bottom-1 right-1 block h-2 w-2 rounded-full bg-green-500 ring-2 ring-[#0F0F0F]" />
           )}
         </Button>
       </DropdownMenuTrigger>
@@ -170,12 +167,19 @@ export default function NotificationDropdown() {
         align="end"
       >
         <DropdownMenuLabel className="flex justify-between items-center">
-          Thông báo
+          <div className="flex items-center gap-2">
+            <span>Thông báo</span>
+            {isConnected && (
+              <span className="text-xs text-green-400" title="Đang kết nối real-time">
+                ●
+              </span>
+            )}
+          </div>
           {unreadCount > 0 && (
             <Button
               variant="link"
               className="text-xs p-0 h-auto text-red-400 hover:text-red-300"
-              onClick={markAllAsRead}
+              onClick={handleMarkAllAsRead}
             >
               Đánh dấu đã đọc
             </Button>
@@ -189,12 +193,12 @@ export default function NotificationDropdown() {
               <Skeleton className="h-16 w-full bg-zinc-700" />
               <Skeleton className="h-16 w-full bg-zinc-700" />
             </div>
-          ) : notifications.length === 0 ? (
+          ) : displayNotifications.length === 0 ? (
             <p className="text-center text-sm text-gray-400 py-4">
               Không có thông báo mới.
             </p>
           ) : (
-            notifications.map((noti) => (
+            displayNotifications.map((noti) => (
               <DropdownMenuItem
                 key={noti.id}
                 className={cn(
@@ -203,23 +207,11 @@ export default function NotificationDropdown() {
                 )}
                 onClick={() => handleNotificationClick(noti)}
               >
-                {/* Icon/Avatar */}
+                {/* Icon */}
                 <div className="w-10 h-10 flex-shrink-0">
-                  {noti.actor ? (
-                    <Avatar className="w-10 h-10">
-                      <AvatarImage
-                        src={noti.actor.avatarUrl}
-                        alt={noti.actor.name}
-                      />
-                      <AvatarFallback>
-                        {noti.actor.name[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center">
-                       <NotificationIcon type={noti.type} />
-                    </div>
-                  )}
+                  <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center">
+                    <NotificationIcon type={noti.type} />
+                  </div>
                 </div>
 
                 {/* Content */}
@@ -249,10 +241,10 @@ export default function NotificationDropdown() {
                     {formatTimeAgo(noti.createdAt)}
                   </p>
                 </div>
-                
+
                 {/* Read Dot */}
                 {!noti.isRead && (
-                   <div className="w-2.5 h-2.5 bg-red-500 rounded-full flex-shrink-0 self-center" />
+                  <div className="w-2.5 h-2.5 bg-red-500 rounded-full flex-shrink-0 self-center" />
                 )}
               </DropdownMenuItem>
             ))
@@ -260,12 +252,15 @@ export default function NotificationDropdown() {
         </div>
 
         <DropdownMenuSeparator className="bg-gray-700" />
-        <DropdownMenuItem
-          className="justify-center cursor-pointer text-red-400 hover:text-red-300 focus:bg-zinc-800"
-          onClick={viewAll}
-        >
-          Xem tất cả thông báo
-        </DropdownMenuItem>
+        <div className="flex items-center justify-between p-1">
+          <DropdownMenuItem
+            className="justify-center cursor-pointer text-red-400 hover:text-red-300 focus:bg-zinc-800 flex-1"
+            onClick={viewAll}
+          >
+            Xem tất cả thông báo
+          </DropdownMenuItem>
+          <WebPushToggle />
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
