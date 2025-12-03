@@ -10,7 +10,7 @@ interface AuthUser {
   email: string;
   role: string;
   avatarUrl?: string | null;
-  display_name?: string; 
+  display_name?: string;
 }
 
 interface AuthContextType {
@@ -32,20 +32,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const normalizeUser = (data: any): AuthUser => {
     if (!data) return data;
-    const roleNormalized = (typeof data.role === 'object' && data.role !== null) 
-        ? data.role.name 
-        : data.role;
+    const roleNormalized = (typeof data.role === 'object' && data.role !== null)
+      ? data.role.name
+      : data.role;
 
     return {
-        ...data,
-        role: roleNormalized
+      ...data,
+      role: roleNormalized,
+      avatarUrl: data.avatar_url || data.avatarUrl || null
     };
   };
 
   const checkAuth = async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
     try {
-      const res = await apiClient.get("/profile/me"); 
+      const res = await apiClient.get("/profile/me");
       const userSafe = normalizeUser(res.data);
       _setUser(userSafe);
       localStorage.setItem("user_cache", JSON.stringify(userSafe));
@@ -61,16 +62,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-       const cached = localStorage.getItem("user_cache");
-       if (cached) {
-           try {
-               const parsed = JSON.parse(cached);
-               const userSafe = normalizeUser(parsed);
-               if (!user) _setUser(userSafe);
-           } catch (e) {
-               localStorage.removeItem("user_cache");
-           }
-       }
+      const cached = localStorage.getItem("user_cache");
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          const userSafe = normalizeUser(parsed);
+          if (!user) _setUser(userSafe);
+        } catch (e) {
+          localStorage.removeItem("user_cache");
+        }
+      }
     }
     checkAuth();
   }, []);
@@ -78,9 +79,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!user) return;
     const intervalId = setInterval(() => {
-        console.log("🔄 Auto-refreshing session...");
-        checkAuth(true);
-    }, 5 * 60 * 1000); 
+      console.log("🔄 Auto-refreshing session...");
+      checkAuth(true);
+    }, 5 * 60 * 1000);
 
     return () => clearInterval(intervalId);
   }, [user]);
@@ -105,20 +106,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await apiClient.post("/auth/logout", {});
     } catch (error) {
-        console.error("Lỗi khi gọi API logout, nhưng vẫn đăng xuất client", error);
+      console.error("Lỗi khi gọi API logout, nhưng vẫn đăng xuất client", error);
     }
-    setUser(null);  
+    setUser(null);
     router.push("/");
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isLoading, 
-      login, 
-      logout, 
-      isLoggedIn: !!user, 
-      setUser, 
+    <AuthContext.Provider value={{
+      user,
+      isLoading,
+      login,
+      logout,
+      isLoggedIn: !!user,
+      setUser,
     }}>
       {children}
     </AuthContext.Provider>
