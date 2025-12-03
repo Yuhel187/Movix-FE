@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Connection Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #1a1a1a; color: #fff; }
+        .status { padding: 10px; margin-bottom: 10px; border-radius: 4px; }
+        .success { background: #1b5e20; }
+        .error { background: #b71c1c; }
+        .log { background: #000; padding: 10px; height: 300px; overflow-y: auto; font-family: monospace; border: 1px solid #333; }
+        .controls { margin-bottom: 20px; }
+        input { padding: 5px; width: 300px; }
+        button { padding: 5px 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Socket.IO Test</h1>
+    
+    <div class="controls">
+        <label>Socket URL:</label>
+        <input type="text" id="url" value="http://localhost:5000">
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+    </div>
+
+    <div id="status" class="status" style="display:none"></div>
+    <div id="log" class="log"></div>
+
+    <script>
+        let socket;
+        const logDiv = document.getElementById('log');
+        const statusDiv = document.getElementById('status');
+
+        function log(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            div.style.color = type === 'error' ? '#ff5252' : (type === 'success' ? '#69f0ae' : '#e0e0e0');
+            logDiv.prepend(div);
+        }
+
+        function setStatus(msg, type) {
+            statusDiv.textContent = msg;
+            statusDiv.className = 'status ' + type;
+            statusDiv.style.display = 'block';
+        }
+
+        function connect() {
+            if (socket) socket.disconnect();
+            
+            const url = document.getElementById('url').value;
+            log(`Connecting to ${url}...`);
+
+            // Thử kết nối với withCredentials: true để gửi cookie
+            socket = io(url, {
+                transports: ['websocket', 'polling'], // Thử cả 2
+                withCredentials: true,
+                reconnection: false // Tắt auto reconnect để dễ debug
+            });
+
+            socket.on('connect', () => {
+                setStatus('Connected! ✅', 'success');
+                log('Connected successfully!', 'success');
+                log(`Socket ID: ${socket.id}`);
+            });
+
+            socket.on('connect_error', (err) => {
+                setStatus('Connection Error ❌', 'error');
+                log(`Error: ${err.message}`, 'error');
+                console.error('Socket error:', err);
+                
+                // Gợi ý nguyên nhân
+                if (err.message === 'websocket error') {
+                    log('Hint: Có thể do CORS policy trên server hoặc URL sai.', 'info');
+                } else if (err.message === 'xhr poll error') {
+                    log('Hint: Server không phản hồi hoặc chặn request (CORS/Auth).', 'info');
+                }
+            });
+
+            socket.on('disconnect', (reason) => {
+                if (reason === 'io client disconnect') {
+                    log('Disconnected by user.');
+                } else {
+                    setStatus('Disconnected ⚠️', 'error');
+                    log(`Disconnected: ${reason}`, 'error');
+                }
+            });
+            
+            // Listen to all events
+            socket.onAny((event, ...args) => {
+                log(`Event received: ${event}`, 'success');
+                console.log('Event data:', args);
+            });
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                setStatus('Disconnected', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
