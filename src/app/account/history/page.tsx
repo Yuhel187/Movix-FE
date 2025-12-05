@@ -6,7 +6,7 @@ import { getWatchHistory, HistoryItem } from "@/services/history.service";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Clock, PlayCircle } from "lucide-react";
 import Link from "next/link";
-import type { Movie } from "@/types/movie"; // Import type Movie
+import type { Movie } from "@/types/movie"; 
 
 export default function HistoryPage() {
     const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
@@ -39,7 +39,7 @@ export default function HistoryPage() {
     };
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-8">
+       <div className="max-w-7xl">
             <div className="flex items-center gap-3 mb-2">
                 <Clock className="w-8 h-8 text-red-600" />
                 <h1 className="text-3xl font-bold text-white">Lịch sử xem</h1>
@@ -71,31 +71,25 @@ export default function HistoryPage() {
                     </Link>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-8">
+                <div className="dark grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
                     {historyItems.map((item) => {
                         const movieData = item.episode.season.movie;
                         const episode = item.episode;
                         const progressPercent = calculateProgress(item.progress_seconds, episode.runtime);
-                        
-                        // Tạo link xem tiếp
                         const watchLink = `/movies/${movieData.slug}/watch?episodeId=${episode.id}`;
-
-                        // 👇 CẤU TRÚC LẠI DỮ LIỆU ĐỂ KHỚP VỚI TYPE 'Movie' CỦA MOVIECARD
-                        // Vì API lịch sử có thể trả về thiếu trường, ta cần map thủ công
                         const mappedMovie: Movie = {
                             id: movieData.id,
                             slug: movieData.slug,
                             title: movieData.title,
                             subTitle: movieData.original_title,
-                            description: "", // API history chưa trả về desc, để trống tạm
+                            description: "", 
                             posterUrl: movieData.poster_url || "/images/placeholder-poster.png",
                             backdropUrl: movieData.poster_url || "/images/placeholder-backdrop.png",
                             trailerUrl: null,
                             videoUrl: null,
-                            type: "MOVIE", // Mặc định, hoặc cần API trả về media_type
-                            releaseYear: "N/A", // API history chưa trả về
+                            type: "MOVIE", 
+                            releaseYear: "N/A", 
                             tags: [],
-                            // Các trường phụ nếu cần
                             duration: episode.runtime ? `${episode.runtime} phút` : undefined
                         };
 
@@ -103,7 +97,6 @@ export default function HistoryPage() {
                             <div key={item.id} className="relative group">
                                 <MovieCard
                                     movie={mappedMovie}
-                                    // 👇 Truyền các thông tin riêng của lịch sử qua các prop phụ này
                                     subTitle={`Tập ${episode.episode_number} - Đã xem ${formatTime(item.progress_seconds)}`}
                                     watchUrl={watchLink}
                                 />
@@ -115,8 +108,6 @@ export default function HistoryPage() {
                                         style={{ width: `${progressPercent}%` }}
                                     />
                                 </div>
-                                
-                                {/* Nút Play đè lên (trải nghiệm UX tốt hơn) */}
                                 <Link
                                     href={watchLink}
                                     className="absolute inset-0 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-lg"
