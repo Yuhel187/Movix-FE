@@ -16,6 +16,7 @@ import { FaFilter, FaSearch, FaMagic, FaMicrophone, FaStop} from "react-icons/fa
 import apiClient from "@/lib/apiClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 type Genre = {
   id: string;

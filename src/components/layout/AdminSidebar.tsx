@@ -16,11 +16,10 @@ import {
   BoxIcon,
   ChevronLeft,
   ChevronRight,
+  Bell,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/contexts/AuthContext";
-// Bỏ import không dùng nữa
-// import apiClient from "@/lib/apiClient"; 
 import { toast } from "sonner";
 
 type NavItem = {
@@ -30,15 +29,13 @@ type NavItem = {
   icon: React.ElementType;
 };
 
-// --- BẮT ĐẦU THAY ĐỔI: Tái cấu trúc navItems thành navGroups ---
 type NavGroup = {
-  title?: string; // Tiêu đề nhóm (không bắt buộc)
+  title?: string; 
   items: NavItem[];
 };
 
 const navGroups: NavGroup[] = [
   {
-    // Nhóm đầu tiên (Tổng quan) không cần tiêu đề
     items: [
       { id: "dashboard", label: "Dashboard", href: "/admin", icon: LayoutGrid },
       { id: "report", label: "Báo cáo thống kê", href: "/admin/report", icon: Book },
@@ -57,10 +54,10 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "users", label: "Quản lý user", href: "/admin/user-management", icon: Users },
       { id: "comment", label: "Quản lý bình luận", href: "/admin/comment-management", icon: MessageSquare }, 
+      { id: "notification", label: "Quản lý thông báo", href: "/admin/notification-management", icon: Bell },
     ]
-  }
+  },
 ];
-// --- KẾT THÚC THAY ĐỔI ---
 
 interface AdminSidebarProps {
   className?: string;
@@ -226,8 +223,6 @@ export default function AdminSidebar({
         </ul>
       </nav>
 
-
-      {/* Footer */}
       <div className="mt-auto">
         <div className="my-4 h-px bg-slate-700" />
         <Button
@@ -240,7 +235,6 @@ export default function AdminSidebar({
         </Button>
       </div>
 
-      {/* Toggle Button */}
       <Button
         variant="secondary"
         size="icon"
