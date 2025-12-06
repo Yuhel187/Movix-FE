@@ -77,3 +77,68 @@ export const removeMovieFromPlaylist = async (
   const response = await apiClient.delete(`/interact/playlists/${playlistId}/movies/${movieId}`);
   return response.data;
 };
+export interface RatingStats {
+  average: number;
+  count: number;
+}
+
+export interface UserRating {
+  hasRated: boolean;
+  rating: number | null;
+}
+
+// --- RATING API ---
+
+export const getRatingStats = async (movieId: string): Promise<RatingStats> => {
+  const response = await apiClient.get(`/interact/rating/stats/${movieId}`);
+  return response.data;
+};
+
+export const getMyRating = async (movieId: string): Promise<UserRating> => {
+  const response = await apiClient.get('/interact/rating/my-rate', {
+    params: { movieId },
+  });
+  return response.data;
+};
+
+export const rateMovie = async (movieId: string, rating: number) => {
+  const response = await apiClient.post('/interact/rating', {
+    movieId,
+    rating,
+  });
+  return response.data;
+};
+
+export const deleteRating = async (movieId: string) => {
+  const response = await apiClient.delete(`/interact/rating/${movieId}`);
+  return response.data;
+};
+export interface RatingItem {
+  id: string;
+  user_id: string;
+  movie_id: string;
+  rating: number;
+  created_at: string;
+  updated_at: string;
+  is_deleted: boolean;
+  user: {
+    id: string;
+    username: string;
+    display_name: string; 
+    avatar_url: string | null;
+  };
+}
+
+interface RatingListResponse {
+  data: RatingItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+export const getMovieRatings = async (movieId: string): Promise<RatingItem[]> => {
+  const response = await apiClient.get<RatingListResponse>(`/interact/rating/list/${movieId}`);
+  return response.data.data; 
+};
