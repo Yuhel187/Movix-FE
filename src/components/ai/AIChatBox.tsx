@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { X, Send, Bot, User, Minus } from "lucide-react";
 import apiClient from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface Message {
   id: string;
@@ -13,6 +14,46 @@ interface Props {
   onClose: () => void;
   onMinimize?: () => void;
 }
+
+const renderMessageContent = (text: string) => {
+  // 1. Làm sạch dấu * và khoảng trắng thừa
+  const cleanText = text.replace(/\*/g, "").trim();
+  const regex = /\[([^\]]+)\]\s*\(([^)]+)\)/g;
+  
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(cleanText)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(cleanText.substring(lastIndex, match.index));
+    }
+
+    const label = match[1].trim(); 
+    const url = match[2].trim(); 
+    
+    parts.push(
+      <Link 
+        key={match.index} 
+        href={url} 
+        className="text-yellow-400 hover:text-yellow-300 font-bold underline decoration-dotted underline-offset-4 mx-1 cursor-pointer"
+        // target="_blank" 
+      >
+        {label}
+      </Link>
+    );
+
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < cleanText.length) {
+    parts.push(cleanText.substring(lastIndex));
+  }
+
+  if (parts.length === 0) return cleanText;
+
+  return parts;
+};
 
 export default function AIChatBox({ onClose , onMinimize}: Props) {
   const [messages, setMessages] = useState<Message[]>([
@@ -107,7 +148,7 @@ export default function AIChatBox({ onClose , onMinimize}: Props) {
                 ? "bg-zinc-800 text-gray-200 rounded-tl-none" 
                 : "bg-red-600 text-white rounded-tr-none"
             )}>
-              {msg.text}
+              {renderMessageContent(msg.text)}
             </div>
           </div>
         ))}

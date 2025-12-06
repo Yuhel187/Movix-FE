@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,6 @@ import {
   MoreVertical, 
   LogOut, 
   Home, 
-  User as UserIcon, 
   AlertTriangle, 
   CheckCircle,
   ShieldAlert
@@ -25,50 +25,14 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-
-interface AdminNotification {
-  id: string;
-  type: "flagged" | "system" | "report";
-  title: string;
-  message: string;
-  time: string;
-  read: boolean;
-  link?: string;
-}
+import { useNotifications } from "@/hooks/useNotifications";
+import { formatDistanceToNow } from "date-fns";
+import { vi } from "date-fns/locale";
 
 interface AdminTopbarProps {
   userName?: string;
   avatarUrl?: string;
 }
-
-const MOCK_NOTIFICATIONS: AdminNotification[] = [
-  {
-    id: "1",
-    type: "flagged",
-    title: "Người dùng bị gắn cờ",
-    message: "Hệ thống AI phát hiện user 'Khải Dev' spam bình luận độc hại.",
-    time: "5 phút trước",
-    read: false,
-    link: "/admin/user-management/user-1"
-  },
-  {
-    id: "2",
-    type: "report",
-    title: "Báo cáo nội dung",
-    message: "Có 3 bình luận mới bị người dùng báo cáo vi phạm.",
-    time: "1 giờ trước",
-    read: false,
-    link: "/admin/comment-management"
-  },
-  {
-    id: "3",
-    type: "system",
-    title: "Hệ thống ổn định",
-    message: "Backup dữ liệu định kỳ thành công.",
-    time: "1 ngày trước",
-    read: true,
-  }
-];
 
 export default function AdminTopbar({
   userName,
@@ -76,22 +40,36 @@ export default function AdminTopbar({
 }: AdminTopbarProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const [notifications, setNotifications] = useState<AdminNotification[]>(MOCK_NOTIFICATIONS);
+  
+  const { 
+    notifications, 
+    unreadCount, 
+    markAsRead, 
+    markAllAsRead,
+    fetchNotifications, 
+    fetchUnreadCount    
+  } = useNotifications(true);
 
   const displayName = userName || user?.display_name || user?.username || "Admin";
   const displayAvatar = avatarUrl || user?.avatarUrl || "/images/placeholder-avatar.png";
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [fetchUnreadCount]);
 
-  const handleMarkAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const handleMarkAllRead = (e: React.MouseEvent) => {
+    e.preventDefault();
+    markAllAsRead();
     toast.success("Đã đánh dấu đọc tất cả");
   };
 
-  const handleNotificationClick = (notif: AdminNotification) => {
-    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
-    if (notif.link) {
-      router.push(notif.link);
+  const handleNotificationClick = (notif: any) => {
+    if (!notif.isRead) {
+        markAsRead(notif.id);
+    }
+    const targetUrl = notif.actionUrl || notif.data?.actionUrl;
+    if (targetUrl) {
+      router.push(targetUrl);
     }
   };
 
@@ -107,9 +85,13 @@ export default function AdminTopbar({
           Trình quản lý Admin
         </h2>
       </div>
-
       <div className="flex items-center gap-3">
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={(isOpen) => {
+            if (isOpen) {
+                fetchNotifications(1, 10); 
+                fetchUnreadCount(); 
+            }
+        }}>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative text-gray-400 hover:text-white hover:bg-white/10">
               <Bell className="h-5 w-5" />
@@ -132,7 +114,7 @@ export default function AdminTopbar({
               )}
             </div>
             
-            <div className="max-h-[300px] overflow-y-auto py-1">
+            <div className="max-h-[300px] overflow-y-auto py-1 custom-scrollbar">
               {notifications.length === 0 ? (
                 <div className="p-4 text-center text-sm text-gray-500">Không có thông báo mới</div>
               ) : (
@@ -140,41 +122,57 @@ export default function AdminTopbar({
                   <DropdownMenuItem 
                     key={item.id}
                     className={cn(
-                      "flex flex-col items-start px-4 py-3 cursor-pointer focus:bg-white/5 gap-1",
-                      !item.read ? "bg-white/[0.02]" : ""
+                      "flex flex-col items-start px-4 py-3 cursor-pointer focus:bg-white/5 gap-1 outline-none",
+                      !item.isRead ? "bg-white/[0.02]" : ""
                     )}
                     onClick={() => handleNotificationClick(item)}
                   >
-                    <div className="flex items-center gap-2 w-full">
-
-                      {item.type === 'flagged' && <ShieldAlert className="w-4 h-4 text-red-500 shrink-0" />}
-                      {item.type === 'report' && <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0" />}
-                      {item.type === 'system' && <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />}
+                    <div className="flex items-start gap-3 w-full">
+                      <div className="mt-0.5 shrink-0">
+                         {item.title?.includes("Cảnh báo") ? (
+                            <ShieldAlert className="w-4 h-4 text-red-500" />
+                         ) : item.type === 'SYSTEM' ? (
+                            <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                         ) : (
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                         )}
+                      </div>
                       
-                      <span className={cn("text-sm font-medium truncate flex-1", !item.read ? "text-white" : "text-gray-400")}>
-                        {item.title}
-                      </span>
-                      {!item.read && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>}
+                      <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start">
+                             <span className={cn("text-sm font-medium truncate", !item.isRead ? "text-white" : "text-gray-400")}>
+                                {item.title}
+                             </span>
+                             {!item.isRead && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0 mt-1.5 ml-2"></span>}
+                          </div>
+                          <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">
+                            {item.message}
+                          </p>
+                          <p className="text-[10px] text-gray-600 mt-1">
+                            {item.createdAt 
+                              ? formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: vi })
+                              : "Vừa xong"}
+                          </p>
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-400 line-clamp-2 pl-6">
-                      {item.message}
-                    </p>
-                    <span className="text-[10px] text-gray-600 pl-6 mt-1">{item.time}</span>
                   </DropdownMenuItem>
                 ))
               )}
             </div>
             
             <div className="p-2 border-t border-slate-700 text-center">
-              <span className="text-xs text-gray-500 cursor-pointer hover:text-white">Xem tất cả lịch sử</span>
+               <span 
+                  className="text-xs text-gray-500 cursor-pointer hover:text-white"
+                  onClick={() => router.push('/admin/notification-management')}
+               >
+                  Xem lịch sử gửi tin
+              </span>
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Separator */}
         <div className="h-6 w-[1px] bg-slate-700 mx-1"></div>
 
-        {/* --- USER PROFILE & ACTIONS --- */}
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex flex-col text-right">
             <span className="text-sm font-medium text-white leading-none">{displayName}</span>
@@ -186,7 +184,6 @@ export default function AdminTopbar({
             <AvatarFallback className="bg-slate-700 text-white">AD</AvatarFallback>
           </Avatar>
 
-          {/* Nút 3 chấm (User Menu) */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white hover:bg-white/10">

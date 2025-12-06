@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect, useRef } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/layout/NavBar";
@@ -12,10 +12,11 @@ import FilterPanel, { FilterState } from "@/components/filter/FilterPanel";
 import { Pagination } from "../common/pagination";
 import { AnimatePresence, motion } from "framer-motion";
 import Footer from "../layout/Footer";
-import { FaFilter, FaSearch, FaMagic } from "react-icons/fa";
+import { FaFilter, FaSearch, FaMagic, FaMicrophone, FaStop} from "react-icons/fa";
 import apiClient from "@/lib/apiClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 type Genre = {
   id: string;
@@ -54,6 +55,10 @@ export default function FilterPage({ searchParams }: { searchParams?: { q?: stri
   const [genres, setGenres] = useState<Genre[]>([]);
   const [countries, setCountries] = useState<Country[]>([]);
   const [isLoadingFilterData, setIsLoadingFilterData] = useState(true);
+
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const [filters, setFilters] = useState<FilterState>(() => {
     const initialUrlType = searchParams?.type;
@@ -140,7 +145,80 @@ export default function FilterPage({ searchParams }: { searchParams?: { q?: stri
     }
   }, [moviesPerPage]);
 
-  // 3. Hàm gọi API Tìm kiếm bằng AI
+  const handleStartRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); // Chrome/Firefox thường record ra webm
+        await handleSendAudio(audioBlob);
+        
+        // Tắt stream mic
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setError(null);
+    } catch (err) {
+      console.error("Lỗi truy cập micro:", err);
+      toast.error("Không thể truy cập Microphone. Vui lòng cấp quyền.");
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const handleSendAudio = async (audioBlob: Blob) => {
+    setIsAiSearching(true);
+    setIsLoading(true);
+
+    const formData = new FormData();
+    formData.append("audio", audioBlob, "voice_query.webm");
+
+    try {
+      const res = await apiClient.post('/ai/search-voice', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const mappedMovies = res.data.map((m: any) => ({
+        id: m.id,
+        title: m.title,
+        posterUrl: m.poster_url,
+        slug: m.slug,
+        rating: 0,
+        tags: m.movie_genres?.map((g: any) => g.genre.name) || []
+      }));
+
+      setMovies(mappedMovies);
+      setTotalPages(1);
+      setShowAISearch(false); 
+      setAiQuery("Tìm kiếm bằng giọng nói..."); 
+
+    } catch (err) {
+      console.error("AI Voice Search Error:", err);
+      setError("AI không nghe rõ hoặc không tìm thấy phim phù hợp.");
+    } finally {
+      setIsAiSearching(false);
+      setIsLoading(false);
+    }
+  };
+
   const handleAISearch = async () => {
     if (!aiQuery.trim()) return;
     
@@ -274,6 +352,18 @@ export default function FilterPage({ searchParams }: { searchParams?: { q?: stri
                 </div>
 
                 <div className="flex gap-3">
+                  <Button
+                        onClick={isRecording ? handleStopRecording : handleStartRecording}
+                        className={`flex items-center gap-2 border transition-all ${
+                            isRecording 
+                            ? 'bg-red-600 border-red-600 text-white animate-pulse' 
+                            : 'bg-transparent border-red-500 text-red-400 hover:bg-red-900/20'
+                        }`}
+                        disabled={isAiSearching}
+                    >
+                        {isRecording ? <FaStop /> : <FaMicrophone />}
+                        {isRecording ? "Đang nghe..." : "Voice AI"}
+                    </Button>
                     <Button
                         onClick={() => { setShowAISearch(!showAISearch); setShowFilter(false); }}
                         className={`flex items-center gap-2 border ${showAISearch ? 'bg-purple-600 border-purple-600 text-white' : 'bg-transparent border-purple-500 text-purple-400 hover:bg-purple-900/20'}`}
