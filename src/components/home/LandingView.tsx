@@ -4,7 +4,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import Navbar from "@/components/layout/NavBar";
 import { MovieCategoryCard } from "../movie/MovieCategoryCardProps";
 import { ArrowNavigation } from "../movie/ArrowNavigation";
 import { FaRobot, FaUsers, FaLock, FaSearch, FaGamepad, FaTv } from "react-icons/fa";
@@ -12,6 +11,7 @@ import AIChatWidget from "../ai/AIChatWidget";
 import { MovieCard } from "../movie/MovieCard";
 import type { Movie } from "@/types/movie"
 import Footer from "../layout/Footer";
+import Navbar from "@/components/layout/NavBar";
 import { Skeleton } from "../ui/skeleton";
 import { mapTmdbToMovie } from "@/lib/tmdb";
 import apiClient from "@/lib/apiClient";

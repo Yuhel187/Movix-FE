@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from "next/link";
-import { Search, Bell, ChevronDown, X, LayoutDashboard } from 'lucide-react';
+import { Search, Bell, ChevronDown, X, LayoutDashboard, Users, Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import NotificationDropdown from '@/components/common/NotificationDropdown';
@@ -58,7 +58,7 @@ const Navbar = () => {
   const debouncedSearchText = useDebounce(searchText, 300);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  const navItems = ['Chủ đề', 'Phim hay', 'Thể loại', 'Phim lẻ', 'Phim bộ', 'Quốc gia', 'Diễn viên'];
+  const navItems = ['Chủ đề', 'Phim hay', 'Thể loại', 'Phim lẻ', 'Phim bộ', 'Quốc gia', 'Diễn viên', 'Watching Party'];
 
   useEffect(() => {
     if (!API_URL) return;
@@ -122,6 +122,9 @@ const Navbar = () => {
     }
     else if (item === 'Diễn viên') {
       router.push('/peoples');
+    }
+    else if (item === 'Watching Party') {
+      router.push('/watch-party');
     }
   };
 
