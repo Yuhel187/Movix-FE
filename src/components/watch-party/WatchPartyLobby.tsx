@@ -26,14 +26,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useRouter } from "next/navigation";
 
 export default function WatchPartyLobby() {
-    const { user } = useAuth();
+const { user } = useAuth();
+const router = useRouter();
   const [filter, setFilter] = useState<'live' | 'scheduled' | 'ended'>('live');
   const [searchQuery, setSearchQuery] = useState(""); 
   const [rooms, setRooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [partyToCancel, setPartyToCancel] = useState<string | null>(null);
+  const [showEndedDialog, setShowEndedDialog] = useState(false);
+  const [quickJoinCode, setQuickJoinCode] = useState("");
+  const [isJoining, setIsJoining] = useState(false);
 
   useEffect(() => {
       const fetchRooms = async () => {
@@ -92,6 +97,25 @@ export default function WatchPartyLobby() {
       }
   };
 
+  const handleQuickJoin = async () => {
+      if (!quickJoinCode.trim()) {
+          toast.error("Vui lòng nhập mã phòng.");
+          return;
+      }
+
+      setIsJoining(true);
+      try {
+          const res = await apiClient.post('/watch-party/join', { code: quickJoinCode });
+          
+          toast.success("Mã hợp lệ! Đang vào phòng...");
+          router.push(`/watch-party/${res.data.roomId}?code=${quickJoinCode}`);
+      } catch (error: any) {
+          toast.error(error.response?.data?.message || "Mã phòng không đúng hoặc đã hết hạn.");
+      } finally {
+          setIsJoining(false);
+      }
+  };
+
   return (
     <>
     <Navbar />
@@ -110,12 +134,23 @@ export default function WatchPartyLobby() {
             </p>
             <div className="pt-6 flex flex-wrap justify-center items-center gap-4">
                 <CreatePartyDialog />
-                <div className="flex w-full max-w-sm items-center space-x-2 bg-black/50 p-1 rounded-lg border border-slate-600">
+                <div className="flex w-full max-w-sm items-center space-x-2 bg-black/50 p-1 rounded-lg border border-slate-600 focus-within:border-red-500 transition-colors">
                     <Input 
                         placeholder="Nhập mã phòng để tham gia..." 
-                        className="bg-transparent border-none focus-visible:ring-0 text-white placeholder:text-slate-400"
+                        className="bg-transparent border-none focus-visible:ring-0 text-white placeholder:text-slate-400 font-mono tracking-wider"
+                        value={quickJoinCode}
+                        onChange={(e) => setQuickJoinCode(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => e.key === 'Enter' && handleQuickJoin()}
+                        maxLength={6}
                     />
-                    <Button variant="ghost" className="text-white hover:bg-white/20">Vào</Button>
+                    <Button 
+                        variant="ghost" 
+                        className="text-white hover:bg-white/20 hover:text-white"
+                        onClick={handleQuickJoin}
+                        disabled={isJoining}
+                    >
+                        {isJoining ? <Loader2 className="w-4 h-4 animate-spin"/> : "Vào"}
+                    </Button>
                 </div>
             </div>
          </div>
@@ -174,6 +209,12 @@ export default function WatchPartyLobby() {
                         href={room.status === 'live' ? `/watch-party/${room.id}` : '#'}
                         key={room.id}
                         className={cn("group block h-full", room.status === 'ended' && "opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all")}
+                        onClick={(e) => {
+                            if (room.status === 'ended') {
+                                e.preventDefault(); 
+                                setShowEndedDialog(true);
+                            }
+                        }}
                     >
                         <Card className="bg-[#1F1F1F] border-slate-800 overflow-hidden hover:border-slate-600 transition-all hover:shadow-2xl hover:-translate-y-1 h-full flex flex-col relative group">
 
@@ -284,6 +325,22 @@ export default function WatchPartyLobby() {
                         className="bg-red-600 hover:bg-red-700 text-white border-0"
                     >
                         Xác nhận hủy
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={showEndedDialog} onOpenChange={setShowEndedDialog}>
+            <AlertDialogContent className="bg-[#1F1F1F] border-slate-800 text-white">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="text-yellow-500">Phòng đã kết thúc</AlertDialogTitle>
+                    <AlertDialogDescription className="text-slate-400">
+                        Buổi xem chung này đã kết thúc và không thể tham gia được nữa. Hãy thử tìm các phòng đang diễn ra (Live) hoặc sắp chiếu nhé!
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogAction onClick={() => setShowEndedDialog(false)} className="bg-slate-700 hover:bg-slate-600 text-white border-0">
+                        Đã hiểu
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
