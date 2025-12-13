@@ -9,105 +9,124 @@ import { ArrowNavigation } from "../movie/ArrowNavigation";
 import { FaRobot, FaUsers, FaLock, FaSearch, FaGamepad, FaTv } from "react-icons/fa";
 import AIChatWidget from "../ai/AIChatWidget";
 import { MovieCard } from "../movie/MovieCard";
-import type { Movie } from "@/types/movie"
+import type { Movie, MovieResponse } from "@/types/movie"
 import Footer from "../layout/Footer";
 import Navbar from "@/components/layout/NavBar";
 import { Skeleton } from "../ui/skeleton";
-import { mapTmdbToMovie } from "@/lib/tmdb";
 import apiClient from "@/lib/apiClient";
+import { getTmdbImageUrl } from "@/lib/tmdb"; 
 
-interface Genre {
-  id: number;
-  name: string;
+const mapDbToUi = (dbMovie: MovieResponse): Movie => {
+    return {
+        id: dbMovie.id,
+        slug: dbMovie.slug,
+        title: dbMovie.title,
+        subTitle: dbMovie.original_title,
+        description: dbMovie.description || "",
+        posterUrl: dbMovie.poster_url || "/images/placeholder-poster.png",
+        backdropUrl: dbMovie.backdrop_url || "/images/placeholder-backdrop.png",
+        trailerUrl: dbMovie.trailer_url || null, 
+        videoUrl: null,
+        releaseYear: dbMovie.release_date ? new Date(dbMovie.release_date).getFullYear() : undefined,
+        tags: dbMovie.movie_genres?.map((mg: any) => mg.genre.name) || [],
+        rating: dbMovie.metadata?.tmdb_rating || 0,
+        duration: dbMovie.metadata?.duration || undefined, 
+        
+        type: dbMovie.media_type,
+        seasons: dbMovie.seasons?.map((s: any) => ({
+            id: s.id,
+            number: s.season_number,
+            title: s.title || "",
+            episodes: [] 
+        })) || []
+    };
+};
+interface GenreSection {
+    id: string;
+    name: string;
+    movies: Movie[];
 }
-
-const genresList: Genre[] = [
-  { id: 28, name: "Hành động" },
-  { id: 12, name: "Phiêu lưu" },
-  { id: 16, name: "Hoạt hình" },
-  { id: 35, name: "Hài" },
-  { id: 80, name: "Tội phạm" },
-  { id: 99, name: "Tài liệu" },
-  { id: 18, name: "Chính kịch" },
-  { id: 10751, name: "Gia đình" },
-  { id: 14, name: "Giả tưởng" },
-  { id: 36, name: "Lịch sử" },
-  { id: 27, name: "Kinh dị" },
-  { id: 10402, name: "Nhạc" },
-  { id: 9648, name: "Bí ẩn" },
-  { id: 10749, name: "Lãng mạn" },
-  { id: 878, name: "Khoa học viễn tưởng" },
-  { id: 10770, name: "Phim TV" },
-  { id: 53, name: "Gây cấn" },
-  { id: 10752, name: "Chiến tranh" },
-  { id: 37, name: "Miền Tây" },
-];
 
 export default function LandingView() {
   const scrollRefGenres = useRef<HTMLDivElement>(null!);
   const scrollRefTrending = useRef<HTMLDivElement>(null!);
   const scrollRefShows = useRef<HTMLDivElement>(null!);
+  const genreScrollRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   
   const router = useRouter();
   
   const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
   const [popularShows, setPopularShows] = useState<Movie[]>([]);
+  const [genreSections, setGenreSections] = useState<GenreSection[]>([]);
+  
   const [isLoadingTrending, setIsLoadingTrending] = useState(true);
   const [isLoadingShows, setIsLoadingShows] = useState(true);
-  const [genreMovies, setGenreMovies] = useState<Map<number, Movie[]>>(new Map());
   const [isLoadingGenres, setIsLoadingGenres] = useState(true);
 
   useEffect(() => {
-    // Lấy phim thịnh hành
-    apiClient.get("/movies/trendingtmdb") 
-      .then((res) => {
-        if (Array.isArray(res.data)) {
-          setTrendingMovies(res.data.map(mapTmdbToMovie));
-        }
-        setIsLoadingTrending(false);
-      })
-      .catch((err) => {
-        console.error("Lỗi lấy phim thịnh hành:", err);
-        setIsLoadingTrending(false);
-      });
-
-    // Lấy TV shows phổ biến
-    apiClient.get("/movies/popular-showstmdb") 
-      .then((res) => { 
-        if (Array.isArray(res.data)) {
-          setPopularShows(res.data.map(mapTmdbToMovie));
-        }
-        setIsLoadingShows(false);
-      })
-      .catch((err) => {
-        console.error("Lỗi lấy TV shows:", err);
-        setIsLoadingShows(false);
-      });
-
-    const fetchAllGenreMovies = async () => {
-        const movieMap = new Map<number, Movie[]>();
-        await Promise.all(
-          genresList.map(async (genre) => {
-            try {
-              const res = await apiClient.get(`/movies/by-genre/${genre.id}`);
-              if (res.status !== 200) return;
-              
-              const data = res.data;
-              if (Array.isArray(data)) {
-                movieMap.set(genre.id, data.map(mapTmdbToMovie));
-              }
-            } catch (err) {
-              console.error(`Lỗi lấy phim cho thể loại ${genre.name}:`, err);
+    const fetchTrending = async () => {
+        try {
+            const res = await apiClient.get<MovieResponse[]>("/movies/trending");
+            if (Array.isArray(res.data)) {
+                setTrendingMovies(res.data.map(mapDbToUi));
             }
-          })
-        );
-        
-        setGenreMovies(movieMap);
-        setIsLoadingGenres(false);
-      };
+        } catch (err) {
+            console.error("Lỗi lấy phim thịnh hành:", err);
+        } finally {
+            setIsLoadingTrending(false);
+        }
+    };
 
-      fetchAllGenreMovies();
-    }, []);
+    const fetchShows = async () => {
+        try {
+            const res = await apiClient.get<MovieResponse[]>("/movies/popular-shows"); 
+            if (Array.isArray(res.data)) {
+                setPopularShows(res.data.map(mapDbToUi));
+            }
+        } catch (err) {
+            console.error("Lỗi lấy TV shows:", err);
+        } finally {
+            setIsLoadingShows(false);
+        }
+    };
+
+    const fetchGenresAndMovies = async () => {
+        try {
+            const genresRes = await apiClient.get("/movies/genres");
+            const allDbGenres = genresRes.data; 
+
+            if (!Array.isArray(allDbGenres)) return;
+
+            const results = await Promise.all(allDbGenres.slice(0, 15).map(async (genre: any) => {
+                try {
+                    const res = await apiClient.get<MovieResponse[]>(`/movies/by-genre-landing/${genre.id}`);
+                    if (Array.isArray(res.data) && res.data.length > 0) {
+                        return {
+                            id: genre.id,
+                            name: genre.name,
+                            movies: res.data.map(mapDbToUi)
+                        };
+                    }
+                } catch (e) {
+                    console.warn(`Lỗi load phim thể loại ${genre.name}`);
+                }
+                return null;
+            }));
+
+            const validSections = results.filter((item): item is GenreSection => item !== null);
+            setGenreSections(validSections);
+
+        } catch (err) {
+            console.error("Lỗi tải thể loại:", err);
+        } finally {
+            setIsLoadingGenres(false);
+        }
+    };
+
+    fetchTrending();
+    fetchShows();
+    fetchGenresAndMovies();
+  }, []);
 
   const handleScroll = (ref: React.RefObject<HTMLDivElement>, direction: "left" | "right") => {
     const container = ref.current;
@@ -131,7 +150,6 @@ export default function LandingView() {
     }
   };
 
-    //giới thiệu tính năng
     const features = [
     {
       icon: <FaTv className="text-red-500 text-3xl" />,
@@ -166,25 +184,25 @@ export default function LandingView() {
   ];
 
  const handleWatch = useCallback((movie: Movie) => {
-    alert(`🎬 Xem phim: ${movie.title}`)
-  }, [])
+    router.push(`/movies/${movie.slug}`);
+  }, [router])
 
   const handleLike = useCallback((movie: Movie) => {
     alert(`❤️ Đã thích: ${movie.title}`)
   }, [])
 
   const handleDetail = useCallback((movie: Movie) => {
-    alert(`ℹ️ Chi tiết phim: ${movie.title}`)
-  }, [])
+    router.push(`/movies/${movie.slug}`);
+  }, [router])
 
   const renderSkeletons = (count = 8) => {
-    return Array(8).fill(0).map((_, i) => (
+    return Array(count).fill(0).map((_, i) => (
       <Skeleton key={i} className="w-[220px] h-[330px] bg-neutral-800 rounded-md" />
     ));
   };
 
   const handleGenreClick = (genreName: string) => {
-    router.push(`/login`);
+     router.push(`/login`);
   };
 
 
@@ -224,7 +242,6 @@ export default function LandingView() {
     </section>
         <div className="w-full bg-black text-white space-y-24">
 
-  {/* === 1. Thể loại phim đa dạng === */}
   <div className="relative w-full min-h-[30vh] overflow-hidden bg-black px-4 sm:px-8 lg:px-20">
     <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between mb-10 gap-4">
       <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center sm:text-left">
@@ -241,65 +258,55 @@ export default function LandingView() {
 
     <div ref={scrollRefGenres} className="overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
                 <div className="flex gap-3 sm:gap-6 min-w-max">
-                  {isLoadingGenres
-                    ? 
-                      Array(5).fill(0).map((_, i) => (
-                        <Skeleton key={i} className="w-[300px] h-[180px] rounded-lg bg-neutral-800" />
-                      ))
-                    : 
-                      genresList.map((genre) => {
-                        // Lấy 4 phim cho thể loại này từ state
-                        const moviesForThisGenre = genreMovies.get(genre.id) || [];
-                        
-                        // Tạo mảng poster (tối đa 4)
-                        const posters = moviesForThisGenre.map(m => m.posterUrl).slice(0, 4);
-
-                        return (
-                          <div 
-                            key={genre.id}
-                            className="cursor-pointer"
-                            onClick={() => handleGenreClick(genre.name)}
-                          >
-                            <MovieCategoryCard
-                              category={genre.name}
-                              movies={posters.map((url, idx) => ({ id: `${genre.id}-${idx}`, title: '', posterUrl: url }))}
-                              onClickMore={() => handleGenreClick(genre.name)}
-                            />
-                          </div>
-                        );
-                      })}
+                    {isLoadingGenres ? (
+                        Array(5).fill(0).map((_, i) => <Skeleton key={i} className="w-[300px] h-[180px] rounded-lg bg-neutral-800" />)
+                    ) : (
+                        genreSections.length > 0 ? (
+                            genreSections.map((section) => {
+                                const posters = section.movies.map(m => m.posterUrl).slice(0, 4);
+                                return (
+                                    <div key={section.id} className="cursor-pointer" onClick={() => handleGenreClick(section.name)}>
+                                        <MovieCategoryCard
+                                            category={section.name}
+                                            movies={posters.map((url, idx) => ({ id: `${section.id}-${idx}`, title: '', posterUrl: url }))}
+                                            onClickMore={() => handleGenreClick(section.name)}
+                                        />
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <p className="text-gray-500">Đang cập nhật thể loại...</p>
+                        )
+                    )}
                 </div>
-              </div>
-  </div>
-
-  {/* === 2. Hệ thống xem phim trực tuyến === */}
-  <div className="relative w-full min-h-[30vh] overflow-hidden bg-black px-4 sm:px-8 lg:px-20">
-    <div className="mb-10 text-center sm:text-left">
-      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">
-        Hệ thống xem phim trực tuyến hiện đại bậc nhất,
-        <br className="hidden sm:block" /> nhiều chức năng đa dạng hóa trải nghiệm của bạn!
-      </h1>
-    </div>
-
-    <section>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {features.map((f, i) => (
-          <div
-            key={i}
-            className="bg-gradient-to-b from-neutral-900 to-black text-white p-6 rounded-2xl border border-neutral-800 hover:border-red-500 transition-all hover:scale-105 shadow-lg hover:shadow-red-900/30"
-          >
-            <div className="flex items-center gap-4 mb-6">
-              <div className="text-red-500 text-3xl">{f.icon}</div>
-              <h3 className="text-lg font-semibold">{f.title}</h3>
             </div>
-            <p className="text-gray-400 text-sm">{f.desc}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  </div>
+    </div>
+          <div className="relative w-full min-h-[30vh] overflow-hidden bg-black px-4 sm:px-8 lg:px-20">
+            <div className="mb-10 text-center sm:text-left">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">
+                Hệ thống xem phim trực tuyến hiện đại bậc nhất,
+                <br className="hidden sm:block" /> nhiều chức năng đa dạng hóa trải nghiệm của bạn!
+              </h1>
+            </div>
 
-  {/* === 3. Phim thịnh hành === */}
+            <section>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {features.map((f, i) => (
+                  <div
+                    key={i}
+                    className="bg-gradient-to-b from-neutral-900 to-black text-white p-6 rounded-2xl border border-neutral-800 hover:border-red-500 transition-all hover:scale-105 shadow-lg hover:shadow-red-900/30"
+                  >
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="text-red-500 text-3xl">{f.icon}</div>
+                      <h3 className="text-lg font-semibold">{f.title}</h3>
+                    </div>
+                    <p className="text-gray-400 text-sm">{f.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+
             <div className="relative w-full min-h-[30vh] overflow-hidden bg-black px-4 sm:px-8 lg:px-20">
               <div className="flex flex-col sm:flex-row items-center justify-between mb-10 gap-4">
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center sm:text-left">
@@ -318,19 +325,18 @@ export default function LandingView() {
                   {isLoadingTrending
                     ? renderSkeletons() 
                     : trendingMovies.map((movie) => ( 
-                        <MovieCard
-                          key={movie.id}
-                          movie={movie}
-                          onWatch={handleWatch}
-                          onLike={handleLike}
-                          onDetail={handleDetail}
+                        <MovieCard 
+                          key={movie.id} 
+                          movie={movie} 
+                          onWatch={handleWatch} 
+                          onLike={handleLike} 
+                          onDetail={handleDetail} 
                         />
                       ))}
                 </div>
               </section>
             </div>
 
-            {/* === 4. Chương trình truyền hình === */}
             <div className="relative w-full min-h-[30vh] overflow-hidden bg-black px-4 sm:px-8 lg:px-20">
               <div className="flex flex-col sm:flex-row items-center justify-between mb-10 gap-4">
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center sm:text-left">
@@ -349,19 +355,54 @@ export default function LandingView() {
                    {isLoadingShows
                     ? renderSkeletons() 
                     : popularShows.map((movie) => ( 
-                        <MovieCard
-                          key={movie.id}
-                          movie={movie}
-                          onWatch={handleWatch}
-                          onLike={handleLike}
-                          onDetail={handleDetail}
+                        <MovieCard 
+                          key={movie.id} 
+                          movie={movie} 
+                          onWatch={handleWatch} 
+                          onLike={handleLike} 
+                          onDetail={handleDetail} 
                         />
                       ))}
                 </div>
               </section>
             </div>
 
-              {/* === 5. Kêu gọi đăng ký === */}
+            {genreSections.map((section) => (
+              <div key={section.id} className="relative w-full min-h-[30vh] overflow-hidden bg-black px-4 sm:px-8 lg:px-20">
+                  <div className="flex items-center justify-between mb-10 gap-4">
+                      <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center sm:text-left border-l-4 border-red-600 pl-3">
+                          {section.name}
+                      </h2>
+                      <ArrowNavigation 
+                          onPrev={() => {
+                            const ref = genreScrollRefs.current.get(section.id);
+                            if (ref) handleScroll({ current: ref }, "left");
+                          }} 
+                          onNext={() => {
+                            const ref = genreScrollRefs.current.get(section.id);
+                            if (ref) handleScroll({ current: ref }, "right");
+                          }} 
+                      />
+                  </div>
+                  <section 
+                      ref={(el) => { if(el) genreScrollRefs.current.set(section.id, el); }} 
+                      className="overflow-x-auto no-scrollbar px-4 py-12"
+                  >
+                      <div className="grid grid-flow-col auto-cols-[minmax(220px,1fr)] gap-6 items-start dark text-center">
+                          {section.movies.map((movie) => (
+                              <MovieCard 
+                                  key={movie.id} 
+                                  movie={movie} 
+                                  onWatch={handleWatch} 
+                                  onLike={handleLike} 
+                                  onDetail={handleDetail} 
+                              />
+                          ))}
+                      </div>
+                  </section>
+              </div>
+          ))}
+
               <div className="relative w-full bg-black px-4 sm:px-8 lg:px-20 pb-24">
                 <div className="relative w-full rounded-md overflow-hidden">
                   <div

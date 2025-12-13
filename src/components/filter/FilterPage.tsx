@@ -37,6 +37,38 @@ const defaultFilters: FilterState = {
   q: "",
 };
 
+const mapResponseToMovie = (m: any): Movie => {
+  let displayInfo = m.metadata?.duration || undefined;
+  if (m.media_type === 'TV') {
+      const seasonCount = m.seasons?.length || m.metadata?.total_seasons || 0;
+  }
+
+  return {
+    id: m.id,
+    slug: m.slug,
+    title: m.title,
+    subTitle: m.original_title,
+    description: m.description || "",
+    posterUrl: m.poster_url || "/images/placeholder-poster.png",
+    backdropUrl: m.backdrop_url,
+    trailerUrl: m.trailer_url,
+    videoUrl: null,
+    
+    releaseYear: m.release_date ? new Date(m.release_date).getFullYear() : undefined,
+    tags: m.movie_genres?.map((mg: any) => mg.genre.name) || [],
+    rating: m.metadata?.tmdb_rating || 0,
+    
+    duration: m.metadata?.duration, 
+    type: m.media_type,
+    seasons: m.seasons?.map((s: any) => ({
+        id: s.id,
+        number: s.season_number,
+        title: s.title,
+        episodes: [] 
+    })) || []
+  };
+};
+
 export default function FilterPage({ searchParams }: { searchParams?: { q?: string; type?: string; genre?: string | string[]; country?: string; year?: string } }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -88,7 +120,6 @@ export default function FilterPage({ searchParams }: { searchParams?: { q?: stri
   const [totalPages, setTotalPages] = useState(1);
   const moviesPerPage = 35;
 
-  // 1. Load dữ liệu cho Filter Panel (Thể loại, Quốc gia)
   useEffect(() => {
     const fetchFilterData = async () => {
       try {
@@ -108,7 +139,6 @@ export default function FilterPage({ searchParams }: { searchParams?: { q?: stri
     fetchFilterData();
   }, []);
 
-  // 2. Hàm gọi API Lọc phim thường (Standard Search)
   const fetchMovies = useCallback(async (currentFilters: FilterState, page: number) => {
     setIsLoading(true);
     setError(null);
@@ -134,7 +164,7 @@ export default function FilterPage({ searchParams }: { searchParams?: { q?: stri
 
     try {
       const res = await apiClient.get(`/movies/filter`, { params });
-      setMovies(res.data.data);
+      setMovies(res.data.data.map(mapResponseToMovie));
       setTotalPages(res.data.pagination.totalPages || 1);
     } catch (err) {
       console.error("Lỗi khi lọc phim:", err);
@@ -162,7 +192,6 @@ export default function FilterPage({ searchParams }: { searchParams?: { q?: stri
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); // Chrome/Firefox thường record ra webm
         await handleSendAudio(audioBlob);
         
-        // Tắt stream mic
         stream.getTracks().forEach(track => track.stop());
       };
 
@@ -196,16 +225,7 @@ export default function FilterPage({ searchParams }: { searchParams?: { q?: stri
         },
       });
 
-      const mappedMovies = res.data.map((m: any) => ({
-        id: m.id,
-        title: m.title,
-        posterUrl: m.poster_url,
-        slug: m.slug,
-        rating: 0,
-        tags: m.movie_genres?.map((g: any) => g.genre.name) || []
-      }));
-
-      setMovies(mappedMovies);
+      setMovies(res.data.map(mapResponseToMovie));
       setTotalPages(1);
       setShowAISearch(false); 
       setAiQuery("Tìm kiếm bằng giọng nói..."); 
@@ -228,16 +248,7 @@ export default function FilterPage({ searchParams }: { searchParams?: { q?: stri
     
     try {
         const res = await apiClient.post('/ai/search', { query: aiQuery });
-        const mappedMovies = res.data.map((m: any) => ({
-            id: m.id,
-            title: m.title,
-            posterUrl: m.poster_url,
-            slug: m.slug,
-            rating: 0,
-            tags: m.movie_genres?.map((g: any) => g.genre.name) || []
-        }));
-        
-        setMovies(mappedMovies);
+        setMovies(res.data.map(mapResponseToMovie));
         setTotalPages(1); 
         setShowAISearch(false); 
     } catch (err) {

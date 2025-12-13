@@ -152,10 +152,7 @@ export default function WatchPartyRoomPage() {
   const [userToBan, setUserToBan] = useState<string | null>(null);
   const [userToTransfer, setUserToTransfer] = useState<string | null>(null);
   const [showEndDialog, setShowEndDialog] = useState(false);
-  
-  // State cho Báo cáo vi phạm
-  const [reportMsgId, setReportMsgId] = useState<string | null>(null);
-  const [reportReason, setReportReason] = useState("");
+
 
   const [hostId, setHostId] = useState<string>("");
   useEffect(() => { if(roomData) setHostId(roomData.host_user_id); }, [roomData]);
@@ -176,8 +173,11 @@ export default function WatchPartyRoomPage() {
 
             if (data.party.is_private && data.party.host_user_id !== user.id) {
                 const urlCode = searchParams.get('code');
-                
-                if (urlCode && urlCode.toUpperCase() === data.party.join_code) {
+                const storedCode = localStorage.getItem(`wp_join_code_${roomId}`);
+                if (
+                    (urlCode && urlCode.toUpperCase() === data.party.join_code) || 
+                    (storedCode && storedCode === data.party.join_code)
+                ) {
                     setIsAuthorized(true);
                 } else {
                     setShowJoinCodeDialog(true);
@@ -336,6 +336,7 @@ export default function WatchPartyRoomPage() {
   // --- HANDLERS ---
   const handleJoinCodeSubmit = () => {
       if (joinCodeInput.trim().toUpperCase() === roomData.join_code) {
+          localStorage.setItem(`wp_join_code_${roomId}`, joinCodeInput.trim().toUpperCase());
           setIsAuthorized(true);
           setShowJoinCodeDialog(false);
           toast.success("Mã chính xác! Đang vào phòng...");
@@ -343,6 +344,17 @@ export default function WatchPartyRoomPage() {
           toast.error("Mã tham gia không đúng.");
       }
   };
+
+  const formatTimeVN = (dateString: string | Date) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return date.toLocaleTimeString("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false, 
+  });
+};
 
   const handlePlayPauseClick = () => { if (isHost) performPlayPause(); };
   
@@ -441,18 +453,6 @@ export default function WatchPartyRoomPage() {
       setShowEmoji(false); 
   };
 
-  // [MỚI] Hàm gửi báo cáo qua Dialog
-  const submitReport = () => {
-      if (reportReason.trim() && reportMsgId && socketRef.current) {
-          socketRef.current.emit('wp:report_message', { messageId: reportMsgId, reason: reportReason });
-          toast.success("Đã gửi báo cáo đến Admin.");
-          setReportMsgId(null);
-          setReportReason("");
-      } else {
-          toast.error("Vui lòng nhập lý do.");
-      }
-  };
-
   const toggleFullscreen = () => {
       if (!playerContainerRef.current) return;
       if (!document.fullscreenElement) {
@@ -516,7 +516,7 @@ export default function WatchPartyRoomPage() {
                             </Button>
                         </>
                     ) : (
-                        <Button size="sm" variant="secondary" className="bg-white/10 hover:bg-white/20 text-white backdrop-blur-md" onClick={() => router.push('/watch-party')}><LogOut className="w-4 h-4 mr-2"/> Rời phòng</Button>
+                        <Button size="sm" variant="secondary" className="bg-white/10 hover:bg-white/20 text-white backdrop-blur-md" onClick={() => { localStorage.removeItem(`wp_join_code_${roomData?.id}`); router.push('/watch-party')}}><LogOut className="w-4 h-4 mr-2"/> Rời phòng</Button>
                     )}
                     {!isSidebarOpen && !isFullscreen && <Button size="sm" variant="ghost" onClick={() => setIsSidebarOpen(true)} className="text-white hover:bg-white/10"><PanelRightOpen className="w-5 h-5"/></Button>}
                  </div>
@@ -568,13 +568,9 @@ export default function WatchPartyRoomPage() {
                                 <div key={idx} className="group/msg flex gap-3 animate-in fade-in slide-in-from-bottom-1 relative">
                                     <Avatar className="w-8 h-8 shrink-0"><AvatarImage src={msg.avatar||undefined}/><AvatarFallback>{msg.user?.[0]}</AvatarFallback></Avatar>
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-baseline mb-1"><span className={cn("text-xs font-bold truncate pr-2", msg.isHost ? "text-yellow-500" : "text-slate-300")}>{msg.user}{msg.isHost && <span className="ml-1 text-[9px] bg-yellow-500/10 text-yellow-500 px-1 rounded">HOST</span>}</span><span className="text-[9px] text-slate-600 shrink-0">{msg.time}</span></div>
+                                        <div className="flex justify-between items-baseline mb-1"><span className={cn("text-xs font-bold truncate pr-2", msg.isHost ? "text-yellow-500" : "text-slate-300")}>{msg.user}{msg.isHost && <span className="ml-1 text-[9px] bg-yellow-500/10 text-yellow-500 px-1 rounded">HOST</span>}</span><span className="text-[9px] text-slate-600 shrink-0">{formatTimeVN(msg.time)}</span></div>
                                         <div className="text-sm bg-[#1F1F1F] p-2.5 rounded-2xl rounded-tl-none border border-white/5 text-slate-200 break-words shadow-sm">{msg.text}</div>
                                     </div>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover/msg:opacity-100 absolute top-0 right-0 text-slate-500 hover:text-white"><MoreVertical className="w-3 h-3"/></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="bg-[#1F1F1F] border-slate-700 text-white"><DropdownMenuItem className="text-red-400 cursor-pointer text-xs" onClick={() => { setReportMsgId(msg.id); setReportReason(""); }}><Flag className="w-3 h-3 mr-2" /> Báo cáo vi phạm</DropdownMenuItem></DropdownMenuContent>
-                                    </DropdownMenu>
                                 </div>
                             ))}
                         </div>
@@ -595,7 +591,7 @@ export default function WatchPartyRoomPage() {
                                 </div>
                                 {isHost && mem.role !== 'host' && (
                                     <DropdownMenu>
-                                        <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100 h-8 w-8 text-slate-400 hover:text-white transition-opacity"><MoreVertical className="w-4 h-4"/></Button></DropdownMenuTrigger>
+                                        <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100 h-8 w-8 text-slate-400 bg-amber-50 transition-opacity"><MoreVertical className="w-4 h-4"/></Button></DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="bg-[#1F1F1F] border-slate-700 text-white w-52">
                                             <DropdownMenuItem className="focus:bg-white/10 cursor-pointer py-2.5" onClick={() => setUserToTransfer(mem.id)}><Crown className="w-4 h-4 mr-2 text-yellow-500" /> Chuyển quyền Host</DropdownMenuItem>
                                             <DropdownMenuItem className="text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer py-2.5" onClick={() => setUserToKick(mem.id)}><UserX className="w-4 h-4 mr-2" /> Mời ra khỏi phòng</DropdownMenuItem>
@@ -639,29 +635,6 @@ export default function WatchPartyRoomPage() {
              </DialogFooter>
           </DialogContent>
       </Dialog>
-      
-      {/*  Dialog Báo Cáo Vi Phạm  */}
-      <Dialog open={!!reportMsgId} onOpenChange={(open) => !open && setReportMsgId(null)}>
-          <DialogContent className="bg-[#1F1F1F] border-slate-800 text-white sm:max-w-md">
-             <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-red-500"><AlertTriangle className="w-5 h-5"/> Báo cáo vi phạm</DialogTitle>
-                <DialogDescription className="text-slate-400">Vui lòng cho biết lý do bạn muốn báo cáo bình luận này.</DialogDescription>
-             </DialogHeader>
-             <div className="py-2">
-                 <Textarea 
-                    placeholder="Vd: Ngôn từ thù ghét, spam, spoiler..." 
-                    className="bg-black/40 border-slate-600 text-white h-24 resize-none"
-                    value={reportReason}
-                    onChange={(e) => setReportReason(e.target.value)}
-                 />
-             </div>
-             <DialogFooter>
-                 <Button variant="ghost" onClick={() => setReportMsgId(null)} className="text-slate-400 hover:text-white">Hủy</Button>
-                 <Button onClick={submitReport} className="bg-red-600 hover:bg-red-700">Gửi báo cáo</Button>
-             </DialogFooter>
-          </DialogContent>
-      </Dialog>
-
     </div>
   );
 }
