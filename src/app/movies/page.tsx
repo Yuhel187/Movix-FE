@@ -67,9 +67,6 @@ export default function MoviesPage() {
             />
           )
         ))}
-
-     
-
       <Footer />
       <AIChatWidget />
     </main>
