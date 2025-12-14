@@ -47,12 +47,12 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/filter?type=movie" className="hover:text-white transition">
+                <Link href="/filter?type=phim-le" className="hover:text-white transition">
                   Phim lẻ
                 </Link>
               </li>
               <li>
-                <Link href="/filter?type=tv" className="hover:text-white transition">
+                <Link href="/filter?type=phim-bo" className="hover:text-white transition">
                   Phim bộ
                 </Link>
               </li>
@@ -69,7 +69,7 @@ export default function Footer() {
             <h3 className="text-white font-semibold mb-4">Tính Năng</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/party" className="hover:text-white transition">
+                <Link href="/watch-party" className="hover:text-white transition">
                   Xem Chung (Party)
                 </Link>
               </li>
