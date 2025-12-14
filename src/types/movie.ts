@@ -56,6 +56,7 @@ export interface MovieResponse {
   movie_genres?: GenreResponse[];
   movie_people?: PersonResponse[];
   seasons?: SeasonResponse[]; 
+  recommendations?: MovieResponse[];
   
   metadata?: {
     duration?: string;
@@ -99,4 +100,5 @@ export interface Movie {
   duration?: string;
   type: "MOVIE" | "TV";
   views?: number; 
+  recommendations?: Movie[];
 }

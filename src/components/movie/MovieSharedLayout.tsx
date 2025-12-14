@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Play, Clock, CalendarDays } from "lucide-react";
+import { Play } from "lucide-react";
 import MovieCast from "@/components/movie/MovieCast";
 import { MovieCommentSection } from "@/components/comment/MovieCommentSection";
 import { MovieDetailSidebar } from "@/components/movie/MovieDetailSlidebar";
+import MovieRecommendations from "@/components/movie/MovieRecommendations"; 
 import {
   Select,
   SelectContent,
@@ -18,7 +19,7 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Actor } from "@/types/actor";
 import type { SidebarData } from "@/services/movie.service";
-import type { Season,Episode } from "@/types/movie";
+import type { Season, Episode, Movie } from "@/types/movie"; 
 
 interface MovieSharedLayoutProps {
   castData: Actor[];
@@ -27,6 +28,7 @@ interface MovieSharedLayoutProps {
   seasons: Season[];
   movieSlug: string;
   type?: string;
+  recommendations?: Movie[]; 
   onEpisodeSelect?: (episode: Episode) => void;
 }
 
@@ -37,12 +39,14 @@ export default function MovieSharedLayout({
   movieSlug,
   seasons = [],
   type,
+  recommendations = [],
   onEpisodeSelect,
 }: MovieSharedLayoutProps) {
 
   const isSeries = type === "TV" || (seasons && seasons.length > 0);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>("");
   const router = useRouter();
+
   useEffect(() => {
     if (isSeries && seasons.length > 0) {
       setSelectedSeasonId(seasons[0].id);
@@ -63,7 +67,7 @@ export default function MovieSharedLayout({
                   <span className="w-1 h-8 bg-red-600 rounded-full block mr-2"></span>
                   Danh sách tập
                 </h2>
-
+                {/* ... Select mùa ... */}
                 <Select
                   value={selectedSeasonId}
                   onValueChange={setSelectedSeasonId}
@@ -97,8 +101,8 @@ export default function MovieSharedLayout({
                             }}
                         className="group flex flex-col sm:flex-row gap-4 p-3 rounded-lg hover:bg-zinc-800/50 transition-colors cursor-pointer border border-transparent hover:border-zinc-700/50"
                       >
-                        {/* Thumbnail Tập */}
-                        <div className="relative w-full sm:w-40 h-24 flex-shrink-0 rounded-md overflow-hidden bg-zinc-800 border border-zinc-800">
+                         {/* Thumbnail  */}
+                         <div className="relative w-full sm:w-40 h-24 flex-shrink-0 rounded-md overflow-hidden bg-zinc-800 border border-zinc-800">
                           <Image
                             src={`https://placehold.co/600x400/1a1a1a/FFF?text=EP+${ep.number}`}
                             alt={ep.title || `Tập ${ep.number}`}
@@ -120,13 +124,6 @@ export default function MovieSharedLayout({
                           <h4 className="font-bold text-base text-gray-100 group-hover:text-red-500 transition-colors truncate pr-2">
                             Tập {ep.number}: {ep.title || `Episode ${ep.number}`}
                           </h4>
-                          
-                          {/* <div className="flex items-center gap-3 text-xs text-gray-400 mb-2">
-                             <span className="flex items-center gap-1.5">
-                                <CalendarDays className="w-3.5 h-3.5" /> N/A
-                             </span>
-                          </div> 
-                          */}
                         </div>
                       </div>
                     ))}
@@ -152,6 +149,7 @@ export default function MovieSharedLayout({
             {...sidebarData} 
             director={sidebarData.director || { name: "Unknown", avatarUrl: "", origin: "" }}
           />
+          <MovieRecommendations recommendations={recommendations} />
         </div>
 
       </div>

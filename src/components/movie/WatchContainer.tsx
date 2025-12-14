@@ -66,6 +66,7 @@ export default function WatchContainer({ movie, sidebarData }: WatchContainerPro
         seasons={movie.seasons || []}
         type={movie.type}
         onEpisodeSelect={handleEpisodeSelect}
+        recommendations={movie.recommendations || []}
       />
     </div>
   );

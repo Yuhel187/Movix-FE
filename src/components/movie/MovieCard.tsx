@@ -137,7 +137,8 @@ export function MovieCard({
 
     return (
         <div
-            className="relative inline-block">
+            className="flex flex-col h-full w-full relative group" 
+        >
             <div
                 className="relative"
                 onMouseEnter={handleMouseEnter}
