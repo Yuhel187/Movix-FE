@@ -6,27 +6,36 @@ import { MovieCarousel } from "@/components/movie/MovieCarousel";
 import Navbar from "@/components/layout/NavBar";
 import Footer from "@/components/layout/Footer";
 import AIChatWidget from "@/components/ai/AIChatWidget";
-import { 
-  getTrendingMovies, 
+import {
+  getTrendingMovies,
   getDynamicSections,
-  MovieSection 
+  getPersonalizedMovies,
+  MovieSection
 } from "@/services/movie.service";
 import type { Movie } from "@/types/movie";
 import { Loader2 } from "lucide-react";
 
 export default function MoviesPage() {
   const [heroMovies, setHeroMovies] = useState<Movie[]>([]);
-  const [sections, setSections] = useState<MovieSection[]>([]); 
+  const [sections, setSections] = useState<MovieSection[]>([]);
+
+  const [personalizedMovies, setPersonalizedMovies] = useState<Movie[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const trending = await getTrendingMovies();
+        const [trending, dynamicSections, personalized] = await Promise.all([
+          getTrendingMovies(),
+          getDynamicSections(),
+          getPersonalizedMovies()
+        ]);
+
         setHeroMovies(trending.slice(0, 5));
-        const dynamicSections = await getDynamicSections();
         setSections(dynamicSections);
+        setPersonalizedMovies(personalized);
 
       } catch (error) {
         console.error("Lỗi tải trang:", error);
@@ -55,24 +64,31 @@ export default function MoviesPage() {
         </section>
       )}
 
+      <div className="flex flex-col gap-8 pb-20">
+        {personalizedMovies.length > 0 && (
+          <MovieCarousel
+            title="Dành riêng cho bạn"
+            movies={personalizedMovies}
+          />
+        )}
         {sections.length === 0 && heroMovies.length > 0 && (
-           <MovieCarousel title="Phim Thịnh Hành" movies={heroMovies} />
+          <MovieCarousel title="Phim Thịnh Hành" movies={heroMovies} />
         )}
         {sections.map((section) => (
           section.movies.length > 0 && (
-            <MovieCarousel 
+            <MovieCarousel
               key={section.id}
-              title={section.title} 
-              movies={section.movies} 
+              title={section.title}
+              movies={section.movies}
             />
           )
         ))}
 
-     
 
+      </div>
       <Footer />
       <AIChatWidget />
     </main>
-    
+
   );
 }

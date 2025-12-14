@@ -126,6 +126,7 @@ export async function getMovieData(slug: string) {
     rating: raw.metadata?.tmdb_rating || 0,
     duration: raw.metadata?.duration || "N/A",
     views:0,
+    recommendations: (raw.recommendations || []).map(mapToMovie),
   };
 
   const sidebarData: SidebarData = {
@@ -168,6 +169,90 @@ export async function getDynamicSections(): Promise<MovieSection[]> {
     }));
   } catch (error) {
     console.error("Lỗi lấy dynamic sections:", error);
+    return [];
+  }
+}
+interface PersonalizedMovieItem {
+  id: string;
+  title: string;
+  slug: string;
+  poster_url: string;
+  score: number;
+  release_date?: string;
+}
+
+interface PersonalizedResponse {
+  message: string;
+  data: PersonalizedMovieItem[];
+}
+
+export async function getPersonalizedMovies(): Promise<Movie[]> {
+  try {
+    const response = await api.get<any>('/movies/for-you');
+    const movies: Movie[] = response.data.data.map((item: any) => {
+      const releaseYear = item.release_date 
+        ? new Date(item.release_date).getFullYear() 
+        : "N/A";
+
+      const tags = item.movie_genres?.map((mg: any) => mg.genre?.name).filter(Boolean) || [];
+
+      const seasons = item.seasons?.map((s: any) => ({
+        id: s.id,
+        number: s.season_number,
+        title: s.title || `Season ${s.season_number}`,
+        episodes: s.episodes?.map((e: any) => ({
+          id: e.id,
+          number: e.episode_number,
+          title: e.title,
+          videoUrl: e.video_url,
+          runtime: e.runtime || 0
+        })) || []
+      })) || [];
+
+      let videoUrl = item.trailer_url;
+      if (!videoUrl && item.media_type === "MOVIE") {
+         videoUrl = seasons?.[0]?.episodes?.[0]?.videoUrl || null;
+      }
+      const rating = item.metadata?.tmdb_rating || item.metadata?.vote_average || item.score || 0;
+      
+      let duration = "N/A";
+      if (item.metadata?.duration) {
+          duration = item.metadata.duration; 
+      } else if (item.metadata?.runtime) {
+          duration = `${item.metadata.runtime} phút`;
+      }
+
+      return {
+        id: item.id,
+        slug: item.slug,
+        title: item.title || item.original_title || "Chưa có tên",
+        subTitle: item.original_title || "",
+        description: item.description || "",
+        
+        posterUrl: getTmdbImageUrl(item.poster_url, "poster"),
+        backdropUrl: getTmdbImageUrl(item.backdrop_url, "backdrop"),
+        
+        trailerUrl: item.trailer_url || null,
+        videoUrl: videoUrl,
+        
+        type: item.media_type === "TV" ? "TV" : "MOVIE",
+        releaseYear: releaseYear,
+        tags: tags,
+        
+        rating: rating,
+        duration: duration,
+        views: item.metadata?.vote_count || 0,
+        
+        seasons: seasons,
+        cast: [], 
+        director: undefined 
+      };
+    });
+
+    return movies;
+
+  } catch (error) {
+    console.log("Không thể lấy phim gợi ý:", error);
     return [];
   }
 }

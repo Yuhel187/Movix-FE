@@ -1,6 +1,6 @@
 import Navbar from "@/components/layout/NavBar";
 import { getMovieData } from "@/services/movie.service"; 
-import WatchContainer from "@/components/movie/WatchContainer"; // Import component mới
+import WatchContainer from "@/components/movie/WatchContainer";
 
 export default async function MovieWatchPage({ params }: { params: { slug: string } }) {
   const { movie, sidebarData } = await getMovieData(params.slug);
