@@ -126,7 +126,6 @@ export default function WatchPartyRoomPage() {
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // States
   const [roomData, setRoomData] = useState<any>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [members, setMembers] = useState<any[]>([]);
@@ -443,7 +442,7 @@ export default function WatchPartyRoomPage() {
       if (!msgInput.trim() || !socketRef.current) return;
       socketRef.current.emit('wp:send_message', {
           roomId, userId: user?.id, message: msgInput,
-          user: { name: user?.display_name || user?.username, avatar: user?.avatar_url }
+          user: { name: user?.display_name || user?.username, avatar: user?.avatar_url || user?.avatarUrl }
       });
       setMsgInput("");
   };
@@ -487,9 +486,7 @@ export default function WatchPartyRoomPage() {
   return (
     <div className="fixed inset-0 z-50 flex bg-black text-white overflow-hidden font-sans flex-col md:flex-row">
       
-      {/* VIDEO SECTION */}
       <div className="flex-1 flex flex-col h-full overflow-y-auto custom-scrollbar bg-[#141414]">
-          {/* [FIX] Tăng chiều cao Player lên 85vh và dùng flex-shrink-0 */}
           <div ref={playerContainerRef} className="w-full h-[85vh] bg-black relative group shrink-0 flex items-center justify-center">
              {videoUrl ? (
                 <video 
@@ -498,7 +495,6 @@ export default function WatchPartyRoomPage() {
                 />
             ) : ( <div className="text-slate-500 flex flex-col items-center gap-2 pt-20"><span className="text-4xl">🎬</span><span>Video không khả dụng</span></div> )}
 
-            {/* Header Overlay */}
             <div className={cn("absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent z-20 flex justify-between pointer-events-none transition-opacity duration-300", isPlaying ? "opacity-0 group-hover:opacity-100" : "opacity-100")}>
                  <div className="pointer-events-auto">
                     <h1 className="text-lg font-bold text-white flex items-center gap-2 drop-shadow-md"><span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_red]"></span>{roomData?.title}</h1>
@@ -507,7 +503,6 @@ export default function WatchPartyRoomPage() {
                     <InvitePartyDialog joinCode={roomData?.join_code} isPrivate={roomData?.is_private} roomId={roomData?.id} />
                     {isHost ? (
                         <>
-                            {/* [MỚI] Thêm nút Rời phòng cho Host (để thoát mà không kết thúc) */}
                             <Button size="sm" variant="secondary" className="bg-white/10 hover:bg-white/20 text-white backdrop-blur-md" onClick={() => router.push('/watch-party')}>
                                 <LogOut className="w-4 h-4 mr-2"/> Rời
                             </Button>
@@ -522,7 +517,6 @@ export default function WatchPartyRoomPage() {
                  </div>
             </div>
 
-            {/* Controls Overlay */}
             <div className={cn("absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-opacity duration-300 z-20 pointer-events-auto flex flex-col gap-2", isPlaying ? "opacity-0 group-hover:opacity-100" : "opacity-100")}>
                 <div className="relative w-full h-4 flex items-center group/seekbar cursor-pointer">
                     <div className="absolute inset-0 h-1 bg-white/30 rounded-full my-auto group-hover/seekbar:h-1.5 transition-all"></div>
@@ -613,7 +607,6 @@ export default function WatchPartyRoomPage() {
       <AlertDialog open={!!userToBan} onOpenChange={(open) => !open && setUserToBan(null)}><AlertDialogContent className="bg-[#1F1F1F] border-slate-800 text-white"><AlertDialogHeader><AlertDialogTitle>Cấm thành viên vĩnh viễn?</AlertDialogTitle><AlertDialogDescription className="text-slate-400">Thành viên này sẽ không thể tham gia lại phòng này trừ khi được gỡ cấm.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="bg-transparent border-slate-700 hover:bg-white/10 text-white">Hủy</AlertDialogCancel><AlertDialogAction onClick={confirmBanUser} className="bg-red-600 hover:bg-red-700 text-white border-0">Cấm ngay</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
       <AlertDialog open={!!userToTransfer} onOpenChange={(open) => !open && setUserToTransfer(null)}><AlertDialogContent className="bg-[#1F1F1F] border-slate-800 text-white"><AlertDialogHeader><AlertDialogTitle>Chuyển quyền chủ phòng?</AlertDialogTitle><AlertDialogDescription className="text-slate-400">Bạn sẽ mất quyền điều khiển video.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="bg-transparent border-slate-700 hover:bg-white/10 text-white">Hủy</AlertDialogCancel><AlertDialogAction onClick={confirmTransferHost} className="bg-yellow-600 hover:bg-yellow-700 text-black border-0">Chuyển quyền</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
 
-      {/* [FIX] Private Room Dialog - No Close Button */}
       <Dialog open={showJoinCodeDialog} onOpenChange={() => {}}>
           <DialogContent showCloseButton={false} className="bg-[#1F1F1F] border-slate-800 text-white sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
              <DialogHeader>

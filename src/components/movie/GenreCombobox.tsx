@@ -161,16 +161,6 @@ export function GenreCombobox({
                         <Check className={cn("mr-2 h-4 w-4 opacity-0")} />
                         {genre.name}
                       </div>
-                      
-                      {/* NÚT XÓA KHỎI CSDL */}
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="h-6 w-6 text-slate-500 hover:bg-rose-900 hover:text-rose-400"
-                        onClick={(e) => handleDelete(e, genre.id)}
-                      >
-                          <Trash className="h-3 w-3" />
-                      </Button>
                     </CommandItem>
                   ))}
               </CommandGroup>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import api from "@/lib/apiClient";
 import type { 
   Person, 
@@ -5,6 +6,14 @@ import type {
   PersonDetailResponse 
 } from "@/types/person";
 import { getPersonAvatarUrl, getTmdbImageUrl } from "@/lib/tmdb";
+
+function getRoleDisplayName(roleType?: string) {
+    const r = roleType?.toLowerCase()?.trim();
+    if (r === 'director') return "Đạo diễn";
+    if (r === 'actor') return "Diễn viên";
+    if (r === 'writer') return "Biên kịch";
+    return "Nghệ sĩ";
+}
 
 export async function getPeopleList(page = 1, limit = 20) {
   try {
@@ -15,7 +24,7 @@ export async function getPeopleList(page = 1, limit = 20) {
       id: item.id,
       name: item.name,
       avatarUrl: getPersonAvatarUrl(item.avatar_url),
-      role: item.role_type === "director" ? "Đạo diễn" : "Diễn viên",
+      role: getRoleDisplayName(item.role_type), 
     }));
 
     return { 
@@ -33,9 +42,6 @@ export async function getPersonDetail(id: string) {
   try {
     const res = await api.get<PersonDetailResponse>(`/people/${id}`);
     const raw = res.data;
-    // let genderStr = "N/A";
-    // if (raw.gender === 2) genderStr = "Nam";
-    // else if (raw.gender === 1) genderStr = "Nữ";
 
     const credits = raw.movies?.map((m) => ({
        id: m.id,
@@ -54,7 +60,7 @@ export async function getPersonDetail(id: string) {
       id: raw.id,
       name: raw.name,
       avatarUrl: getPersonAvatarUrl(raw.avatar_url),
-      role: raw.role_type === "director" ? "Đạo diễn" : "Diễn viên",
+      role: getRoleDisplayName(raw.role_type), 
       biography: raw.biography || "Chưa có tiểu sử.",
       birthday: raw.birthday ? new Date(raw.birthday).toLocaleDateString("vi-VN") : "N/A",
       gender: raw.gender,
@@ -67,3 +73,53 @@ export async function getPersonDetail(id: string) {
     throw new Error("Không tìm thấy diễn viên");
   }
 }
+
+export interface AdminPerson {
+    id: string;
+    name: string;
+    role_type: string; 
+    gender: number;
+    avatar_url?: string;
+    birthday?: string;
+    biography?: string;
+    _count?: {
+        movie_people: number;
+    };
+}
+
+export interface AdminPersonListResponse {
+    data: AdminPerson[]; 
+    pagination: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }
+}
+
+export const personService = {
+  getAll: async (params?: { search?: string; role_type?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.page) query.append("page", params.page.toString());
+    if (params?.limit) query.append("limit", params.limit.toString());
+    if (params?.search) query.append("search", params.search);
+    if (params?.role_type && params.role_type !== 'all') query.append("role_type", params.role_type);
+
+    const response = await api.get<AdminPersonListResponse>(`/people?${query.toString()}`);
+    return response.data;
+  },
+
+  create: async (data: any) => {
+    const response = await api.post("/people", data);
+    return response.data;
+  },
+
+  update: async (id: string, data: any) => {
+    const response = await api.put(`/people/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string) => {
+    await api.delete(`/people/${id}`);
+  },
+};

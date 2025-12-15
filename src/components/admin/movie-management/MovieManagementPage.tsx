@@ -10,7 +10,8 @@ import {
     Calendar as CalendarIconLucide, 
     Trash2,
     Search,
-    ImageIcon 
+    ImageIcon,
+    Loader2
 } from "lucide-react";
 import Image from "next/image";
 import { Label } from "@/components/ui/label";
@@ -92,6 +93,7 @@ export default function MovieManagement() {
 
   const searchParams = useSearchParams();
 
+
   useEffect(() => {
     if (movieToEdit?.seasons?.length > 0) {
       setSelectedSeasonId(movieToEdit.seasons[0].id);
@@ -137,14 +139,6 @@ export default function MovieManagement() {
   }, []);
 
   useEffect(() => {
-    if (movieToEdit?.seasons?.length > 0) {
-      setSelectedSeasonId(movieToEdit.seasons[0].id);
-    } else {
-      setSelectedSeasonId(null);
-    }
-  }, [movieToEdit]);
-
-  useEffect(() => {
     setBackdropError(false);
     setPosterError(false);
   }, [movieToEdit?.id]);
@@ -152,7 +146,7 @@ export default function MovieManagement() {
   useEffect(() => {
     const fetchGenres = async () => {
         try {
-            const res = await apiClient.get('/movies/genres');
+            const res = await apiClient.get('/genres');
             if (Array.isArray(res.data)) {
                 setAllGenres(res.data);
             }
@@ -198,7 +192,7 @@ export default function MovieManagement() {
         setIsFormDirty(false);
     } catch (err) {
       console.error(err);
-      toast.error("Lưu thất bại.", { id: toastId });
+      toast.error("Lưu thất bại. Vui lòng thử lại.", { id: toastId });
     } finally {
       setIsSaving(false);
     }
@@ -222,15 +216,26 @@ export default function MovieManagement() {
     }
   };
   
-  const handleCreateGenreAPI = (name: string) => {
-    const newGenre: Genre = { id: `g${Date.now()}`, name: name };
-    setAllGenres((currentDB) => [...currentDB, newGenre]);
-    updateMovieField('movie_genres', [...(movieToEdit.movie_genres || []), { genre: newGenre }]);
+  const handleCreateGenreAPI = async (name: string) => {
+    try {
+        const res = await apiClient.post('/genres', { name });
+        const newGenre: Genre = res.data;
+        
+        setAllGenres((currentDB) => [...currentDB, newGenre]);
+        
+        updateMovieField('movie_genres', [...(movieToEdit.movie_genres || []), { genre: newGenre }]);
+        
+        toast.success(`Đã tạo thể loại: ${newGenre.name}`);
+    } catch (error) {
+        console.error("Lỗi tạo thể loại:", error);
+        toast.error("Không thể tạo thể loại mới.");
+    }
   };
+
   const handleDeleteGenreAPI = (idToDelete: string) => {
-    setAllGenres((currentDB) => currentDB.filter((g) => g.id !== idToDelete));
     updateMovieField('movie_genres', movieToEdit.movie_genres.filter((mg: any) => mg.genre.id !== idToDelete));
   };
+
   const handleAddActorToList = (data: { person: any; characterName: string }) => {
     if (movieToEdit.movie_people.some((mp: any) => mp.person.id === data.person.id)) {
       alert("Diễn viên này đã có trong danh sách."); return;
@@ -244,10 +249,12 @@ export default function MovieManagement() {
     updateMovieField('movie_people', [...movieToEdit.movie_people, newPersonLink]);
     setIsAddActorOpen(false);
   };
+
   const removeActor = (personId: string) => {
     updateMovieField('movie_people', movieToEdit.movie_people.filter((mp: any) => mp.person.id !== personId));
   };
 
+  // --- SEASONS & EPISODES LOGIC ---
   const handleSeasonSelect = (seasonId: string) => {
       setSelectedSeasonId(seasonId);
   };
@@ -270,7 +277,7 @@ export default function MovieManagement() {
       updateMovieField('seasons', [...(movieToEdit.seasons || []), newSeason]);
       setNewSeasonName("");
       setSelectedSeasonId(newSeason.id);
-      toast.success(`Đã thêm ${newSeason.name}. Nhấn "Lưu thay đổi" để xác nhận.`);
+      toast.success(`Đã thêm ${newSeason.name}.`);
   };
 
   const handleAddEpisode = () => {
@@ -313,6 +320,7 @@ export default function MovieManagement() {
       });
       updateMovieField('seasons', newSeasons);
   };
+
   const handleEpisodeChange = (episodeId: string | number, field: 'title' | 'duration' | 'video_url', value: string | number | null) => {
       if (!selectedSeasonId || !movieToEdit) return;
       
@@ -336,7 +344,7 @@ export default function MovieManagement() {
     <div className="w-full">
       <div className="flex flex-col lg:flex-row gap-6">
         
-        {/* === CỘT TRÁI  === */}
+        {/* === CỘT TRÁI (FORM CHỈNH SỬA) === */}
         <div className="lg:w-8/12 space-y-4 order-2 lg:order-1">
           <h1 className="text-white text-xl font-semibold px-1">
              {movieToEdit ? `Đang chỉnh sửa: ${movieToEdit.title}` : "Quản lý phim"}
@@ -355,7 +363,7 @@ export default function MovieManagement() {
                         </p>
                     </CardContent>
                 </Card>
-              )}
+              )}
               {isLoadingMovie && (
                 <div className="space-y-4">
                   <Skeleton className="h-10 w-full bg-slate-700" />
@@ -471,7 +479,7 @@ export default function MovieManagement() {
                       allGenres={allGenres} 
                       selectedGenres={movieToEdit.movie_genres?.map((mg: any) => mg.genre) || []} 
                       onChange={(newSelection) => updateMovieField('movie_genres', newSelection.map(g => ({ genre: g })))}
-                      onCreate={handleCreateGenreAPI}
+                      onCreate={handleCreateGenreAPI} 
                       onDelete={handleDeleteGenreAPI}
                       className="mt-2"
                     />
@@ -528,17 +536,11 @@ export default function MovieManagement() {
                   {/* Logic quản lý tập */}
                   {movieToEdit.media_type === 'TV' && (
                     <div className="space-y-6 pt-6 border-t border-slate-700">
-                      
-                      {/* KHỐI BỊ LẶP ĐÃ BỊ XÓA KHỎI ĐÂY 
-                      */}
-
                       <h3 className="text-lg font-semibold text-white">QUẢN LÝ MÙA VÀ TẬP PHIM</h3>
                       
                       {/* 1. Thêm Mùa */}
                       <div>
-                        {/* Thêm flex-col và sm:flex-row */}
                         <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-                          {/* Thêm w-full và sm:flex-1 */}
                           <div className="w-full sm:flex-1">
                             <Label htmlFor="seasonNameInput" className="block text-sm font-medium text-gray-300 mb-1">Tên mùa</Label>
                             <Input 
@@ -549,7 +551,6 @@ export default function MovieManagement() {
                               placeholder="Vd: Mùa 2: Phần tiếp theo"
                             />
                           </div>
-                          {/* Thêm w-full và sm:w-auto */}
                           <Button 
                             className="bg-[#E50914] hover:bg-[#b80710] flex-shrink-0 w-full sm:w-auto"
                             onClick={handleAddNewSeason}
@@ -683,7 +684,6 @@ export default function MovieManagement() {
                 <Button
                   onClick={handleDeleteMovie}
                   variant="destructive"
-                  /* Thêm w-full sm:w-auto */
                   className="bg-rose-600 text-white w-full sm:w-auto py-5 text-sm"
                   disabled={isDeleting || isSaving}
                 >
@@ -691,18 +691,16 @@ export default function MovieManagement() {
                 </Button>
                 <Button
                   onClick={handleSave}
-                  /* Thêm w-full sm:w-auto */
                   className="bg-blue-600 text-white w-full sm:w-auto hover:bg-blue-700 py-5 text-sm"
                   disabled={!isFormDirty || isSaving || isDeleting}
                 >
-                  {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
+                  {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Đang lưu...</> : "Lưu thay đổi"}
                 </Button>
             </CardFooter>
             )}
         </Card>
         </div>
         
-        {/* === CỘT PHẢI (TÌM KIẾM & PREVIEW) === */}
         <div className="lg:w-4/12 h-full order-1 lg:order-2">
           <div className="sticky top-10 space-y-4">
             
@@ -724,13 +722,12 @@ export default function MovieManagement() {
               )}
             </div>
 
-            {/* 2. Preview Card */}
             <Card className="bg-[#1F1F1F] border-none">
               <CardContent className="p-4 space-y-8">
                 <div>
                   <Label className="text-xs uppercase text-slate-400">Backdrop Preview</Label>
                   <div className="mt-4 aspect-video w-full rounded-md bg-slate-800 overflow-hidden flex items-center justify-center">
-                    {movieToEdit?.backdrop_url ? (
+                    {movieToEdit?.backdrop_url ? (
                           <Image 
                             key={movieToEdit.id} 
                             src={backdropError ? "/images/placeholder-backdrop.png" : movieToEdit.backdrop_url} 
@@ -742,12 +739,12 @@ export default function MovieManagement() {
                         ) : (
                           <ImageIcon className="w-10 h-10 text-slate-600" />
                         )}
-                  </div>
+                  </div>
                 </div>
                 <div>
                   <Label className="text-xs uppercase text-slate-400">Poster Preview</Label>
                   <div className="mt-4 aspect-[2/3] w-64 mx-auto rounded-md bg-slate-800 overflow-hidden flex items-center justify-center">
-                    {movieToEdit?.poster_url ? (
+                    {movieToEdit?.poster_url ? (
                           <Image 
                             key={`${movieToEdit.id}-poster`}
                             src={posterError ? "/images/placeholder-poster.png" : movieToEdit.poster_url} 
@@ -759,7 +756,7 @@ export default function MovieManagement() {
                         ) : (
                           <ImageIcon className="w-16 h-16 text-slate-600" />
                         )}
-                  </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
