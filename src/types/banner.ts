@@ -1,7 +1,11 @@
+import { Movie } from "./movie";
 export interface Banner {
   id: string;
   title: string;
-  imageUrl: string; 
-  linkUrl: string; 
-  isActive: boolean;
+  imageUrl: string;
+  linkUrl?: string; 
+  isActive: boolean; 
+  movieId?: number | string; 
+  description?: string;
+  movie?: Movie;
 }

@@ -10,7 +10,10 @@ export async function getBanners(): Promise<Banner[]> {
       title: item.title,
       imageUrl: item.image_url || "/images/placeholder-backdrop.png",
       linkUrl: item.link_url || "#",
-      isActive: item.is_active
+      isActive: item.is_active,
+      movieId: item.movie_id,    
+      description: item.description, 
+      movie: item.movie   
     }));
   } catch (error) {
     console.error("Lỗi lấy banner:", error);
