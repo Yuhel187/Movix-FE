@@ -12,30 +12,33 @@ import {
   getPersonalizedMovies,
   MovieSection
 } from "@/services/movie.service";
+import { getBanners } from "@/services/banner.service";
 import type { Movie } from "@/types/movie";
+import type { Banner } from "@/types/banner"; 
 import { Loader2 } from "lucide-react";
 
 export default function MoviesPage() {
-  const [heroMovies, setHeroMovies] = useState<Movie[]>([]);
+  const [heroMovies, setHeroMovies] = useState<Movie[]>([]); 
+  const [banners, setBanners] = useState<Banner[]>([]);      
   const [sections, setSections] = useState<MovieSection[]>([]);
-
   const [personalizedMovies, setPersonalizedMovies] = useState<Movie[]>([]);
-
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [trending, dynamicSections, personalized] = await Promise.all([
+        const [trending, dynamicSections, personalized, bannersData] = await Promise.all([
           getTrendingMovies(),
           getDynamicSections(),
-          getPersonalizedMovies()
+          getPersonalizedMovies(),
+          getBanners()
         ]);
 
-        setHeroMovies(trending.slice(0, 5));
+        setHeroMovies(trending.slice(0, 10)); 
         setSections(dynamicSections);
         setPersonalizedMovies(personalized);
+        setBanners(bannersData); 
 
       } catch (error) {
         console.error("Lỗi tải trang:", error);
@@ -58,9 +61,10 @@ export default function MoviesPage() {
   return (
     <main className="dark min-h-screen bg-black">
       <Navbar />
-      {heroMovies.length > 0 && (
+      
+      {banners.length > 0 && (
         <section className="w-full h-screen">
-          <HeroBanner movies={heroMovies} />
+          <HeroBanner banners={banners} />
         </section>
       )}
 
@@ -83,12 +87,9 @@ export default function MoviesPage() {
             />
           )
         ))}
-
-
       </div>
       <Footer />
       <AIChatWidget />
     </main>
-
   );
 }

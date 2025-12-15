@@ -9,9 +9,9 @@ import {
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Heart, Info, Loader2 } from "lucide-react";
+import { Play, Heart, Info, Loader2, ExternalLink } from "lucide-react";
 import Image from "next/image";
-import type { Movie } from "@/types/movie";
+import type { Banner } from "@/types/banner"; // Đổi import từ Movie sang Banner
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,7 +19,7 @@ import { checkFavoriteStatus, toggleFavorite } from "../../services/interaction.
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-export default function HeroBanner({ movies }: { movies: Movie[] }) {
+export default function HeroBanner({ banners }: { banners: Banner[] }) {
   const [selectedIndex, setSelectedIndex] = React.useState(0);
   const [carouselApi, setCarouselApi] = React.useState<any>(null);
   const router = useRouter();
@@ -27,12 +27,13 @@ export default function HeroBanner({ movies }: { movies: Movie[] }) {
   const [isFavorite, setIsFavorite] = React.useState(false);
   const [isLoadingFav, setIsLoadingFav] = React.useState(false);
 
-
-  const currentMovie = movies[selectedIndex];
+  const currentBanner = banners[selectedIndex];
+  
+  const isMovieContent = !!currentBanner?.movieId && !!currentBanner?.movie;
 
   React.useEffect(() => {
-    if (isLoggedIn && currentMovie) {
-      checkFavoriteStatus(currentMovie.id.toString())
+    if (isLoggedIn && isMovieContent && currentBanner.movie) {
+      checkFavoriteStatus(currentBanner.movie.id.toString())
         .then((data) => setIsFavorite(data.isFavorite))
         .catch(() => {})
         .finally(() => setIsLoadingFav(false));
@@ -40,32 +41,39 @@ export default function HeroBanner({ movies }: { movies: Movie[] }) {
       setIsFavorite(false);
       setIsLoadingFav(false);
     }
-  }, [isLoggedIn, currentMovie?.id]); 
+  }, [isLoggedIn, currentBanner, isMovieContent]); 
 
-  const handleWatch = () => {
-    if (currentMovie?.slug) {
-      router.push(`/movies/${currentMovie.slug}/watch`);
+  const handlePrimaryAction = () => {
+    if (isMovieContent && currentBanner.movie?.slug) {
+      router.push(`/movies/${currentBanner.movie.slug}/watch`);
+    } else if (currentBanner.linkUrl) {
+      if (currentBanner.linkUrl.startsWith('/')) {
+        router.push(currentBanner.linkUrl);
+      } else {
+        window.open(currentBanner.linkUrl, '_blank');
+      }
     }
   };
 
   const handleDetail = () => {
-    if (currentMovie?.slug) {
-      router.push(`/movies/${currentMovie.slug}`);
+    if (isMovieContent && currentBanner.movie?.slug) {
+      router.push(`/movies/${currentBanner.movie.slug}`);
     }
   };
 
   const handleToggleFavorite = async () => {
+    if (!isMovieContent || !currentBanner.movie) return;
+
     if (!isLoggedIn) {
       toast.error("Bạn cần đăng nhập để thực hiện việc này.");
       return;
     }
-    if (!currentMovie) return;
 
     const oldState = isFavorite;
     setIsFavorite(!oldState); 
 
     try {
-      const { message } = await toggleFavorite(currentMovie.id.toString());
+      const { message } = await toggleFavorite(currentBanner.movie.id.toString());
       toast.success(message);
     } catch (error) {
       setIsFavorite(oldState); 
@@ -79,24 +87,31 @@ export default function HeroBanner({ movies }: { movies: Movie[] }) {
     carouselApi.on("select", onSelect);
     return () => carouselApi.off("select", onSelect);
   }, [carouselApi]);
+  if (!banners || banners.length === 0) return null;
 
   return (
     <div className="relative w-full h-[100vh] overflow-hidden bg-black">
       <Carousel opts={{ loop: true }} setApi={setCarouselApi} className="w-full h-full relative">
         <CarouselContent>
-          {movies.map((movie, index) => (
-            <CarouselItem key={movie.id}>
+          {banners.map((banner, index) => {
+            const isMovieItem = !!banner.movieId && !!banner.movie;
+            const displayImage = isMovieItem ? (banner.movie?.backdropUrl || banner.imageUrl) : banner.imageUrl;
+            const displayTitle = isMovieItem ? banner.movie?.title : banner.title;
+            const displayDesc = isMovieItem ? banner.movie?.description : banner.description;
+
+            return (
+            <CarouselItem key={banner.id}>
               <AnimatePresence mode="wait">
                 {selectedIndex === index && (
                   <motion.section
-                    key={movie.id}
+                    key={banner.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.8, ease: "easeInOut" }}
                     className="relative w-full h-[100vh] text-white flex items-end pb-24"
                   >
-                    {/*cinematic fade */}
+                    {/* Background Image & Overlay */}
                     <motion.div
                       initial={{ opacity: 0, scale: 1.03 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -105,8 +120,8 @@ export default function HeroBanner({ movies }: { movies: Movie[] }) {
                       className="absolute inset-0"
                     >
                       <Image
-                        src={movie.backdropUrl || "/placeholder.jpg"}
-                        alt={movie.title}
+                        src={displayImage || "/placeholder.jpg"}
+                        alt={displayTitle || "Banner"}
                         fill
                         priority
                         sizes="100vw"
@@ -115,7 +130,7 @@ export default function HeroBanner({ movies }: { movies: Movie[] }) {
                       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
                     </motion.div>
                     <motion.div
-                      key={movie.title}
+                      key={banner.id + "-content"}
                       initial={{ opacity: 0, y: 40 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -40 }}
@@ -123,94 +138,115 @@ export default function HeroBanner({ movies }: { movies: Movie[] }) {
                       className="relative z-20 px-10 md:px-20 max-w-4xl pb-16"
                     >
                       <h1 className="text-5xl md:text-7xl font-bold mb-4 drop-shadow-md">
-                        {movie.title}
+                        {displayTitle}
                       </h1>
-                      {movie.subTitle && (
-                        <p className="text-xl md:text-2xl text-gray-300 mb-2 italic">
-                          {movie.subTitle}
+
+                      {/* Movie Specific: Subtitle & Tags */}
+                      {isMovieItem && banner.movie && (
+                        <>
+                          {banner.movie.subTitle && (
+                            <p className="text-xl md:text-2xl text-gray-300 mb-2 italic">
+                              {banner.movie.subTitle}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {banner.movie.tags?.map((tag) => (
+                              <Badge
+                                key={tag}
+                                variant="outline"
+                                className="bg-white/10 border-white/30 text-white"
+                              >
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Description (Common) */}
+                      {displayDesc && (
+                        <p className="text-gray-200 max-w-2xl text-base md:text-lg mb-6 leading-relaxed line-clamp-3">
+                          {displayDesc}
                         </p>
                       )}
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {movie.tags?.map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="outline"
-                            className="bg-white/10 border-white/30 text-white"
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
 
-                      <p className="text-gray-200 max-w-2xl text-base md:text-lg mb-6 leading-relaxed">
-                        {movie.description}
-                      </p>
-
+                      {/* Action Buttons */}
                       <div className="flex items-center gap-4">
                         <Button
-                          onClick={handleWatch}
+                          onClick={handlePrimaryAction}
                           className="bg-primary hover:bg-primary/80 text-white rounded-full px-6 py-6 text-lg flex items-center gap-2"
                         >
-                          <Play className="w-5 h-5" /> Xem ngay
+                          {isMovieItem ? (
+                            <><Play className="w-5 h-5" /> Xem ngay</>
+                          ) : (
+                            <><ExternalLink className="w-5 h-5" /> Khám phá</>
+                          )}
                         </Button>
 
-                        <Button
-                          variant="outline"
-                          onClick={handleToggleFavorite}
-                          disabled={isLoadingFav}
-                          className="rounded-full border-white/30 bg-white/10 hover:bg-white/20 text-white w-12 h-12 p-0 flex items-center justify-center"
-                        >
-                           {isLoadingFav ? (
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                              <Heart className={cn("w-5 h-5", isFavorite ? "fill-red-500 text-red-500" : "text-white")} />
-                            )}
-                        </Button>
+                        {isMovieItem && (
+                          <>
+                            <Button
+                              variant="outline"
+                              onClick={handleToggleFavorite}
+                              disabled={isLoadingFav}
+                              className="rounded-full border-white/30 bg-white/10 hover:bg-white/20 text-white w-12 h-12 p-0 flex items-center justify-center"
+                            >
+                              {isLoadingFav ? (
+                                  <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : (
+                                  <Heart className={cn("w-5 h-5", isFavorite ? "fill-red-500 text-red-500" : "text-white")} />
+                                )}
+                            </Button>
 
-                        <Button
-                          variant="outline"
-                          onClick={handleDetail}
-                          className="rounded-full border-white/30 bg-white/10 hover:bg-white/20 text-white w-12 h-12 p-0 flex items-center justify-center"
-                        >
-                          <Info className="w-5 h-5" />
-                        </Button>
+                            <Button
+                              variant="outline"
+                              onClick={handleDetail}
+                              className="rounded-full border-white/30 bg-white/10 hover:bg-white/20 text-white w-12 h-12 p-0 flex items-center justify-center"
+                            >
+                              <Info className="w-5 h-5" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </motion.div>
                   </motion.section>
                 )}
               </AnimatePresence>
             </CarouselItem>
-          ))}
+          )})}
         </CarouselContent>
 
         <CarouselPrevious className="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full border-none backdrop-blur-sm z-30" />
         <CarouselNext className="absolute right-6 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full border-none backdrop-blur-sm z-30" />
       </Carousel>
 
-      {/* Thumbnail */}
+      {/* Thumbnail Navigation */}
       <div className="absolute bottom-8 right-8 flex gap-3 z-20">
-        {movies.map((movie, index) => (
-          <button
-            key={movie.id}
-            onClick={() => {
-              setSelectedIndex(index);
-              carouselApi?.scrollTo(index);
-            }}
-            className={`relative w-24 h-14 rounded-md overflow-hidden transition-all duration-300 ${
-              selectedIndex === index
-                ? "ring-2 ring-primary scale-105"
-                : "opacity-70 hover:opacity-100"
-            }`}
-          >
-            <Image
-              src={movie.backdropUrl || "/placeholder.jpg"}
-              alt={movie.title}
-              fill
-              sizes="100px"
-              className="object-cover"
-            />
-          </button>
-        ))}
+        {banners.map((banner, index) => {
+             const isMovieItem = !!banner.movieId && !!banner.movie;
+             const thumbImage = isMovieItem ? (banner.movie?.backdropUrl || banner.imageUrl) : banner.imageUrl;
+             return (
+              <button
+                key={banner.id}
+                onClick={() => {
+                  setSelectedIndex(index);
+                  carouselApi?.scrollTo(index);
+                }}
+                className={`relative w-24 h-14 rounded-md overflow-hidden transition-all duration-300 ${
+                  selectedIndex === index
+                    ? "ring-2 ring-primary scale-105"
+                    : "opacity-70 hover:opacity-100"
+                }`}
+              >
+                <Image
+                  src={thumbImage || "/placeholder.jpg"}
+                  alt={banner.title}
+                  fill
+                  sizes="100px"
+                  className="object-cover"
+                />
+              </button>
+        )})}
       </div>
     </div>
   );
