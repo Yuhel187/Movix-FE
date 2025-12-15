@@ -27,7 +27,6 @@ import {
   Plus,
   Trash,
   Edit,
-  MoreHorizontal,
   AlertCircle,
   Filter as FilterIcon,
 } from "lucide-react";
@@ -277,7 +276,6 @@ const RenderListView = ({
           <TableHead className="text-white">Loại phim</TableHead>
           <TableHead className="text-white">Năm</TableHead>
           <TableHead className="text-white">Last change</TableHead>
-          <TableHead className="text-white text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -309,11 +307,6 @@ const RenderListView = ({
               {(movie as any).release_date ? new Date((movie as any).release_date).getFullYear() : movie.releaseYear}
             </TableCell>
             <TableCell className="text-gray-300">2025-10-26</TableCell>
-            <TableCell className="text-right">
-              <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -349,7 +342,6 @@ const MovieListSkeleton = () => (
           <TableHead className="text-white">Loại phim</TableHead>
           <TableHead className="text-white">Năm</TableHead>
           <TableHead className="text-white">Last change</TableHead>
-          <TableHead className="text-white text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

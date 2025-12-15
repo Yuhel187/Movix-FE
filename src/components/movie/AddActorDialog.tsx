@@ -242,8 +242,8 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
                                     </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                    <p className="text-white">{person.name}</p>
-                                    <p className="text-xs text-gray-400">{person.roles || 'Nghệ sĩ'}</p>
+                                    <p className="text-black font-semibold">{person.name}</p>
+                                    <p className="text-xs text-black">{person.roles || 'Nghệ sĩ'}</p>
                                 </div>
                                 </CommandItem>
                             ))}
@@ -253,7 +253,7 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
                     <div className="p-2 border-t border-slate-700">
                       <Dialog open={isCreatePersonOpen} onOpenChange={setCreatePersonOpen}>
                         <DialogTrigger asChild>
-                          <Button variant="ghost" className="w-full justify-start text-blue-400 hover:text-blue-300 hover:bg-white/5">
+                          <Button variant="ghost" className="w-full justify-start text-blue-500 hover:text-blue-800 hover:bg-white/5">
                             <Plus className="w-4 h-4 mr-2" />
                             Tạo hồ sơ thủ công...
                           </Button>

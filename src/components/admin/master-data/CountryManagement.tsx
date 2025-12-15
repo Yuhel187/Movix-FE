@@ -86,10 +86,16 @@ const CountryManagement = () => {
         toast.success("Thêm mới thành công");
       }
       setIsDialogOpen(false);
-      fetchCountries(); // Refresh list
-    } catch (error) {
-      console.error(error);
-      toast.error("Có lỗi xảy ra, vui lòng thử lại");
+      fetchCountries(); 
+    } catch (error: any) {
+      if (error.response && error.response.status === 409) {
+            toast.error("Quốc gia này đã tồn tại trong hệ thống!");
+        } 
+        else {
+            console.error(error);
+            const errorMessage = error.response?.data?.message || "Có lỗi xảy ra, vui lòng thử lại";
+            toast.error(errorMessage);
+        }
     } finally {
       setIsSubmitting(false);
     }
