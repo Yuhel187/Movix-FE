@@ -6,6 +6,8 @@ import MovieSharedLayout from "@/components/movie/MovieSharedLayout";
 export default async function MovieDetailPage({ params }: { params: { slug: string } }) {
   const { movie, sidebarData } = await getMovieData(params.slug);
 
+  if (!movie) return <div>Not found</div>; 
+
   return (
     <main className="dark min-h-screen bg-black text-white">
       <div className="absolute top-0 left-0 w-full z-20">
@@ -18,8 +20,11 @@ export default async function MovieDetailPage({ params }: { params: { slug: stri
         sidebarData={sidebarData} 
         movieId={movie.id as string}
         movieSlug={movie.slug}
-        seasons={movie.seasons}   
-        type={movie.type}         
+        
+        seasons={movie.seasons || []}   
+        
+        type={movie.type} 
+        recommendations={movie.recommendations || []}        
       />
     </main>
   );

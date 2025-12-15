@@ -45,13 +45,14 @@ export default function FavoritesPage() {
     );
 
     return (
-        <div className="max-w-4xl">
-            <h1 className="text-3xl font-bold text-white">Yêu thích</h1>
-            <p className="mt-1 text-gray-400">
+        <div className="max-w-7xl">
+            <div className="flex items-center gap-3 mb-2">
+                <Heart className="w-8 h-8 text-red-600" />
+                <h1 className="text-3xl font-bold text-white">Yêu thích</h1>
+            </div>
+            <p className="mt-1 mx-1 text-gray-400 my-7">
                 Danh sách phim bạn đã thêm vào yêu thích.
             </p>
-
-            {/* Logic render mới */}
             {isLoading ? (
                 <LoadingSkeleton />
             ) : favorites.length === 0 ? (
