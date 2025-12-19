@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogClose,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -17,7 +16,6 @@ import {
 } from "@/components/ui/popover";
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -42,12 +40,15 @@ import {
   Check,
   ImageIcon,
   Calendar as CalendarIconLucide,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Loader2 
 } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import apiClient from "@/lib/apiClient";
 import { getPersonAvatarUrl } from "@/lib/tmdb";
+import { toast } from "sonner";
+
 interface Person {
   id: string | number;
   name: string;
@@ -55,7 +56,7 @@ interface Person {
   roles?: string;
   biography?: string | null;
   birthday?: string | null;
-  gender?: number | null; // 1: Nữ, 2: Nam
+  gender?: number | null; 
 }
 
 interface AddActorDialogProps {
@@ -70,18 +71,16 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
   const [selectedPersonForRole, setSelectedPersonForRole] = useState<Person | null>(null);
   const [characterName, setCharacterName] = useState("");
   
-  // State chứa kết quả tìm kiếm từ API
   const [foundPeople, setFoundPeople] = useState<Person[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // === State cho Dialog lồng  ===
   const [isCreatePersonOpen, setCreatePersonOpen] = useState(false);
   const [profileNgaySinh, setProfileNgaySinh] = useState<Date | undefined>();
   const [profileMoTa, setProfileMoTa] = useState("");
   const [avatarUrlInput, setAvatarUrlInput] = useState("");
   const [genderValue, setGenderValue] = useState("2");
+  const [isCreatingPerson, setIsCreatingPerson] = useState(false); 
 
-  // 3.1 LOGIC TÌM KIẾM TỪ API
   useEffect(() => {
     const fetchPeople = async () => {
       if (!searchPersonValue || searchPersonValue.trim().length < 2) {
@@ -92,13 +91,12 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
       setIsSearching(true);
       try {
         const res = await apiClient.get(`/movies/search?q=${encodeURIComponent(searchPersonValue)}`);
-      
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mappedPeople: Person[] = res.data.people.map((p: any) => ({
+        
+        const mappedPeople: Person[] = (res.data.people || []).map((p: any) => ({
             id: p.id,
             name: p.name,
             avatarUrl: getPersonAvatarUrl(p.avatar_url),
-            roles: "Diễn viên / Đạo diễn", 
+            roles: p.role_type === "Director" ? "Đạo diễn" : "Diễn viên", 
             biography: p.biography,
             birthday: p.birthday,
             gender: p.gender,
@@ -117,8 +115,7 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
   }, [searchPersonValue]);
 
 
-  // 3.2 LOGIC TẠO HỒ SƠ MỚI
-  const handleCreateAndAddPerson = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleCreateAndAddPerson = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     
@@ -126,36 +123,58 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
     if (genderValue === "Nam") genderInt = 2;
     if (genderValue === "Nu") genderInt = 1;
 
-    const newPerson: Person = {
-      id: `new-${Date.now()}`, 
+    const newPersonData = {
       name: formData.get("nghe_danh") as string,
-      roles: formData.get("nghe_nghiep") as string,
-      avatarUrl: avatarUrlInput || null,
-      
+      role_type: (formData.get("nghe_nghiep") as string) || "Actor", 
+      avatar_url: avatarUrlInput || null,
       biography: profileMoTa,
       birthday: profileNgaySinh ? profileNgaySinh.toISOString() : null,
       gender: genderInt,
     };
-    
-    setSelectedPersonForRole(newPerson);
-    
-    setCreatePersonOpen(false);
-    setPopoverSearchOpen(false);
-    
-    setAvatarUrlInput("");
-    setProfileMoTa("");
-    setProfileNgaySinh(undefined);
-    setGenderValue("2");
+
+    setIsCreatingPerson(true);
+    try {
+        const res = await apiClient.post('/people', newPersonData);
+        const createdPerson = res.data;
+
+        const personForUI: Person = {
+            id: createdPerson.id, 
+            name: createdPerson.name,
+            roles: createdPerson.role_type,
+            avatarUrl: getPersonAvatarUrl(createdPerson.avatar_url),
+            biography: createdPerson.biography,
+            birthday: createdPerson.birthday,
+            gender: createdPerson.gender
+        };
+        
+        setSelectedPersonForRole(personForUI);
+        toast.success(`Đã tạo hồ sơ: ${personForUI.name}`);
+        
+        setCreatePersonOpen(false);
+        setPopoverSearchOpen(false); 
+        
+        setAvatarUrlInput("");
+        setProfileMoTa("");
+        setProfileNgaySinh(undefined);
+        setGenderValue("2");
+
+    } catch (error) {
+        console.error("Lỗi tạo người mới:", error);
+        toast.error("Không thể tạo hồ sơ mới. Vui lòng thử lại.");
+    } finally {
+        setIsCreatingPerson(false);
+    }
   };
 
   const handleAddPersonToList = () => {
     if (!selectedPersonForRole) {
+      toast.error("Vui lòng chọn hoặc tạo một diễn viên/đạo diễn.");
       return;
     }
     
     onAddActor({
       person: selectedPersonForRole,
-      characterName: characterName || "N/A", 
+      characterName: characterName || "", 
     });
     
     onOpenChange(false);
@@ -172,8 +191,8 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
         </DialogHeader>
         
         <div className="space-y-4 py-4">
-          {/* Combobox Tìm kiếm */}
           <div>
+            <label className="text-sm font-medium text-gray-300 mb-1 block">Người đóng</label>
             <Popover open={popoverSearchOpen} onOpenChange={setPopoverSearchOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -197,7 +216,9 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
                   />
                   <CommandList>
                     {isSearching ? (
-                        <div className="py-6 text-center text-sm text-gray-400">Đang tìm kiếm...</div>
+                        <div className="py-6 text-center text-sm text-gray-400 flex justify-center items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin"/> Đang tìm kiếm...
+                        </div>
                     ) : foundPeople.length === 0 && searchPersonValue ? (
                         <div className="py-6 text-center text-sm text-gray-400">Không tìm thấy kết quả</div>
                     ) : (
@@ -221,8 +242,8 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
                                     </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                    <p className="text-white">{person.name}</p>
-                                    <p className="text-xs text-gray-400">{person.roles || 'Nghệ sĩ'}</p>
+                                    <p className="text-black font-semibold">{person.name}</p>
+                                    <p className="text-xs text-black">{person.roles || 'Nghệ sĩ'}</p>
                                 </div>
                                 </CommandItem>
                             ))}
@@ -230,16 +251,14 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
                     )}
 
                     <div className="p-2 border-t border-slate-700">
-                      {/* Nút mở Dialog thêm mới */}
                       <Dialog open={isCreatePersonOpen} onOpenChange={setCreatePersonOpen}>
                         <DialogTrigger asChild>
-                          <Button variant="ghost" className="w-full justify-start text-blue-400 hover:text-blue-300 hover:bg-white/5">
+                          <Button variant="ghost" className="w-full justify-start text-blue-500 hover:text-blue-800 hover:bg-white/5">
                             <Plus className="w-4 h-4 mr-2" />
                             Tạo hồ sơ thủ công...
                           </Button>
                         </DialogTrigger>
                         
-                        {/* --- DIALOG CON: THÊM HỒ SƠ --- */}
                         <DialogContent className="bg-[#1F1F1F] border-slate-700 text-white max-w-lg">
                           <DialogHeader>
                             <DialogTitle className="text-xl">THÊM HỒ SƠ MỚI</DialogTitle>
@@ -247,11 +266,9 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
                           <form onSubmit={handleCreateAndAddPerson}>
                             <div className="py-4 space-y-6">
                               <div className="flex flex-col md:flex-row gap-6">
-                                {/* Cột trái: Ảnh đại diện & Input URL */}
                                 <div className="w-full md:w-40 flex-shrink-0 space-y-3">
                                   <div className="w-full h-40 bg-slate-700 rounded-lg overflow-hidden flex items-center justify-center border border-slate-600 relative group">
                                     {avatarUrlInput ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
                                         <img src={avatarUrlInput} alt="Preview" className="w-full h-full object-cover" />
                                     ) : (
                                         <ImageIcon className="w-16 h-16 text-slate-500" />
@@ -268,15 +285,22 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
                                   </div>
                                 </div>
 
-                                {/* Cột phải: Thông tin chính */}
                                 <div className="flex-1 space-y-4">
                                   <div>
                                     <label htmlFor="nghe_danh" className="text-sm font-medium text-gray-300 mb-1 block">Tên nghệ danh <span className="text-red-500">*</span></label>
                                     <Input id="nghe_danh" name="nghe_danh" className="bg-white/10 border-slate-600 focus:border-primary" defaultValue={searchPersonValue} required />
                                   </div>
                                   <div>
-                                    <label htmlFor="nghe_nghiep" className="text-sm font-medium text-gray-300 mb-1 block">Vai trò <span className="text-red-500">*</span></label>
-                                    <Input id="nghe_nghiep" name="nghe_nghiep" className="bg-white/10 border-slate-600 focus:border-primary" placeholder="Vd: Diễn viên" required />
+                                    <label htmlFor="nghe_nghiep" className="text-sm font-medium text-gray-300 mb-1 block">Vai trò chính</label>
+                                    <Select name="nghe_nghiep" defaultValue="Actor">
+                                        <SelectTrigger className="w-full bg-white/10 border-slate-600">
+                                            <SelectValue placeholder="Chọn vai trò" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-[#262626] border-slate-700 text-white">
+                                            <SelectItem value="Actor">Diễn viên</SelectItem>
+                                            <SelectItem value="Director">Đạo diễn</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                   </div>
                                   <div className='grid grid-cols-2 gap-4'>
                                       <div> 
@@ -296,7 +320,6 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
                                 </div>
                               </div>
                               
-                              {/* Hàng dưới: Ngày sinh & Mô tả */}
                               <div className="space-y-4">
                                 <div> 
                                     <label className="text-sm font-medium text-gray-300 mb-1 block">Ngày sinh</label>
@@ -333,7 +356,7 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
                                             />
                                         </PopoverContent>
                                     </Popover>
-                                </div>                
+                                </div>                 
                                 <div>
                                   <label htmlFor="mo_ta" className="text-sm font-medium text-gray-300 mb-1 block">Tiểu sử / Mô tả</label>
                                   <Textarea
@@ -352,8 +375,8 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
                               <Button type="button" variant="ghost" onClick={() => setCreatePersonOpen(false)} className="text-gray-400 hover:text-white hover:bg-white/10">
                                 Hủy bỏ
                               </Button>
-                              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
-                                Lưu hồ sơ
+                              <Button type="submit" disabled={isCreatingPerson} className="bg-blue-600 hover:bg-blue-700 text-white">
+                                {isCreatingPerson ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Đang tạo...</> : "Lưu hồ sơ"}
                               </Button>
                             </DialogFooter>
                           </form>
@@ -366,7 +389,6 @@ export function AddActorDialog({ open, onOpenChange, onAddActor }: AddActorDialo
             </Popover>
           </div>
           
-          {/* Input "Tên nhân vật" */}
           <div>
             <label htmlFor="character_name" className="text-sm font-medium text-gray-300 mb-1 block">Tên nhân vật trong phim</label>
             <Input 

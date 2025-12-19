@@ -1149,8 +1149,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                     />
                 </div>
                 )}
-                {/* ----------------------------------- */}
-
                 {/* --- Nút điều hướng --- */}
                 <div className="mt-8 pt-6 border-t border-slate-700 flex justify-between items-center">
                     <Button 

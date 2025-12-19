@@ -27,7 +27,6 @@ import {
   Plus,
   Trash,
   Edit,
-  MoreHorizontal,
   AlertCircle,
   Filter as FilterIcon,
 } from "lucide-react";
@@ -119,116 +118,105 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
   };
 
   return (
-    <Card className="bg-[#262626] border-slate-800 text-white h-full flex flex-col overflow-hidden">
-      
-      <CardContent className="p-4 flex-1 flex flex-col overflow-hidden">
+    <Card className="bg-[#262626] border-slate-800 text-white h-full flex flex-col overflow-hidden shadow-xl">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
         
-        <div className="flex-shrink-0 overflow-y-auto no-scrollbar">
-          
-          <div className="max-w-[160px] mx-auto"> 
-            <div className="aspect-[2/3] relative rounded-md overflow-hidden bg-slate-800">
-              <Image
-                src={displayPoster || "/images/placeholder-poster.png"}
-                alt={movie.title}
-                fill
-                className="object-contain" 
-              />
-            </div>
+        <div className="max-w-[160px] mx-auto">
+          <div className="aspect-[2/3] relative rounded-md overflow-hidden bg-slate-800">
+            <Image
+              src={displayPoster || "/images/placeholder-poster.png"}
+              alt={movie.title}
+              fill
+              className="object-contain"
+            />
           </div>
-
-          <h2 className="text-lg font-semibold text-center mt-4">{movie.title}</h2>
-          
-          <div className="flex justify-center mt-3">
-          {isDeleted ? (
-            <Badge className="bg-red-900/30 text-red-500 border border-red-600/50">
-              <Trash className="w-3 h-3 mr-1.5" /> Đã xóa
-            </Badge>
-          ) : isActive ? (
-            <Badge className="bg-green-700/30 text-green-400 border border-green-600/50">
-              <Check className="w-3 h-3 mr-1.5" /> Đang hiện
-            </Badge>
-          ) : (
-            <Badge className="bg-gray-700/30 text-gray-400 border border-gray-600/50">
-              <X className="w-3 h-3 mr-1.5" /> Đang ẩn
-            </Badge>
-          )}
         </div>
 
-          <div className="border-t border-slate-700 my-4"></div>
-          <div className="space-y-2 text-sm">
-            <h3 className="text-xs uppercase text-gray-400 font-semibold mb-2">Thông tin nhanh</h3>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-gray-400">Nội dung:</span>
-              <span className="font-medium flex items-center">
-                {contentInfo.icon} {contentInfo.text}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-400">Năm SX:</span>
-              <span className="font-medium">
-                {(movie as any).release_date ? new Date((movie as any).release_date).getFullYear() : movie.releaseYear || 'N/A'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-400">Quốc gia:</span>
-              <span className="font-medium">
-                {movieData.country?.name || 'N/A'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-400">Mã TMDB:</span>
-              <span className="font-medium text-gray-300">
-                {movieData.tmdb_id || 'N/A'}
-              </span>
-            </div>
+        <div className="text-center">
+          <h2 className="text-lg font-semibold">{movie.title}</h2>
+          <div className="flex justify-center mt-3">
+            {isDeleted ? (
+              <Badge className="bg-red-900/30 text-red-500 border border-red-600/50">
+                <Trash className="w-3 h-3 mr-1.5" /> Đã xóa
+              </Badge>
+            ) : isActive ? (
+              <Badge className="bg-green-700/30 text-green-400 border border-green-600/50">
+                <Check className="w-3 h-3 mr-1.5" /> Đang hiện
+              </Badge>
+            ) : (
+              <Badge className="bg-gray-700/30 text-gray-400 border border-gray-600/50">
+                <X className="w-3 h-3 mr-1.5" /> Đang ẩn
+              </Badge>
+            )}
           </div>
+        </div>
 
-          <div className="flex-1 flex flex-col min-h-0">
-          
-          <div className="border-t border-slate-700 my-4 flex-shrink-0"></div>
+        <div className="border-t border-slate-700"></div>
 
-          <div className="space-y-2 text-sm overflow-y-auto no-scrollbar">
-            <h3 className="text-xs uppercase text-gray-400 font-semibold mb-2 flex-shrink-0">Thể loại</h3>
-            <div className="flex flex-wrap gap-1.5">
-              {genres.length > 0 ? genres.map(genre => (
-                <Badge key={genre} variant="secondary" className="bg-slate-700 text-gray-300">
-                  {genre}
-                </Badge>
-              )) : (
-                <p className="text-gray-500 text-xs">Chưa gán thể loại.</p>
-              )}
-            </div>
+        <div className="space-y-2 text-sm">
+          <h3 className="text-xs uppercase text-gray-400 font-semibold mb-2">Thông tin nhanh</h3>
+          <div className="flex justify-between items-center">
+            <span className="text-gray-400">Nội dung:</span>
+            <span className="font-medium flex items-center">
+              {contentInfo.icon} {contentInfo.text}
+            </span>
           </div>
-
-        </div> 
-
-          <div className="border-t border-slate-700 my-4"></div>
-          <div className="flex flex-col gap-3">
-            <Button
-              variant="outline"
-              className="bg-amber-600 border-amber-600 text-white hover:bg-amber-700 hover:text-white"
-              onClick={() => onEditMovie(movie.slug as string)}
-              disabled={isDeleted}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Chỉnh sửa thông tin
-            </Button>
-            <Button 
-            variant="destructive" 
-            onClick={() => setIsAlertOpen(true)}
-            disabled={isDeleted}
-            className={isDeleted ? "opacity-50 cursor-not-allowed" : ""}
-          >
-            <Trash className="h-4 w-4 mr-2" />
-            {isDeleted ? "Đã xóa" : "Xóa phim"}
-          </Button>
+          <div className="flex justify-between items-center">
+            <span className="text-gray-400">Năm SX:</span>
+            <span className="font-medium">
+              {(movie as any).release_date ? new Date((movie as any).release_date).getFullYear() : movie.releaseYear || 'N/A'}
+            </span>
           </div>
-        </div> 
-      </CardContent>
+          <div className="flex justify-between items-center">
+             <span className="text-gray-400">Quốc gia:</span>
+             <span className="font-medium">{movieData.country?.name || 'N/A'}</span>
+          </div>
+           <div className="flex justify-between items-center">
+             <span className="text-gray-400">Mã TMDB:</span>
+             <span className="font-medium text-gray-300">{movieData.tmdb_id || 'N/A'}</span>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-700"></div>
+
+        <div className="space-y-2 text-sm pb-2">
+          <h3 className="text-xs uppercase text-gray-400 font-semibold mb-2">Thể loại</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {genres.length > 0 ? genres.map(genre => (
+              <Badge key={genre} variant="secondary" className="bg-slate-700 text-gray-300">
+                {genre}
+              </Badge>
+            )) : (
+              <p className="text-gray-500 text-xs">Chưa gán thể loại.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="p-2 bg-[#262626] border-t border-slate-800 shrink-0 z-10 flex flex-col gap-3">
+        <Button
+          variant="outline"
+          className="bg-amber-600 border-amber-600 text-white hover:bg-amber-700 hover:text-white"
+          onClick={() => onEditMovie(movie.slug as string)}
+          disabled={isDeleted}
+        >
+          <Edit className="h-4 w-4 mr-2" />
+          Chỉnh sửa thông tin
+        </Button>
+        <Button
+          variant="destructive"
+          onClick={() => setIsAlertOpen(true)}
+          disabled={isDeleted}
+          className={isDeleted ? "opacity-50 cursor-not-allowed" : ""}
+        >
+          <Trash className="h-4 w-4 mr-2" />
+          {isDeleted ? "Đã xóa" : "Xóa phim"}
+        </Button>
+      </div>
+
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
+         <AlertDialogContent>
+           <AlertDialogHeader>
             <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
             <AlertDialogDescription>
               Hành động này sẽ xóa (soft delete) phim <strong className="text-white">{movie.title}</strong>. <br/>Phim sẽ bị ẩn khỏi người dùng. Bạn có chắc chắn muốn tiếp tục?
@@ -240,7 +228,7 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
               Tiếp tục xóa
             </AlertDialogAction>
           </AlertDialogFooter>
-        </AlertDialogContent>
+         </AlertDialogContent>
       </AlertDialog>
     </Card>
   );
@@ -288,7 +276,6 @@ const RenderListView = ({
           <TableHead className="text-white">Loại phim</TableHead>
           <TableHead className="text-white">Năm</TableHead>
           <TableHead className="text-white">Last change</TableHead>
-          <TableHead className="text-white text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -320,11 +307,6 @@ const RenderListView = ({
               {(movie as any).release_date ? new Date((movie as any).release_date).getFullYear() : movie.releaseYear}
             </TableCell>
             <TableCell className="text-gray-300">2025-10-26</TableCell>
-            <TableCell className="text-right">
-              <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -360,7 +342,6 @@ const MovieListSkeleton = () => (
           <TableHead className="text-white">Loại phim</TableHead>
           <TableHead className="text-white">Năm</TableHead>
           <TableHead className="text-white">Last change</TableHead>
-          <TableHead className="text-white text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -698,15 +679,17 @@ const handleMarkMovieAsDeleted = (movieId: string) => {
       </main>
 
       {!showAddForm && (
-            <aside className={`hidden lg:block fixed right-0 ${sidebarTopOffset} ${sidebarHeight} lg:w-80 xl:w-96 2xl:w-[450px] pr-6 pl-0 py-0 z-40`}>
-                <div className="h-full overflow-y-auto no-scrollbar">
-                <RenderPreviewCard movie={selectedMovie}
-                 onMovieDeleted={handleMarkMovieAsDeleted}
-                 onEditMovie={handleGoToEditPage}
-                />
-                </div>
-            </aside>
-        )}
+        <aside className={`hidden lg:block fixed right-0 ${sidebarTopOffset} ${sidebarHeight} lg:w-80 xl:w-96 2xl:w-[450px] pr-6 pl-0 py-0 z-40`}>
+          <div className="h-full overflow-hidden"> 
+            <RenderPreviewCard 
+              movie={selectedMovie}
+              onMovieDeleted={handleMarkMovieAsDeleted}
+              onEditMovie={handleGoToEditPage}
+            />
+          </div>
+
+        </aside>
+      )}
     </div>
   );
 }

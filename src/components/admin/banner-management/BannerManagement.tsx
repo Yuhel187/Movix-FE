@@ -15,9 +15,12 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SearchBar } from "@/components/common/search-bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
     Plus, Trash, Save, X, AlertCircle, GripVertical, ChevronDown,
-    Loader2, Image as ImageIcon, Link as LinkIcon, LayoutTemplate, MonitorPlay
+    Loader2, Image as ImageIcon, Link as LinkIcon, LayoutTemplate, MonitorPlay, Film, Edit, MoreHorizontal, Search
 } from "lucide-react";
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -30,12 +33,53 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import apiClient from "@/lib/apiClient";
 import { toast } from "sonner";
+import { SearchResultDropdown, ApiSearchResult } from "@/components/common/SearchResultDropdown";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Banner } from "@/types/banner";
+
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+const useDebounce = (value: string, delay: number) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+    useEffect(() => {
+        const handler = setTimeout(() => setDebouncedValue(value), delay);
+        return () => clearTimeout(handler);
+    }, [value, delay]);
+    return debouncedValue;
+};
 
 interface MovieInfo {
   id: string;
   title: string;
   genres: string[];
   posterUrl?: string;
+  backdropUrl?: string; 
+  poster_url?: string;
+  backdrop_url?: string;
+  slug?: string;       
 }
 
 interface SectionMovieLink {
@@ -53,6 +97,8 @@ interface HomepageSection {
   isVisible: boolean;
   linkedMovies: SectionMovieLink[];
 }
+
+// ... (Giữ nguyên các component phụ: EditableSectionTitle, AddMovieSearch, SortableMovieRow, SectionMoviesTable, SortableSectionItem)
 
 const EditableSectionTitle = ({ section, onSave }: { section: HomepageSection, onSave: (id: string, newTitle: string) => void }) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -397,25 +443,43 @@ const SortableSectionItem = ({ section, isOpen, onToggleOpen, onToggleVisibility
     );
 };
 
-interface Banner {
-    id: string;
-    title: string;
-    image_url: string;
-    link_url: string | null;
-    is_active: boolean;
-}
-
 const HeroBannerManager = () => {
     const [banners, setBanners] = useState<Banner[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    // Form state
-    const [newBanner, setNewBanner] = useState({ title: "", image_url: "", link_url: "" });
+    
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [deleteId, setDeleteId] = useState<string | null>(null);
+
+    const [formData, setFormData] = useState({
+        title: "", imageUrl: "", linkUrl: "", description: "", isActive: true, movieId: undefined as string | number | undefined
+    });
+    const [bannerType, setBannerType] = useState<"custom" | "movie">("custom");
+    
+    const [searchTerm, setSearchTerm] = useState("");
+    const debouncedSearch = useDebounce(searchTerm, 300);
+    const [searchResults, setSearchResults] = useState<ApiSearchResult>({ movies: [], people: [] });
+    
+    const [isSearchLoading, setIsSearchLoading] = useState(false);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const searchContainerRef = useRef<HTMLDivElement>(null);
 
     const fetchBanners = useCallback(async () => {
         setIsLoading(true);
         try {
             const res = await apiClient.get('/banners');
-            setBanners(res.data);
+            const mappedBanners = res.data.map((b: any) => ({
+                id: b.id,
+                title: b.title,
+                imageUrl: b.image_url,
+                linkUrl: b.link_url,
+                isActive: b.is_active,
+                movieId: b.movie_id,
+                description: "", 
+                movie: b.movie
+            }));
+            setBanners(mappedBanners);
         } catch (e) { 
             console.error(e);
             toast.error("Không thể tải danh sách banner.");
@@ -428,89 +492,177 @@ const HeroBannerManager = () => {
         fetchBanners();
     }, [fetchBanners]);
 
-    const handleCreate = async () => {
-        if(!newBanner.title || !newBanner.image_url) {
-            return toast.error("Vui lòng nhập Tiêu đề và URL Ảnh nền.");
+    useEffect(() => {
+        const fetchSearch = async () => {
+            if (debouncedSearch.trim().length > 1 && bannerType === 'movie') {
+                setIsSearchLoading(true);
+                setIsDropdownOpen(true);
+                try {
+                    const res = await apiClient.get(`/movies/search?q=${encodeURIComponent(debouncedSearch)}`);
+                    
+                    const movies = res.data.movies.map((m: any) => ({
+                        ...m, 
+                        id: m.id,
+                        title: m.title || m.original_title || "Untitled",
+                        poster_url: m.poster_url, 
+                        posterUrl: m.poster_url,   
+                        original_title: m.original_title,
+                        slug: m.slug,
+                        backdrop_url: m.backdrop_url, 
+                        genres: m.genres || []
+                    }));
+
+                    setSearchResults({ movies: movies, people: [] });
+                } catch (error) {
+                    console.error("Search error", error);
+                } finally {
+                    setIsSearchLoading(false);
+                }
+            } else {
+                setSearchResults({ movies: [], people: [] });
+                setIsDropdownOpen(false);
+            }
+        };
+        fetchSearch();
+    }, [debouncedSearch, bannerType]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const handleSelectMovie = (slugOrMovie: any) => {
+        let movie: any = null;
+
+        if (typeof slugOrMovie === 'string') {
+            movie = searchResults.movies.find((m: any) => m.slug === slugOrMovie);
+        } 
+        else if (typeof slugOrMovie === 'object') {
+            movie = slugOrMovie;
         }
-        try {
-            await apiClient.post('/banners', newBanner);
-            toast.success("Đã thêm Banner mới!");
-            setNewBanner({ title: "", image_url: "", link_url: "" });
-            fetchBanners();
-        } catch(e) { toast.error("Lỗi khi thêm banner"); }
+
+        if (!movie) {
+            toast.error("Không tìm thấy thông tin phim!");
+            return;
+        }
+
+        const backdrop = movie.backdrop_url || movie.poster_url || "";
+        const movieSlug = movie.slug || "";
+        const movieTitle = movie.title || movie.original_title || "Phim chưa có tên";
+
+        setFormData(prev => ({
+            ...prev,
+            title: movieTitle, 
+            imageUrl: backdrop, 
+            linkUrl: movieSlug ? `/movies/${movieSlug}` : "", 
+            movieId: movie.id,
+            description: movie.description || prev.description || ""
+        }));
+        
+        setSearchTerm(""); 
+        setIsDropdownOpen(false);
+        toast.success(`Đã chọn phim: ${movieTitle}`);
     };
 
-    const handleDelete = async (id: string) => {
-        if(!confirm("Bạn có chắc chắn muốn xóa banner này?")) return;
+    const handleOpenCreate = () => {
+        setEditingId(null);
+        setBannerType("custom");
+        setFormData({ title: "", imageUrl: "", linkUrl: "", description: "", isActive: true, movieId: undefined });
+        setSearchTerm("");
+        setIsDialogOpen(true);
+    };
+
+    const handleOpenEdit = (banner: Banner) => {
+        setEditingId(banner.id);
+        const isMovieBanner = !!banner.movieId;
+        setBannerType(isMovieBanner ? "movie" : "custom");
+        setFormData({
+            title: banner.title || "",
+            imageUrl: banner.imageUrl || "",
+            linkUrl: banner.linkUrl || "",
+            description: banner.description || "",
+            isActive: banner.isActive,
+            movieId: banner.movieId ? String(banner.movieId) : undefined,
+        });
+        if (isMovieBanner && banner.movie) {
+            setSearchTerm(banner.movie.title || "");
+        } else {
+            setSearchTerm("");
+        }
+        setIsDialogOpen(true);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if(!formData.title || !formData.imageUrl) {
+            return toast.error("Vui lòng nhập Tiêu đề và URL Ảnh nền.");
+        }
+        
+        setIsSubmitting(true);
+        const payload = {
+            title: formData.title,
+            image_url: formData.imageUrl,
+            link_url: formData.linkUrl,
+            is_active: formData.isActive,
+            movie_id: bannerType === 'movie' ? formData.movieId : null
+        };
+
         try {
-            await apiClient.delete(`/banners/${id}`);
-            setBanners(prev => prev.filter(b => b.id !== id));
+            if (editingId) {
+                await apiClient.put(`/banners/${editingId}`, payload); 
+                toast.success("Cập nhật banner thành công!");
+            } else {
+                await apiClient.post('/banners', payload);
+                toast.success("Đã thêm Banner mới!");
+            }
+            
+            setIsDialogOpen(false);
+            fetchBanners();
+        } catch(e) { 
+            console.error(e);
+            toast.error("Lỗi khi lưu banner"); 
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const confirmDelete = (id: string) => {
+        setDeleteId(id);
+    };
+
+    const handleDelete = async () => {
+        if (!deleteId) return;
+        try {
+            await apiClient.delete(`/banners/${deleteId}`);
+            setBanners(prev => prev.filter(b => b.id !== deleteId));
             toast.success("Đã xóa banner");
         } catch(e) { toast.error("Lỗi khi xóa banner"); }
+        setDeleteId(null); 
     };
 
     const handleToggleActive = async (id: string) => {
         try {
             await apiClient.put(`/banners/${id}/active`);
-            setBanners(prev => prev.map(b => b.id === id ? { ...b, is_active: !b.is_active } : b));
+            setBanners(prev => prev.map(b => b.id === id ? { ...b, isActive: !b.isActive } : b));
             toast.success("Đã cập nhật trạng thái");
         } catch(e) { toast.error("Lỗi cập nhật"); }
     }
 
     return (
         <div className="space-y-8 animate-fade-in">
-            {/* 1. Form Thêm Banner */}
-            <Card className="bg-[#262626] border-slate-800 text-white">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <ImageIcon className="w-5 h-5 text-blue-400" /> 
-                        Thêm Hero Banner Mới
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                        <div className="md:col-span-4 space-y-1.5">
-                            <label className="text-xs text-gray-400 font-semibold uppercase">Tiêu đề phim</label>
-                            <Input 
-                                placeholder="VD: Spider-Man: No Way Home" 
-                                value={newBanner.title}
-                                onChange={e => setNewBanner({...newBanner, title: e.target.value})}
-                                className="bg-white/5 border-slate-700 text-white focus:border-blue-500"
-                            />
-                        </div>
-                        <div className="md:col-span-4 space-y-1.5">
-                            <label className="text-xs text-gray-400 font-semibold uppercase">URL Ảnh nền (Backdrop)</label>
-                            <Input 
-                                placeholder="https://image.tmdb.org/..." 
-                                value={newBanner.image_url}
-                                onChange={e => setNewBanner({...newBanner, image_url: e.target.value})}
-                                className="bg-white/5 border-slate-700 text-white focus:border-blue-500"
-                            />
-                        </div>
-                        <div className="md:col-span-3 space-y-1.5">
-                            <label className="text-xs text-gray-400 font-semibold uppercase">Link đích (Optional)</label>
-                            <div className="relative">
-                                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"/>
-                                <Input 
-                                    placeholder="/movies/slug..." 
-                                    value={newBanner.link_url}
-                                    onChange={e => setNewBanner({...newBanner, link_url: e.target.value})}
-                                    className="bg-white/5 border-slate-700 text-white pl-9 focus:border-blue-500"
-                                />
-                            </div>
-                        </div>
-                        <div className="md:col-span-1">
-                            <Button onClick={handleCreate} className="w-full bg-green-600 hover:bg-green-700 text-white">
-                                <Plus className="w-5 h-5"/>
-                            </Button>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-white pl-1">Danh sách Banner đang hiển thị</h3>
+                <Button onClick={handleOpenCreate}>
+                    <Plus className="mr-2 h-4 w-4" /> Thêm Banner
+                </Button>
+            </div>
 
-            {/* 2. Danh sách Banner */}
             <div>
-                <h3 className="text-lg font-semibold text-white mb-4 pl-1">Danh sách Banner đang hiển thị</h3>
                 {isLoading ? (
                     <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-blue-500"/></div>
                 ) : banners.length === 0 ? (
@@ -519,29 +671,31 @@ const HeroBannerManager = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         {banners.map(banner => (
                             <div key={banner.id} className="relative group aspect-video rounded-xl overflow-hidden border border-slate-800 bg-black shadow-lg transition-all hover:border-slate-600">
-                                {/* Ảnh nền */}
-                                <img src={banner.image_url} alt={banner.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-40 transition-opacity duration-300" />
-                                
-                                {/* Overlay thông tin */}
+                                <img src={banner.imageUrl} alt={banner.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-40 transition-opacity duration-300" />
                                 <div className="absolute inset-0 p-4 flex flex-col justify-between">
                                     <div className="flex justify-between items-start">
-                                        <Badge className={`${banner.is_active ? "bg-green-500 hover:bg-green-600" : "bg-gray-500 hover:bg-gray-600"} cursor-pointer shadow-md`} onClick={() => handleToggleActive(banner.id)}>
-                                            {banner.is_active ? "Active" : "Inactive"}
-                                        </Badge>
-                                        
-                                        <Button 
-                                            variant="destructive" 
-                                            size="icon" 
-                                            className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                                            onClick={() => handleDelete(banner.id)}
-                                        >
-                                            <Trash className="w-4 h-4"/>
-                                        </Button>
+                                        <div className="flex gap-2">
+                                            <Badge className={`${banner.isActive ? "bg-green-500 hover:bg-green-600" : "bg-gray-500 hover:bg-gray-600"} cursor-pointer shadow-md`} onClick={() => handleToggleActive(banner.id)}>
+                                                {banner.isActive ? "Active" : "Inactive"}
+                                            </Badge>
+                                            {banner.movieId && (
+                                                <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-500/50 gap-1">
+                                                    <Film className="w-3 h-3" /> Phim
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full shadow-lg bg-white text-black hover:bg-gray-200" onClick={() => handleOpenEdit(banner)}>
+                                                <Edit className="w-4 h-4"/>
+                                            </Button>
+                                            <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full shadow-lg" onClick={() => confirmDelete(banner.id)}>
+                                                <Trash className="w-4 h-4"/>
+                                            </Button>
+                                        </div>
                                     </div>
-
                                     <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
                                         <h4 className="text-white font-bold text-lg drop-shadow-md line-clamp-1">{banner.title}</h4>
-                                        <p className="text-xs text-gray-300 line-clamp-1">{banner.link_url || "Chưa có liên kết"}</p>
+                                        <p className="text-xs text-gray-300 line-clamp-1">{banner.linkUrl || "Chưa có liên kết"}</p>
                                     </div>
                                 </div>
                             </div>
@@ -549,6 +703,162 @@ const HeroBannerManager = () => {
                     </div>
                 )}
             </div>
+
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="sm:max-w-[600px] bg-[#1F1F1F] border-slate-700 text-white max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>{editingId ? "Cập nhật Banner" : "Tạo Banner Mới"}</DialogTitle>
+                        <DialogDescription>Chọn loại banner và điền thông tin hiển thị.</DialogDescription>
+                    </DialogHeader>
+                    
+                    <form onSubmit={handleSubmit} className="space-y-6 py-2">
+                        <div className="space-y-3">
+                            <Label>Nguồn nội dung</Label>
+                            <RadioGroup 
+                                value={bannerType} 
+                                onValueChange={(val: "custom" | "movie") => {
+                                    setBannerType(val);
+                                    if(val === 'custom') {
+                                        setSearchTerm("");
+                                        setFormData(prev => ({...prev, movieId: undefined}));
+                                    }
+                                }}
+                                className="flex gap-4"
+                            >
+                                <div className={`flex items-center space-x-2 border p-3 rounded-md w-full cursor-pointer transition-colors ${bannerType === 'custom' ? 'border-primary bg-primary/10' : 'border-slate-700 hover:bg-white/5'}`}>
+                                    <RadioGroupItem value="custom" id="type-custom" />
+                                    <Label htmlFor="type-custom" className="cursor-pointer flex-1">Tự nhập (Quảng cáo/Tin tức)</Label>
+                                </div>
+                                <div className={`flex items-center space-x-2 border p-3 rounded-md w-full cursor-pointer transition-colors ${bannerType === 'movie' ? 'border-primary bg-primary/10' : 'border-slate-700 hover:bg-white/5'}`}>
+                                    <RadioGroupItem value="movie" id="type-movie" />
+                                    <Label htmlFor="type-movie" className="cursor-pointer flex-1">Chọn Phim (Liên kết)</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+
+                        {bannerType === 'movie' && (
+                            <div className="space-y-2 relative animate-in fade-in zoom-in-95 duration-200" ref={searchContainerRef}>
+                                <Label className="text-blue-400">Tìm kiếm phim</Label>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input 
+                                        placeholder="Nhập tên phim để tự động điền..." 
+                                        className="pl-9 bg-white/10 border-slate-600 focus:border-primary"
+                                        value={searchTerm || ""} 
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                    {searchTerm && (
+                                        <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1 h-7 w-7 text-gray-400 hover:text-white" onClick={() => { setSearchTerm(""); setFormData(prev => ({...prev, movieId: undefined})); }}>
+                                            <X className="h-4 w-4"/>
+                                        </Button>
+                                    )}
+                                </div>
+                                {isDropdownOpen && searchTerm && (
+                                    <div className="absolute top-full left-0 right-0 z-50 mt-1">
+                                        <SearchResultDropdown 
+                                            results={searchResults}
+                                            isLoading={isSearchLoading}
+                                            onClose={() => setIsDropdownOpen(false)}
+                                            onMovieClick={handleSelectMovie}
+                                            onPersonClick={() => {}} 
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="space-y-4 border-t border-slate-700 pt-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Tiêu đề hiển thị <span className="text-red-500">*</span></Label>
+                                    <Input 
+                                        value={formData.title || ""} 
+                                        onChange={e => setFormData({...formData, title: e.target.value})} 
+                                        placeholder="Nhập tiêu đề..."
+                                        className="bg-white/10 border-slate-600"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Link Đích (URL)</Label>
+                                    <div className="relative">
+                                        <LinkIcon className="absolute left-3 top-2.5 h-4 w-4 text-gray-500"/>
+                                        <Input 
+                                            value={formData.linkUrl || ""} 
+                                            onChange={e => setFormData({...formData, linkUrl: e.target.value})} 
+                                            placeholder="/movies/slug-phim..."
+                                            className="bg-white/10 border-slate-600 pl-9"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>URL Ảnh nền (Backdrop) <span className="text-red-500">*</span></Label>
+                                <div className="flex gap-3 items-start">
+                                    <div className="flex-1">
+                                        <Input 
+                                            value={formData.imageUrl || ""} 
+                                            onChange={e => setFormData({...formData, imageUrl: e.target.value})} 
+                                            placeholder="https://image.tmdb.org/t/p/original/..."
+                                            className="bg-white/10 border-slate-600"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Nên dùng ảnh ngang chất lượng cao (1920x1080).</p>
+                                    </div>
+                                    {formData.imageUrl && (
+                                        <div className="w-24 h-14 rounded overflow-hidden border border-slate-600 shrink-0 bg-black">
+                                            <img src={formData.imageUrl} className="w-full h-full object-cover" alt="Preview" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Mô tả ngắn (Optional)</Label>
+                                <Textarea 
+                                    value={formData.description || ""} 
+                                    onChange={e => setFormData({...formData, description: e.target.value})} 
+                                    placeholder="Mô tả nội dung banner..."
+                                    className="bg-white/10 border-slate-600"
+                                    rows={3}
+                                />
+                            </div>
+
+                            <div className="flex items-center space-x-3 bg-white/5 p-3 rounded-md border border-slate-700">
+                                <Switch 
+                                    id="active-mode" 
+                                    checked={formData.isActive} 
+                                    onCheckedChange={v => setFormData({...formData, isActive: v})} 
+                                    className="data-[state=checked]:bg-green-600"
+                                />
+                                <Label htmlFor="active-mode" className="cursor-pointer">Kích hoạt hiển thị ngay</Label>
+                            </div>
+                        </div>
+
+                        <DialogFooter className="pt-2">
+                            <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>Hủy bỏ</Button>
+                            <Button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]">
+                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4"/>} 
+                                {editingId ? "Cập nhật" : "Lưu Banner"}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+                <AlertDialogContent className="bg-[#1F1F1F] border-slate-700 text-white">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-gray-400">
+                            Hành động này không thể hoàn tác. Banner này sẽ bị xóa vĩnh viễn khỏi hệ thống.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-transparent border-slate-600 text-white hover:bg-slate-700 hover:text-white">Hủy</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white">Xóa ngay</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

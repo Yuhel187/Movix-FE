@@ -9,3 +9,11 @@ export interface Banner {
   description?: string;
   movie?: Movie;
 }
+
+export interface CreateBannerDto {
+  title: string;
+  image_url: string;
+  link_url?: string;
+  movie_id?: string;
+  is_active?: boolean;
+}
