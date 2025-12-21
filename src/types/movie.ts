@@ -11,12 +11,17 @@ export interface GenreResponse {
   };
 }
 
+export interface Genre {
+  id: string;
+  name: string;
+}
+
 export interface PersonResponse {
   id: string;
   character?: string;
   job?: string;
-  credit_type?: 'cast' | 'crew' | string; 
-  
+  credit_type?: 'cast' | 'crew' | string;
+
   person: {
     id: string;
     name: string;
@@ -55,9 +60,9 @@ export interface MovieResponse {
   media_type: "MOVIE" | "TV";
   movie_genres?: GenreResponse[];
   movie_people?: PersonResponse[];
-  seasons?: SeasonResponse[]; 
+  seasons?: SeasonResponse[];
   recommendations?: MovieResponse[];
-  
+
   metadata?: {
     duration?: string;
     tmdb_rating?: number;
@@ -89,8 +94,8 @@ export interface Movie {
   description: string;
   posterUrl: string;
   backdropUrl: string;
-  trailerUrl: string | null; 
-  videoUrl: string | null;   
+  trailerUrl: string | null;
+  videoUrl: string | null;
   seasons?: Season[];
   releaseYear?: number | string;
   tags: string[];
@@ -99,6 +104,6 @@ export interface Movie {
   rating?: number;
   duration?: string;
   type: "MOVIE" | "TV";
-  views?: number; 
+  views?: number;
   recommendations?: Movie[];
 }

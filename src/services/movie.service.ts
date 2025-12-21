@@ -1,5 +1,5 @@
 import api from "@/lib/apiClient";
-import type { Movie, MovieResponse, Season } from "@/types/movie";
+import type { Movie, MovieResponse, Season, Genre } from "@/types/movie";
 import type { Actor } from "@/types/actor";
 import type { Director } from "@/types/director";
 import { getTmdbImageUrl, getPersonAvatarUrl } from "@/lib/tmdb";
@@ -15,7 +15,7 @@ function mapToMovie(raw: MovieResponse): Movie {
   const releaseYear = raw.release_date
     ? new Date(raw.release_date).getFullYear()
     : "N/A";
-  
+
   const tags = raw.movie_genres?.map((mg) => mg.genre?.name).filter(Boolean) || [];
 
   return {
@@ -24,17 +24,17 @@ function mapToMovie(raw: MovieResponse): Movie {
     title: raw.title || raw.original_title || "Chưa có tên",
     subTitle: raw.original_title || "",
     description: raw.description || "",
-    
+
     posterUrl: getTmdbImageUrl(raw.poster_url, "poster"),
     backdropUrl: getTmdbImageUrl(raw.backdrop_url, "backdrop"),
-    
+
     trailerUrl: raw.trailer_url || null,
     videoUrl: null,
-    
+
     type: raw.media_type === "TV" ? "TV" : "MOVIE",
     releaseYear: releaseYear,
     tags: tags,
-    
+
     rating: raw.metadata?.tmdb_rating || 0,
     duration: raw.metadata?.duration || "N/A",
     views: 0,
@@ -45,7 +45,7 @@ function mapToMovie(raw: MovieResponse): Movie {
 }
 export async function getMovieData(slug: string) {
   let raw: MovieResponse;
-  
+
   try {
     const res = await api.get<MovieResponse>(`/movies/${slug}`);
     raw = res.data;
@@ -57,7 +57,7 @@ export async function getMovieData(slug: string) {
   const castData: Actor[] = raw.movie_people
     ?.filter(mp => mp.person.role_type === "actor" || mp.credit_type === "cast")
     .map((mp, idx) => ({
-      id: mp.person.id, 
+      id: mp.person.id,
       name: mp.person.name || "Không rõ",
       character: mp.character || "Unknown",
       profileUrl: getPersonAvatarUrl(mp.person.avatar_url),
@@ -66,17 +66,17 @@ export async function getMovieData(slug: string) {
       birthday: mp.person.birthday,
       gender: mp.person.gender,
     })) || [];
-    
+
   const directorRaw = raw.movie_people?.find(
-    (mp) => mp.person.role_type === "director" || mp.credit_type === "crew" 
+    (mp) => mp.person.role_type === "director" || mp.credit_type === "crew"
   );
 
   const director: Director | null = directorRaw ? {
-      name: directorRaw.person.name,
-      avatarUrl: getPersonAvatarUrl(directorRaw.person.avatar_url),
-      origin: "Unknown"
+    name: directorRaw.person.name,
+    avatarUrl: getPersonAvatarUrl(directorRaw.person.avatar_url),
+    origin: "Unknown"
   } : null;
-  
+
   const seasons: Season[] = raw.seasons?.map(s => ({
     id: s.id,
     number: s.season_number,
@@ -110,28 +110,28 @@ export async function getMovieData(slug: string) {
     title: raw.title || raw.original_title || "Không có tiêu đề",
     subTitle: raw.original_title || raw.title || "",
     description: raw.description || "",
-    
+
     posterUrl: getTmdbImageUrl(raw.poster_url, "poster"),
     backdropUrl: getTmdbImageUrl(raw.backdrop_url, "backdrop"),
-    
+
     trailerUrl: raw.trailer_url || null,
-    videoUrl: mainVideoUrl || null, 
-    seasons: seasons,               
-    
-    type: raw.media_type,           
+    videoUrl: mainVideoUrl || null,
+    seasons: seasons,
+
+    type: raw.media_type,
     releaseYear: releaseYear,
     tags: tags,
     cast: castData,
     director: director || undefined,
     rating: raw.metadata?.tmdb_rating || 0,
     duration: raw.metadata?.duration || "N/A",
-    views:0,
+    views: 0,
     recommendations: (raw.recommendations || []).map(mapToMovie),
   };
 
   const sidebarData: SidebarData = {
     releaseYear: releaseYear,
-    languages: ["Vietnamese", "English"], 
+    languages: ["Vietnamese", "English"],
     ratings: {
       imdb: raw.metadata?.tmdb_rating || 0,
       movix: 9.0,
@@ -190,8 +190,8 @@ export async function getPersonalizedMovies(): Promise<Movie[]> {
   try {
     const response = await api.get<any>('/movies/for-you');
     const movies: Movie[] = response.data.data.map((item: any) => {
-      const releaseYear = item.release_date 
-        ? new Date(item.release_date).getFullYear() 
+      const releaseYear = item.release_date
+        ? new Date(item.release_date).getFullYear()
         : "N/A";
 
       const tags = item.movie_genres?.map((mg: any) => mg.genre?.name).filter(Boolean) || [];
@@ -211,15 +211,15 @@ export async function getPersonalizedMovies(): Promise<Movie[]> {
 
       let videoUrl = item.trailer_url;
       if (!videoUrl && item.media_type === "MOVIE") {
-         videoUrl = seasons?.[0]?.episodes?.[0]?.videoUrl || null;
+        videoUrl = seasons?.[0]?.episodes?.[0]?.videoUrl || null;
       }
       const rating = item.metadata?.tmdb_rating || item.metadata?.vote_average || item.score || 0;
-      
+
       let duration = "N/A";
       if (item.metadata?.duration) {
-          duration = item.metadata.duration; 
+        duration = item.metadata.duration;
       } else if (item.metadata?.runtime) {
-          duration = `${item.metadata.runtime} phút`;
+        duration = `${item.metadata.runtime} phút`;
       }
 
       return {
@@ -228,24 +228,24 @@ export async function getPersonalizedMovies(): Promise<Movie[]> {
         title: item.title || item.original_title || "Chưa có tên",
         subTitle: item.original_title || "",
         description: item.description || "",
-        
+
         posterUrl: getTmdbImageUrl(item.poster_url, "poster"),
         backdropUrl: getTmdbImageUrl(item.backdrop_url, "backdrop"),
-        
+
         trailerUrl: item.trailer_url || null,
         videoUrl: videoUrl,
-        
+
         type: item.media_type === "TV" ? "TV" : "MOVIE",
         releaseYear: releaseYear,
         tags: tags,
-        
+
         rating: rating,
         duration: duration,
         views: item.metadata?.vote_count || 0,
-        
+
         seasons: seasons,
-        cast: [], 
-        director: undefined 
+        cast: [],
+        director: undefined
       };
     });
 
@@ -253,6 +253,16 @@ export async function getPersonalizedMovies(): Promise<Movie[]> {
 
   } catch (error) {
     console.log("Không thể lấy phim gợi ý:", error);
+    return [];
+  }
+}
+
+export async function getGenres(): Promise<Genre[]> {
+  try {
+    const { data } = await api.get<Genre[]>('/movies/genres');
+    return data;
+  } catch (error) {
+    console.error("Lỗi lấy danh sách thể loại:", error);
     return [];
   }
 }

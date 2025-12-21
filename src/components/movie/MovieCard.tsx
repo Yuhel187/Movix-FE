@@ -56,7 +56,7 @@ export function MovieCard({
     const rawType = movie.type || (movie as any).media_type;
 
     const getTypeLabel = (t: string | undefined) => {
-        if (!t) return "Phim lẻ"; 
+        if (!t) return "Phim lẻ";
         const upper = t.toUpperCase();
         if (upper === 'TV' || upper === 'SERIES') return "Phim bộ";
         return "Phim lẻ";
@@ -66,8 +66,28 @@ export function MovieCard({
     const subTitle = movie.subTitle || "";
     const displayDuration = duration || (displayType === 'Phim bộ' ? `${seasons?.length || 0} Mùa` : 'Phim lẻ');
     const displayPoster = movie.posterUrl || movie.poster_url || "https://static.vecteezy.com/system/resources/previews/020/276/914/non_2x/404-internet-error-page-icon-404-number-symbol-free-vector.jpg";
+    const cardRef = useRef<HTMLDivElement>(null)
+    const [previewPosition, setPreviewPosition] = useState<"left" | "right" | "center">("center")
+
     const handleMouseEnter = () => {
         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+
+        // Calculate position before showing
+        if (cardRef.current) {
+            const rect = cardRef.current.getBoundingClientRect()
+            const screenWidth = window.innerWidth
+            const previewWidth = 350 // w-[350px]
+
+            // Allow some buffer (e.g. 20px)
+            if (rect.left < (previewWidth / 2)) {
+                setPreviewPosition("left")
+            } else if (rect.right + (previewWidth / 2) > screenWidth) {
+                setPreviewPosition("right")
+            } else {
+                setPreviewPosition("center")
+            }
+        }
+
         hoverTimeoutRef.current = setTimeout(() => setHovered(true), 300)
     }
 
@@ -137,9 +157,10 @@ export function MovieCard({
 
     return (
         <div
-            className="flex flex-col h-full w-full relative group" 
+            className="flex flex-col h-full w-full relative group"
         >
             <div
+                ref={cardRef}
                 className="relative"
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
@@ -167,15 +188,20 @@ export function MovieCard({
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 10, scale: 0.95 }}
                             transition={{ duration: 0.2 }}
-                            className="absolute left-1/2 top-0 z-50 w-[350px] h-[400px] -translate-x-1/2 -translate-y-[5%] rounded-xl overflow-hidden bg-card text-card-foreground shadow-2xl"
+                            className={cn(
+                                "absolute top-0 z-50 w-[350px] h-[450px] -translate-y-[5%] rounded-xl overflow-hidden bg-card text-card-foreground shadow-2xl",
+                                previewPosition === "center" && "left-1/2 -translate-x-1/2",
+                                previewPosition === "left" && "left-0 translate-x-0",
+                                previewPosition === "right" && "right-0 translate-x-0"
+                            )}
                         >
-                            <div className="relative h-1/2 w-full">
+                            <div className="relative h-[200px] w-full shrink-0">
                                 <Image src={displayPoster} alt={title} fill className="object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                             </div>
 
-                            <div className="h-1/2 p-5 flex flex-col justify-between">
-                                <div className="space-y-2">
+                            <div className="p-5 flex flex-col justify-between flex-1 min-h-0">
+                                <div className="space-y-2 shrink-0">
                                     <div>
                                         <h3 className="text-xl font-semibold line-clamp-1">{title}</h3>
                                         {subTitle && (
@@ -252,7 +278,7 @@ export function MovieCard({
                                     </div>
                                 </div>
 
-                                <p className="text-sm text-muted-foreground line-clamp-3">
+                                <p className="text-sm text-muted-foreground line-clamp-3 mt-2">
                                     {description}
                                 </p>
                             </div>
