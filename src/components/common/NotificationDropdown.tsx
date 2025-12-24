@@ -84,7 +84,7 @@ function WebPushToggle() {
 export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = React.useState(false);
   const router = useRouter();
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, logout } = useAuth();
 
   const {
     notifications,
@@ -95,7 +95,13 @@ export default function NotificationDropdown() {
     fetchUnreadCount,
     markAsRead,
     markAllAsRead,
-  } = useNotifications(isLoggedIn);
+  } = useNotifications(isLoggedIn, { 
+    enableSoundAndToast: true,
+    onAccountLocked: () => {
+      logout();
+      router.push('/login');
+    }
+  });
 
   // Fetch notifications khi mở dropdown
   useEffect(() => {

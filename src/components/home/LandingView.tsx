@@ -428,11 +428,9 @@ export default function LandingView() {
                 </div>
               </div>
             </div>
-
-    </div>
+          </div>
         <Footer/>
     </main>
-    <AIChatWidget />
     </>
   );
 }

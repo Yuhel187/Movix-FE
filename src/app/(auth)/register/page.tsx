@@ -223,15 +223,7 @@ export default function RegisterPage() {
                 {isLoading ? "Đang xử lý..." : "Đăng ký"}
               </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isLoading}
-                className="bg-slate-200 text-slate-900 hover:bg-slate-300 w-full py-5 text-base font-semibold"
-              >
-                <FcGoogle className="mr-2 h-5 w-5" />
-                Đăng ký bằng Google
-              </Button>
+              
             </form>
           </div>
         </div>

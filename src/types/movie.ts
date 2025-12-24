@@ -38,6 +38,10 @@ export interface EpisodeResponse {
   title: string;
   runtime: number;
   video_url: string;
+  video_image_url?: string;
+  videoImageUrl?: string;
+  still_path?: string;
+  stillPath?: string;
 }
 
 export interface SeasonResponse {
@@ -58,6 +62,8 @@ export interface MovieResponse {
   trailer_url: string | null;
   release_date: string | null;
   media_type: "MOVIE" | "TV";
+  vote_average?: number;
+  voteAverage?: number;
   movie_genres?: GenreResponse[];
   movie_people?: PersonResponse[];
   seasons?: SeasonResponse[];
@@ -76,6 +82,7 @@ export interface Episode {
   number: number;
   title: string;
   videoUrl: string;
+  videoImageUrl?: string;
   runtime: number;
 }
 
@@ -103,6 +110,8 @@ export interface Movie {
   director?: Director | undefined;
   rating?: number;
   duration?: string;
+  vote_average?: number; 
+  vote_count?: number;
   type: "MOVIE" | "TV";
   views?: number;
   recommendations?: Movie[];

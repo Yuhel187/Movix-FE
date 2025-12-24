@@ -881,12 +881,45 @@ export default function MovieManagement() {
                               ?.video_url || ""
                           }
                           onChange={(e) => {
-                            const newSeasons = [...movieToEdit.seasons];
-                            if (newSeasons[0]?.episodes[0]) {
-                              newSeasons[0].episodes[0].video_url =
-                                e.target.value;
-                              updateMovieField("seasons", newSeasons);
+                            const val = e.target.value;
+
+                            const newSeasons = movieToEdit.seasons
+                              ? [...movieToEdit.seasons]
+                              : [];
+
+                            if (newSeasons.length === 0) {
+                              newSeasons.push({
+                                id: `temp-season-${Date.now()}`,
+                                name: "Phần 1",
+                                season_number: 1,
+                                episodes: [],
+                              });
                             }
+
+                            const firstSeason = { ...newSeasons[0] };
+                            const episodes = firstSeason.episodes
+                              ? [...firstSeason.episodes]
+                              : [];
+
+                            if (episodes.length === 0) {
+                              episodes.push({
+                                id: `temp-ep-${Date.now()}`,
+                                title: movieToEdit.title || "Phim lẻ", 
+                                episode_number: 1,
+                                duration: movieToEdit.duration || 0,
+                                video_url: "",
+                              });
+                            }
+
+                            episodes[0] = {
+                              ...episodes[0],
+                              video_url: val,
+                            };
+
+                            firstSeason.episodes = episodes;
+                            newSeasons[0] = firstSeason;
+
+                            updateMovieField("seasons", newSeasons);
                           }}
                         />
                       </div>
