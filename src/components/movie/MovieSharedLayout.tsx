@@ -103,8 +103,9 @@ export default function MovieSharedLayout({
                       >
                          {/* Thumbnail  */}
                          <div className="relative w-full sm:w-40 h-24 flex-shrink-0 rounded-md overflow-hidden bg-zinc-800 border border-zinc-800">
+                          {/* Debug: {ep.videoImageUrl} */}
                           <Image
-                            src={`https://placehold.co/600x400/1a1a1a/FFF?text=EP+${ep.number}`}
+                            src={ep.videoImageUrl || `https://placehold.co/600x400/1a1a1a/FFF?text=EP+${ep.number}`}
                             alt={ep.title || `Tập ${ep.number}`}
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-500"

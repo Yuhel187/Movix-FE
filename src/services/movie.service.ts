@@ -35,7 +35,7 @@ function mapToMovie(raw: MovieResponse): Movie {
     releaseYear: releaseYear,
     tags: tags,
 
-    rating: raw.metadata?.tmdb_rating || 0,
+    rating: raw.vote_average || raw.voteAverage || raw.metadata?.tmdb_rating || 0,
     duration: raw.metadata?.duration || "N/A",
     views: 0,
     cast: [],
@@ -81,13 +81,21 @@ export async function getMovieData(slug: string) {
     id: s.id,
     number: s.season_number,
     title: s.title || `Season ${s.season_number}`,
-    episodes: s.episodes?.map(e => ({
-      id: e.id,
-      number: e.episode_number,
-      title: e.title || `Episode ${e.episode_number}`,
-      videoUrl: e.video_url,
-      runtime: e.runtime || 0
-    })) || []
+    episodes: s.episodes?.map(e => {
+      const rawStillPath = e.still_path || e.stillPath;
+      const derivedImageUrl = rawStillPath 
+        ? (rawStillPath.startsWith('http') ? rawStillPath : `https://image.tmdb.org/t/p/w500${rawStillPath}`)
+        : undefined;
+
+      return {
+        id: e.id,
+        number: e.episode_number,
+        title: e.title || `Episode ${e.episode_number}`,
+        videoUrl: e.video_url,
+        videoImageUrl: e.video_image_url || e.videoImageUrl || derivedImageUrl,
+        runtime: e.runtime || 0
+      };
+    }) || []
   })) || [];
 
   let mainVideoUrl = raw.trailer_url;
@@ -123,7 +131,7 @@ export async function getMovieData(slug: string) {
     tags: tags,
     cast: castData,
     director: director || undefined,
-    rating: raw.metadata?.tmdb_rating || 0,
+    rating: raw.vote_average || raw.voteAverage || raw.metadata?.tmdb_rating || 0,
     duration: raw.metadata?.duration || "N/A",
     views: 0,
     recommendations: (raw.recommendations || []).map(mapToMovie),
@@ -133,7 +141,7 @@ export async function getMovieData(slug: string) {
     releaseYear: releaseYear,
     languages: ["Vietnamese", "English"],
     ratings: {
-      imdb: raw.metadata?.tmdb_rating || 0,
+      imdb: raw.vote_average || raw.voteAverage || raw.metadata?.tmdb_rating || 0,
       movix: 9.0,
     },
     genres: tags,

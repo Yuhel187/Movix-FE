@@ -58,7 +58,7 @@ const Navbar = () => {
   const debouncedSearchText = useDebounce(searchText, 300);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  const navItems = ['Chủ đề', 'Phim hay', 'Thể loại', 'Phim lẻ', 'Phim bộ', 'Quốc gia', 'Diễn viên', 'Watching Party'];
+  const navItems = ['Phim hay', 'Thể loại', 'Phim lẻ', 'Phim bộ', 'Quốc gia', 'Diễn viên', 'Watching Party'];
 
   useEffect(() => {
     if (!API_URL) return;
