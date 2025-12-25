@@ -11,7 +11,7 @@ export function SpoilerWarning({ children }: SpoilerWarningProps) {
   const [isRevealed, setIsRevealed] = useState(false);
 
   if (isRevealed) {
-    return <div className="text-gray-300">{children}</div>;
+    return <div className="text-gray-300 whitespace-pre-line break-words">{children}</div>;
   }
 
   return (

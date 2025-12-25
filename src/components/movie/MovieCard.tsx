@@ -8,6 +8,7 @@ import { motion, AnimatePresence, m } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Heart, Info, Play, Eye, Clock, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Skeleton } from "@/components/ui/skeleton"
 import type { Movie } from "@/types/movie"
 import { useAuth } from "@/contexts/AuthContext"
 import { checkFavoriteStatus, toggleFavorite } from "@/services/interaction.service"
@@ -38,6 +39,8 @@ export function MovieCard({
     const { isLoggedIn } = useAuth()
     const [isFavorite, setIsFavorite] = useState(false)
     const [isLoadingFav, setIsLoadingFav] = useState(true)
+    const [isImageLoaded, setIsImageLoaded] = useState(false)
+    const [isPreviewImageLoaded, setIsPreviewImageLoaded] = useState(false)
     const {
         id,
         title,
@@ -172,12 +175,19 @@ export function MovieCard({
                     )}
                     onClick={handleDetail}
                 >
+                    {!isImageLoaded && (
+                        <Skeleton className="absolute inset-0 h-full w-full bg-zinc-800" />
+                    )}
                     <Image
                         src={displayPoster}
                         alt={title}
                         fill
-                        className="object-cover transition-transform duration-500 hover:scale-105"
+                        className={cn(
+                            "object-cover transition-all duration-500 hover:scale-105",
+                            isImageLoaded ? "opacity-100" : "opacity-0"
+                        )}
                         sizes="(max-width: 300px) 50vw, 20vw"
+                        onLoad={() => setIsImageLoaded(true)}
                     />
                 </div>
                 <AnimatePresence>
@@ -196,7 +206,19 @@ export function MovieCard({
                             )}
                         >
                             <div className="relative h-[200px] w-full shrink-0">
-                                <Image src={displayPoster} alt={title} fill className="object-cover" />
+                                {!isPreviewImageLoaded && (
+                                    <Skeleton className="absolute inset-0 h-full w-full bg-zinc-800" />
+                                )}
+                                <Image 
+                                    src={displayPoster} 
+                                    alt={title} 
+                                    fill 
+                                    className={cn(
+                                        "object-cover transition-opacity duration-300",
+                                        isPreviewImageLoaded ? "opacity-100" : "opacity-0"
+                                    )}
+                                    onLoad={() => setIsPreviewImageLoaded(true)}
+                                />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                             </div>
 

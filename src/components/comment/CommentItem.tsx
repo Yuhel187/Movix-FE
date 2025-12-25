@@ -133,7 +133,7 @@ export function CommentItem({
             {comment.is_spoiler ? ( 
               <SpoilerWarning>{comment.comment}</SpoilerWarning>
             ) : (
-              <p className="text-gray-300 whitespace-pre-line">
+              <p className="text-gray-300 whitespace-pre-line break-words">
                 {comment.comment}
               </p>
             )}
