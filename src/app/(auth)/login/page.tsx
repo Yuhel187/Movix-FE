@@ -51,9 +51,22 @@ export default function LoginPage() {
       }
 
     } catch (err: any) {
+      const resData = err.response?.data || {};
+      const message = resData.message?.toLowerCase() || "";
+      const code = resData.code;
+
+      // Check for locked account first
+      const isLocked = message.includes("khóa") || message.includes("locked") || code === "USER_LOCKED";
+      
+      if (isLocked) {
+        setError(resData.message || "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.");
+        setIsLoading(false);
+        return;
+      }
+
       const isUnverified = 
-        err.response?.data?.message?.includes("xác thực") || 
-        err.response?.data?.code === "USER_NOT_VERIFIED";
+        message.includes("xác thực") || 
+        code === "USER_NOT_VERIFIED";
 
       if (isUnverified) {
         toast.warning("Tài khoản chưa được xác thực. Vui lòng nhập mã OTP đã gửi đến email.");
@@ -194,15 +207,7 @@ export default function LoginPage() {
                 Quên mật khẩu?
               </Link>
 
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isLoading}
-                className="bg-slate-200 text-slate-900 hover:bg-slate-300 w-full py-5 text-base font-semibold rounded-lg"
-              >
-                <FcGoogle className="mr-2 h-5 w-5" />
-                Đăng nhập bằng Google
-              </Button>
+              
             </form>
           </div>
         </div>

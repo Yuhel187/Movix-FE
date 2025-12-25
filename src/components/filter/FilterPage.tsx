@@ -491,7 +491,6 @@ export default function FilterPage({ searchParams }: { searchParams?: { q?: stri
         </div>
         <Footer />
       </main>
-      <AIChatWidget />
     </>
   );
 }

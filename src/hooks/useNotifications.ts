@@ -30,6 +30,7 @@ interface UseNotificationsReturn {
 
 interface UseNotificationsOptions {
     enableSoundAndToast?: boolean;
+    onAccountLocked?: () => void;
 }
 
 export const useNotifications = (isAuthenticated: boolean = false, options: UseNotificationsOptions = { enableSoundAndToast: true }): UseNotificationsReturn => {
@@ -135,6 +136,14 @@ export const useNotifications = (isAuthenticated: boolean = false, options: UseN
                     description: notification.message,
                     duration: 5000,
                 });
+            }
+        });
+
+        // Event: Tài khoản bị khóa
+        newSocket.on('account:locked', () => {
+            console.log('Account locked event received');
+            if (options.onAccountLocked) {
+                options.onAccountLocked();
             }
         });
 

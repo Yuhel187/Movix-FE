@@ -121,7 +121,7 @@ const NotificationItem = ({
 export default function NotificationsPage() {
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const router = useRouter();
-  const { user, isLoggedIn } = useAuth();
+  const { user, isLoggedIn, logout } = useAuth();
 
   const {
     notifications,
@@ -134,7 +134,13 @@ export default function NotificationsPage() {
     deleteNotification,
     hasMore,
     currentPage,
-  } = useNotifications(isLoggedIn, { enableSoundAndToast: false });
+  } = useNotifications(isLoggedIn, { 
+    enableSoundAndToast: false,
+    onAccountLocked: () => {
+      logout();
+      router.push('/login');
+    }
+  });
 
   // Fetch notifications khi component mount
   useEffect(() => {

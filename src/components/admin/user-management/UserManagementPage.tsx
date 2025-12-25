@@ -58,7 +58,7 @@ interface User {
   isFlagged?: boolean;
 }
 
-const UserDetailCard = ({ user }: { user: User | null }) => {
+const UserDetailCard = ({ user, onStatusChange }: { user: User | null, onStatusChange: (newStatus: "active" | "inactive" | "locked") => void }) => {
   const router = useRouter();
   if (!user) {
     return (
@@ -79,6 +79,7 @@ const UserDetailCard = ({ user }: { user: User | null }) => {
     try {
         await apiClient.put(`/profile/admin/users/${user.id}/status`, { status: newStatus });
         toast.success(isLocked ? "Đã kích hoạt user" : "Đã khóa user");
+        onStatusChange(newStatus);
     } catch (e) {
         toast.error("Lỗi thao tác");
     }
@@ -304,6 +305,16 @@ export default function UserManagementPage() {
       }
   };
 
+  const handleStatusChange = (newStatus: "active" | "inactive" | "locked") => {
+    if (selectedUser) {
+      const updatedUser = { ...selectedUser, status: newStatus };
+      setSelectedUser(updatedUser);
+      setUsers((prevUsers) =>
+        prevUsers.map((u) => (u.id === selectedUser.id ? updatedUser : u))
+      );
+    }
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -453,7 +464,7 @@ export default function UserManagementPage() {
         </div>
       </div>
       <div className={`hidden lg:block lg:w-80 xl:w-96 2xl:w-[450px] flex-shrink-0 ${fixedHeight}`}>
-          <UserDetailCard user={selectedUser} />
+          <UserDetailCard user={selectedUser} onStatusChange={handleStatusChange} />
       </div>
     </div>
   );

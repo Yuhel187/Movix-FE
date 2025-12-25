@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
+import AIChatWidget from "@/components/ai/AIChatWidget";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -35,7 +36,7 @@ export default function RootLayout({
         <AuthProvider>
           {children}
           <Toaster position="top-right" richColors />
-
+          <AIChatWidget />
         </AuthProvider>
       </body>
     </html>

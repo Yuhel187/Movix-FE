@@ -130,7 +130,6 @@ export default function MoviesPage() {
         )}
       </div>
       <Footer />
-      <AIChatWidget />
     </main>
   );
 }

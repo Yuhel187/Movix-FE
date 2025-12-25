@@ -37,6 +37,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import apiClient from "@/lib/apiClient";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const DEFAULT_BACKDROP = "/images/placeholder-backdrop.png";
 const DEFAULT_AVATAR = "/images/placeholder-avatar.png";
@@ -59,6 +65,7 @@ interface PlaylistItem {
   id: string;
   name: string;
   count: number;
+  movies?: any[];
 }
 
 interface UserDetailData {
@@ -146,6 +153,9 @@ export default function UserDetail() {
   const backdropInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
+  const [playlistMovies, setPlaylistMovies] = useState<any[]>([]);
+  const [isPlaylistLoading, setIsPlaylistLoading] = useState(false);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -185,7 +195,12 @@ export default function UserDetail() {
                 playlists: u.playlists?.map((pl: any) => ({
                     id: pl.id,
                     name: pl.name,
-                    count: pl._count?.playlist_movies || 0
+                    count: pl._count?.playlist_movies || 0,
+                    movies: pl.playlist_movies?.map((pm: any) => ({
+                        id: pm.movie?.id,
+                        title: pm.movie?.title,
+                        poster_url: pm.movie?.poster_url,
+                    })) || []
                 })) || []
             };
 
@@ -266,6 +281,34 @@ export default function UserDetail() {
           toast.success(res.data.message);
       } catch (error) {
           toast.error("Lỗi khi thay đổi trạng thái cờ");
+      }
+  }
+
+  const handlePlaylistClick = async (playlistId: string) => {
+      const playlist = user?.playlists.find(p => p.id === playlistId);
+      
+      if (playlist?.count === 0) {
+          setPlaylistMovies([]);
+          setSelectedPlaylistId(playlistId);
+          return;
+      }
+
+      if (playlist && playlist.movies && playlist.movies.length > 0) {
+          setPlaylistMovies(playlist.movies);
+          setSelectedPlaylistId(playlistId);
+          return;
+      }
+
+      setSelectedPlaylistId(playlistId);
+      setIsPlaylistLoading(true);
+      try {
+          const res = await apiClient.get(`/interact/playlists/${playlistId}`);
+          setPlaylistMovies(res.data.movies || []);
+      } catch (error) {
+          // toast.error("Không thể tải danh sách phim trong playlist");
+          setPlaylistMovies([]);
+      } finally {
+          setIsPlaylistLoading(false);
       }
   }
 
@@ -514,7 +557,11 @@ export default function UserDetail() {
           {/* 3. Playlist */}
           <HorizontalScrollSection title="Playlist cá nhân" icon={ListMusic}>
               {user.playlists.map((pl) => (
-                <Card key={pl.id} className="flex-shrink-0 w-60 h-24 bg-[#18181b] border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800 transition-all cursor-pointer group">
+                <Card 
+                    key={pl.id} 
+                    className="flex-shrink-0 w-60 h-24 bg-[#18181b] border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800 transition-all cursor-pointer group"
+                    onClick={() => handlePlaylistClick(pl.id)}
+                >
                     <CardContent className="p-4 flex items-center gap-4 h-full">
                         <div className="w-14 h-14 bg-zinc-900 rounded-lg flex items-center justify-center flex-shrink-0 border border-zinc-800 group-hover:border-zinc-600 transition-colors">
                             <ListMusic className="w-6 h-6 text-zinc-500 group-hover:text-white transition-colors" />
@@ -529,6 +576,36 @@ export default function UserDetail() {
           </HorizontalScrollSection>
 
         </div>
+
+      <Dialog open={!!selectedPlaylistId} onOpenChange={(open) => !open && setSelectedPlaylistId(null)}>
+        <DialogContent className="bg-[#18181b] border-zinc-800 text-white max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+                <DialogTitle>Danh sách phim trong Playlist</DialogTitle>
+            </DialogHeader>
+            
+            {isPlaylistLoading ? (
+                <div className="py-10 text-center text-zinc-400">Đang tải...</div>
+            ) : playlistMovies.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4">
+                    {playlistMovies.map((movie: any) => (
+                        <div key={movie.id} className="space-y-2">
+                            <div className="aspect-[2/3] relative rounded-md overflow-hidden bg-zinc-900">
+                                <Image 
+                                    src={movie.poster_url || "/images/placeholder-poster.png"} 
+                                    alt={movie.title}
+                                    fill
+                                    className="object-cover"
+                                />
+                            </div>
+                            <p className="text-sm font-medium truncate" title={movie.title}>{movie.title}</p>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="py-10 text-center text-zinc-500">Playlist trống</div>
+            )}
+        </DialogContent>
+      </Dialog>
       </div>
     </div>
   );

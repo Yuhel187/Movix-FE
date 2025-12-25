@@ -2,19 +2,34 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 import AIChatBox from "./AIChatBox";
 import { cn } from "@/lib/utils";
 
 export default function AIChatWidget() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
+
+  // Các trang không hiển thị Chat Widget
+  const hiddenRoutes = [
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/watch-party/"
+  ];
+
+  const shouldHide = hiddenRoutes.some(route => pathname.startsWith(route));
 
   useEffect(() => {
     if (isOpen && !hasOpened) {
       setHasOpened(true);
     }
   }, [isOpen, hasOpened]);
+
+  if (shouldHide) return null;
 
   const handleClose = () => {
     setIsOpen(false);

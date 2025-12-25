@@ -48,7 +48,13 @@ export default function AdminTopbar({
     markAllAsRead,
     fetchNotifications, 
     fetchUnreadCount    
-  } = useNotifications(true);
+  } = useNotifications(true, {
+    enableSoundAndToast: true,
+    onAccountLocked: () => {
+      logout();
+      router.push('/login');
+    }
+  });
 
   const displayName = userName || user?.display_name || user?.username || "Admin";
   const displayAvatar = avatarUrl || user?.avatarUrl || "/images/placeholder-avatar.png";

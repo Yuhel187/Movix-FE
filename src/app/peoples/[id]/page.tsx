@@ -20,7 +20,6 @@ export default async function PersonDetailPage({
       <ActorDetailPage person={person} />
       
       <Footer />
-      <AIChatWidget />
     </main>
   );
 }
