@@ -24,6 +24,7 @@ export default async function MovieDetailPage({ params }: { params: { slug: stri
         seasons={movie.seasons || []}   
         
         type={movie.type} 
+        posterUrl={movie.posterUrl}
         recommendations={movie.recommendations || []}        
       />
     </main>

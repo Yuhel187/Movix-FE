@@ -11,80 +11,19 @@ export interface SidebarData {
   genres: string[];
   director: Director | null;
 }
-function mapToMovie(raw: MovieResponse): Movie {
-  const releaseYear = raw.release_date
-    ? new Date(raw.release_date).getFullYear()
-    : "N/A";
+// --- Mappers ---
 
-  const tags = raw.movie_genres?.map((mg) => mg.genre?.name).filter(Boolean) || [];
-
-  return {
-    id: raw.id,
-    slug: raw.slug,
-    title: raw.title || raw.original_title || "Chưa có tên",
-    subTitle: raw.original_title || "",
-    description: raw.description || "",
-
-    posterUrl: getTmdbImageUrl(raw.poster_url, "poster"),
-    backdropUrl: getTmdbImageUrl(raw.backdrop_url, "backdrop"),
-
-    trailerUrl: raw.trailer_url || null,
-    videoUrl: null,
-
-    type: raw.media_type === "TV" ? "TV" : "MOVIE",
-    releaseYear: releaseYear,
-    tags: tags,
-
-    rating: raw.vote_average || raw.voteAverage || raw.metadata?.tmdb_rating || 0,
-    duration: raw.metadata?.duration || "N/A",
-    views: 0,
-    cast: [],
-    director: undefined,
-    seasons: []
-  };
-}
-export async function getMovieData(slug: string) {
-  let raw: MovieResponse;
-
-  try {
-    const res = await api.get<MovieResponse>(`/movies/${slug}`);
-    raw = res.data;
-  } catch (error: any) {
-    console.error("Lỗi lấy phim:", error.response?.data || error.message);
-    throw new Error("Không tìm thấy phim");
-  }
-
-  const castData: Actor[] = raw.movie_people
-    ?.filter(mp => mp.person.role_type === "actor" || mp.credit_type === "cast")
-    .map((mp, idx) => ({
-      id: mp.person.id,
-      name: mp.person.name || "Không rõ",
-      character: mp.character || "Unknown",
-      profileUrl: getPersonAvatarUrl(mp.person.avatar_url),
-      avatar_url: getPersonAvatarUrl(mp.person.avatar_url),
-      biography: mp.person.biography || "",
-      birthday: mp.person.birthday,
-      gender: mp.person.gender,
-    })) || [];
-
-  const directorRaw = raw.movie_people?.find(
-    (mp) => mp.person.role_type === "director" || mp.credit_type === "crew"
-  );
-
-  const director: Director | null = directorRaw ? {
-    name: directorRaw.person.name,
-    avatarUrl: getPersonAvatarUrl(directorRaw.person.avatar_url),
-    origin: "Unknown"
-  } : null;
-
-  const seasons: Season[] = raw.seasons?.map(s => ({
+function mapSeasons(rawSeasons: any[] = []): Season[] {
+  return rawSeasons.map((s) => ({
     id: s.id,
     number: s.season_number,
     title: s.title || `Season ${s.season_number}`,
-    episodes: s.episodes?.map(e => {
+    episodes: s.episodes?.map((e: any) => {
       const rawStillPath = e.still_path || e.stillPath;
-      const derivedImageUrl = rawStillPath 
-        ? (rawStillPath.startsWith('http') ? rawStillPath : `https://image.tmdb.org/t/p/w500${rawStillPath}`)
+      const derivedImageUrl = rawStillPath
+        ? rawStillPath.startsWith("http")
+          ? rawStillPath
+          : `https://image.tmdb.org/t/p/w500${rawStillPath}`
         : undefined;
 
       return {
@@ -93,62 +32,125 @@ export async function getMovieData(slug: string) {
         title: e.title || `Episode ${e.episode_number}`,
         videoUrl: e.video_url,
         videoImageUrl: e.video_image_url || e.videoImageUrl || derivedImageUrl,
-        runtime: e.runtime || 0
+        runtime: e.runtime || 0,
       };
-    }) || []
-  })) || [];
+    }) || [],
+  }));
+}
 
-  let mainVideoUrl = raw.trailer_url;
+function mapCast(moviePeople: any[] = []): Actor[] {
+  return moviePeople
+    .filter((mp) => mp.person.role_type === "actor" || mp.credit_type === "cast")
+    .map((mp) => ({
+      id: mp.person.id,
+      name: mp.person.name || "Không rõ",
+      character: mp.character || "Unknown",
+      profileUrl: getPersonAvatarUrl(mp.person.avatar_url),
+      avatar_url: getPersonAvatarUrl(mp.person.avatar_url),
+      biography: mp.person.biography || "",
+      birthday: mp.person.birthday,
+      gender: mp.person.gender,
+    }));
+}
 
-  if (raw.media_type === "MOVIE") {
-    const firstEpLink = seasons?.[0]?.episodes?.[0]?.videoUrl;
-    if (firstEpLink) {
-      mainVideoUrl = firstEpLink;
-    }
-  }
+function mapDirector(moviePeople: any[] = []): Director | undefined {
+  const directorRaw = moviePeople.find(
+    (mp) => mp.person.role_type === "director" || mp.credit_type === "crew"
+  );
+  return directorRaw
+    ? {
+        name: directorRaw.person.name,
+        avatarUrl: getPersonAvatarUrl(directorRaw.person.avatar_url),
+        origin: "Unknown",
+      }
+    : undefined;
+}
+
+function mapToMovie(raw: any): Movie {
   const releaseYear = raw.release_date
     ? new Date(raw.release_date).getFullYear()
-    : "Đang cập nhật";
+    : raw.releaseYear || "N/A";
 
-  const tags = raw.movie_genres?.map((mg) => mg.genre?.name).filter(Boolean) || [];
+  const tags =
+    raw.movie_genres?.map((mg: any) => mg.genre?.name).filter(Boolean) ||
+    raw.tags ||
+    [];
+  
+  const seasons = mapSeasons(raw.seasons);
 
-  const movie: Movie = {
+  // Determine video URL
+  let videoUrl = raw.trailer_url || raw.videoUrl || null;
+  const isMovie = raw.media_type === "MOVIE" || raw.type === "MOVIE";
+  
+  if (isMovie) {
+    const firstEpLink = seasons?.[0]?.episodes?.[0]?.videoUrl;
+    if (firstEpLink) {
+      videoUrl = firstEpLink;
+    }
+  }
+
+  // Determine Rating
+  const rating =
+    raw.vote_average ||
+    raw.voteAverage ||
+    raw.metadata?.tmdb_rating ||
+    raw.score ||
+    0;
+
+  // Determine Duration
+  let duration = raw.metadata?.duration || raw.duration || "N/A";
+  if (!duration && raw.metadata?.runtime) {
+    duration = `${raw.metadata.runtime} phút`;
+  }
+
+  return {
     id: raw.id,
     slug: raw.slug,
-    title: raw.title || raw.original_title || "Không có tiêu đề",
+    title: raw.title || raw.original_title || "Chưa có tên",
     subTitle: raw.original_title || raw.title || "",
     description: raw.description || "",
 
-    posterUrl: getTmdbImageUrl(raw.poster_url, "poster"),
-    backdropUrl: getTmdbImageUrl(raw.backdrop_url, "backdrop"),
+    posterUrl: getTmdbImageUrl(raw.poster_url || raw.posterUrl, "poster"),
+    backdropUrl: getTmdbImageUrl(raw.backdrop_url || raw.backdropUrl, "backdrop"),
 
     trailerUrl: raw.trailer_url || null,
-    videoUrl: mainVideoUrl || null,
-    seasons: seasons,
+    videoUrl,
 
-    type: raw.media_type,
-    releaseYear: releaseYear,
-    tags: tags,
-    cast: castData,
-    director: director || undefined,
-    rating: raw.vote_average || raw.voteAverage || raw.metadata?.tmdb_rating || 0,
-    duration: raw.metadata?.duration || "N/A",
-    views: 0,
+    type: (raw.media_type === "TV" || raw.type === "TV") ? "TV" : "MOVIE",
+    releaseYear,
+    tags,
+
+    rating,
+    duration,
+    views: raw.views || raw.metadata?.vote_count || 0,
+
+    seasons,
+    cast: mapCast(raw.movie_people),
+    director: mapDirector(raw.movie_people),
     recommendations: (raw.recommendations || []).map(mapToMovie),
   };
+}
+export async function getMovieData(slug: string) {
+  try {
+    const { data } = await api.get<MovieResponse>(`/movies/${slug}`);
+    const movie = mapToMovie(data);
 
-  const sidebarData: SidebarData = {
-    releaseYear: releaseYear,
-    languages: ["Vietnamese", "English"],
-    ratings: {
-      imdb: raw.vote_average || raw.voteAverage || raw.metadata?.tmdb_rating || 0,
-      movix: 9.0,
-    },
-    genres: tags,
-    director: director,
-  };
+    const sidebarData: SidebarData = {
+      releaseYear: movie.releaseYear || "N/A",
+      languages: ["Vietnamese", "English"],
+      ratings: {
+        imdb: data.metadata?.tmdb_rating || 0,
+        movix: data.vote_average || data.voteAverage || 0,
+      },
+      genres: movie.tags || [],
+      director: movie.director || null,
+    };
 
-  return { movie, sidebarData };
+    return { movie, sidebarData };
+  } catch (error: any) {
+    console.error("Lỗi lấy phim:", error.response?.data || error.message);
+    throw new Error("Không tìm thấy phim");
+  }
 }
 export async function getTrendingMovies(): Promise<Movie[]> {
   try {
@@ -167,98 +169,25 @@ export interface MovieSection {
 
 export async function getDynamicSections(): Promise<MovieSection[]> {
   try {
-    const { data } = await api.get<any[]>('/homepage');
-    return data.map((section: any) => ({
+    const { data } = await api.get<any[]>("/homepage");
+    return data.map((section) => ({
       id: section.id,
       title: section.title,
       movies: section.movie_links
-        .map((link: any) => link.movie ? mapToMovie(link.movie) : null)
-        .filter(Boolean) as Movie[]
+        .map((link: any) => (link.movie ? mapToMovie(link.movie) : null))
+        .filter(Boolean) as Movie[],
     }));
   } catch (error) {
     console.error("Lỗi lấy dynamic sections:", error);
     return [];
   }
 }
-interface PersonalizedMovieItem {
-  id: string;
-  title: string;
-  slug: string;
-  poster_url: string;
-  score: number;
-  release_date?: string;
-}
-
-interface PersonalizedResponse {
-  message: string;
-  data: PersonalizedMovieItem[];
-}
 
 export async function getPersonalizedMovies(): Promise<Movie[]> {
   try {
-    const response = await api.get<any>('/movies/for-you');
-    const movies: Movie[] = response.data.data.map((item: any) => {
-      const releaseYear = item.release_date
-        ? new Date(item.release_date).getFullYear()
-        : "N/A";
-
-      const tags = item.movie_genres?.map((mg: any) => mg.genre?.name).filter(Boolean) || [];
-
-      const seasons = item.seasons?.map((s: any) => ({
-        id: s.id,
-        number: s.season_number,
-        title: s.title || `Season ${s.season_number}`,
-        episodes: s.episodes?.map((e: any) => ({
-          id: e.id,
-          number: e.episode_number,
-          title: e.title,
-          videoUrl: e.video_url,
-          runtime: e.runtime || 0
-        })) || []
-      })) || [];
-
-      let videoUrl = item.trailer_url;
-      if (!videoUrl && item.media_type === "MOVIE") {
-        videoUrl = seasons?.[0]?.episodes?.[0]?.videoUrl || null;
-      }
-      const rating = item.metadata?.tmdb_rating || item.metadata?.vote_average || item.score || 0;
-
-      let duration = "N/A";
-      if (item.metadata?.duration) {
-        duration = item.metadata.duration;
-      } else if (item.metadata?.runtime) {
-        duration = `${item.metadata.runtime} phút`;
-      }
-
-      return {
-        id: item.id,
-        slug: item.slug,
-        title: item.title || item.original_title || "Chưa có tên",
-        subTitle: item.original_title || "",
-        description: item.description || "",
-
-        posterUrl: getTmdbImageUrl(item.poster_url, "poster"),
-        backdropUrl: getTmdbImageUrl(item.backdrop_url, "backdrop"),
-
-        trailerUrl: item.trailer_url || null,
-        videoUrl: videoUrl,
-
-        type: item.media_type === "TV" ? "TV" : "MOVIE",
-        releaseYear: releaseYear,
-        tags: tags,
-
-        rating: rating,
-        duration: duration,
-        views: item.metadata?.vote_count || 0,
-
-        seasons: seasons,
-        cast: [],
-        director: undefined
-      };
-    });
-
-    return movies;
-
+    const response = await api.get<any>("/movies/for-you");
+    // The API returns { message: string, data: [...] }
+    return response.data.data.map(mapToMovie);
   } catch (error) {
     console.log("Không thể lấy phim gợi ý:", error);
     return [];

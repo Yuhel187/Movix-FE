@@ -38,18 +38,19 @@ export function GenreSection({ genres }: GenreSectionProps) {
                     }}
                     className="w-full"
                 >
-                    <CarouselContent className="-ml-4">
+                    <CarouselContent className="-ml-4 py-8">
                         {genres.slice(0, 10).map((genre, index) => {
                             const colors = [
-                                "bg-gradient-to-br from-blue-600 to-blue-800",
-                                "bg-gradient-to-br from-purple-600 to-purple-800",
-                                "bg-gradient-to-br from-emerald-600 to-emerald-800",
-                                "bg-gradient-to-br from-rose-600 to-rose-800",
-                                "bg-gradient-to-br from-orange-600 to-orange-800",
-                                "bg-gradient-to-br from-cyan-600 to-cyan-800",
-                                "bg-gradient-to-br from-pink-600 to-pink-800",
-                                "bg-gradient-to-br from-indigo-600 to-indigo-800",
+                                "from-sky-400/40 to-blue-600/20 border-sky-400/30",
+                                "from-violet-400/40 to-purple-600/20 border-violet-400/30",
+                                "from-teal-400/40 to-teal-600/20 border-teal-400/30",
+                                "from-neutral-300/40 to-neutral-600/20 border-neutral-400/30",
+                                "from-rose-400/40 to-rose-600/20 border-rose-400/30",
+                                "from-cyan-300/40 to-cyan-600/20 border-cyan-400/30",
+                                "from-indigo-400/40 to-indigo-600/20 border-indigo-400/30",
+                                "from-emerald-400/40 to-emerald-600/20 border-emerald-400/30",
                             ];
+
                             const colorClass = colors[index % colors.length];
 
                             return (
@@ -57,22 +58,33 @@ export function GenreSection({ genres }: GenreSectionProps) {
                                     <Link
                                         href={`/filter?genre=${encodeURIComponent(genre.name)}`}
                                         className={`
-                                            relative block w-[240px] h-[130px] p-5 rounded-xl 
-                                            ${colorClass} 
-                                            transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-white/10
+                                            relative w-[240px] h-[140px] p-6 rounded-2xl 
+                                            bg-gradient-to-br ${colorClass}
+                                            backdrop-blur-md
+                                            border
+                                            transition-all duration-500 ease-out
+                                            hover:-translate-y-3 hover:scale-105 hover:shadow-[0_20px_40px_-15px_rgba(255,255,255,0.3)]
                                             flex flex-col justify-between group
-                                            border border-white/5
+                                            overflow-hidden
                                         `}
                                     >
-                                        <h3 className="text-xl font-bold text-white group-hover:tracking-wide transition-all">
-                                            {genre.name}
-                                        </h3>
-                                        <div className="text-xs font-medium text-white/80 group-hover:text-white flex items-center gap-1">
-                                            Xem chủ đề <span className="transition-transform group-hover:translate-x-1">›</span>
+                                        <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent opacity-60 pointer-events-none" />
+                                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/20 rounded-full blur-3xl group-hover:bg-white/30 transition-all duration-500" />
+
+                                        <div className="relative z-10">
+                                            <h3 className="text-2xl font-black text-white tracking-tight group-hover:tracking-wide transition-all duration-300 drop-shadow-lg">
+                                                {genre.name}
+                                            </h3>
                                         </div>
 
-                                        {/* Decorative circle */}
-                                        <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all pointer-events-none" />
+                                        <div className="relative z-10 flex items-center justify-between">
+                                            <span className="text-xs font-bold text-white/70 uppercase tracking-wider group-hover:text-white transition-colors">
+                                                Khám phá
+                                            </span>
+                                            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm group-hover:bg-white text-white group-hover:text-black transition-all duration-300">
+                                                <ChevronRight className="w-4 h-4" />
+                                            </div>
+                                        </div>
                                     </Link>
                                 </CarouselItem>
                             );
@@ -82,15 +94,18 @@ export function GenreSection({ genres }: GenreSectionProps) {
                             <Link
                                 href="/filter"
                                 className="
-                                    relative block w-[240px] h-[130px] p-5 rounded-xl 
-                                    bg-zinc-800/80 hover:bg-zinc-700
-                                    transition-all duration-300 hover:scale-105
+                                    relative w-[240px] h-[140px] p-6 rounded-2xl 
+                                    bg-zinc-900/60 backdrop-blur-xl border border-white/10
+                                    hover:bg-zinc-800/80 hover:border-white/30
+                                    transition-all duration-500 ease-out
+                                    hover:-translate-y-3 hover:scale-105 hover:shadow-2xl
                                     flex flex-col items-center justify-center
-                                    border border-white/10
+                                    group overflow-hidden
                                 "
                             >
-                                <span className="text-lg font-bold text-white">Xem tất cả</span>
-                                <span className="text-sm text-zinc-400 mt-1">Khám phá kho phim</span>
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                <span className="text-xl font-bold text-white relative z-10">Xem tất cả</span>
+                                <span className="text-sm text-zinc-400 mt-2 relative z-10 group-hover:text-zinc-200 transition-colors">Khám phá kho phim</span>
                             </Link>
                         </CarouselItem>
                     </CarouselContent>

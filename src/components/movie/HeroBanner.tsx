@@ -99,133 +99,137 @@ export default function HeroBanner({ banners }: { banners: Banner[] }) {
             const displayTitle = isMovieItem ? banner.movie?.title : banner.title;
             const displayDesc = isMovieItem ? banner.movie?.description : banner.description;
 
+            const isActive = index === selectedIndex;
             return (
               <CarouselItem key={banner.id}>
-                <AnimatePresence mode="wait">
-                  {selectedIndex === index && (
-                    <motion.section
-                      key={banner.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.8, ease: "easeInOut" }}
-                      className="relative w-full h-[100vh] text-white flex items-end pb-24"
+                <div className="relative w-full h-[100vh] text-white flex items-end pb-24 overflow-hidden">
+                  <div className="absolute inset-0">
+                    <div className="absolute inset-0 overflow-hidden">
+                      <Image
+                        src={displayImage || "/placeholder.jpg"}
+                        alt="Background Ambiance"
+                        fill
+                        priority={index === 0}
+                        sizes="100vw"
+                        className="object-cover object-center opacity-30 scale-110"
+                      />
+                    </div>
+
+                    <div 
+                      className={cn(
+                        "absolute inset-0 z-10 transition-transform duration-[10000ms] ease-out will-change-transform",
+                        isActive ? "scale-110" : "scale-100"
+                      )}
                     >
-                      {/* Background Image & Overlay */}
-                      {/* Background Image & Overlay */}
-                      <motion.div
-                        initial={{ opacity: 0, scale: 1.03 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 1.03 }}
-                        transition={{ duration: 0.9, ease: "easeInOut" }}
-                        className="absolute inset-0"
-                      >
-                        {/* Ambient Background Layer */}
-                        <Image
-                          src={displayImage || "/placeholder.jpg"}
-                          alt="Background Ambiance"
-                          fill
-                          priority
-                          sizes="100vw"
-                          className="object-cover object-center blur-3xl brightness-[0.4] scale-110"
-                        />
+                      <Image
+                        src={displayImage || "/placeholder.jpg"}
+                        alt={displayTitle || "Banner"}
+                        fill
+                        priority={index === 0}
+                        sizes="100vw"
+                        className="object-cover md:object-contain object-center"
+                      />
+                    </div>
 
-                        {/* Main Content Layer */}
-                        <Image
-                          src={displayImage || "/placeholder.jpg"}
-                          alt={displayTitle || "Banner"}
-                          fill
-                          priority
-                          sizes="100vw"
-                          className="object-contain object-center z-10"
-                        />
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent z-20" />
+                  </div>
 
-                        {/* Gradient Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent z-20" />
-                      </motion.div>
-                      <motion.div
-                        key={banner.id + "-content"}
-                        initial={{ opacity: 0, y: 40 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -40 }}
-                        transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
-                        className="relative z-20 px-10 md:px-20 max-w-4xl pb-16"
-                      >
-                        <h1 className="text-5xl md:text-7xl font-bold mb-4 drop-shadow-md">
-                          {displayTitle}
-                        </h1>
+                  <motion.div
+                    key={banner.id + "-content"}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={isActive ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                    transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
+                    className="relative z-20 px-4 md:px-20 max-w-4xl pb-20 md:pb-16 w-full"
+                  >
+                    <h1 className="text-4xl md:text-6xl lg:text-8xl font-black mb-2 drop-shadow-xl md:line-clamp-none line-clamp-3 tracking-tight text-white">
+                      {displayTitle}
+                    </h1>
 
-                        {/* Movie Specific: Subtitle & Tags */}
-                        {isMovieItem && banner.movie && (
-                          <>
-                            {banner.movie.subTitle && (
-                              <p className="text-xl md:text-2xl text-gray-300 mb-2 italic">
-                                {banner.movie.subTitle}
-                              </p>
-                            )}
-                            <div className="flex flex-wrap gap-2 mb-4">
-                              {banner.movie.tags?.map((tag) => (
-                                <Badge
-                                  key={tag}
-                                  variant="outline"
-                                  className="bg-white/10 border-white/30 text-white"
-                                >
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
-                          </>
-                        )}
-
-                        {/* Description (Common) */}
-                        {displayDesc && (
-                          <p className="text-gray-200 max-w-2xl text-base md:text-lg mb-6 leading-relaxed line-clamp-3">
-                            {displayDesc}
+                    {isMovieItem && banner.movie && (
+                      <>
+                        {banner.movie.subTitle && (
+                          <p className="text-lg md:text-3xl text-yellow-500 font-bold mb-2 tracking-wide drop-shadow-md">
+                            {banner.movie.subTitle}
                           </p>
                         )}
+                        <p className="text-base md:text-xl text-gray-300 font-semibold mb-6 tracking-wide drop-shadow-md">
+                          {banner.movie.title}
+                        </p>
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {banner.movie.tags?.map((tag) => (
+                            <Badge
+                              key={tag}
+                              variant="outline"
+                              className="bg-white/10 border-white/30 text-white"
+                            >
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      </>
+                    )}
 
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-4">
+                    {/* Description (Common) */}
+                    {displayDesc && (
+                      <p className="text-gray-200 max-w-2xl text-base md:text-lg mb-6 leading-relaxed line-clamp-3">
+                        {displayDesc}
+                      </p>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-4">
+                      <Button
+                        onClick={handlePrimaryAction}
+                        className={cn(
+                          "relative overflow-hidden group rounded-full px-8 py-7 text-lg font-semibold transition-all duration-300",
+                          isMovieItem
+                            ? "bg-gradient-to-r from-red-600 to-red-800 hover:scale-105 hover:shadow-[0_0_20px_rgba(220,38,38,0.6)] border border-red-500/50"
+                            : "bg-primary hover:bg-primary/80"
+                        )}
+                      >
+                        <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+                        {isMovieItem ? (
+                          <span className="relative flex items-center gap-3">
+                            <span className="bg-white text-red-600 rounded-full p-2 group-hover:rotate-180 transition-transform duration-500">
+                              <Play className="w-6 h-6 fill-current" />
+                            </span>
+                            <span>Xem ngay</span>
+                          </span>
+                        ) : (
+                          <span className="relative flex items-center gap-2">
+                            <ExternalLink className="w-5 h-5" /> Khám phá
+                          </span>
+                        )}
+                      </Button>
+
+                      {isMovieItem && (
+                        <>
                           <Button
-                            onClick={handlePrimaryAction}
-                            className="bg-primary hover:bg-primary/80 text-white rounded-full px-6 py-6 text-lg flex items-center gap-2"
+                            variant="outline"
+                            onClick={handleToggleFavorite}
+                            disabled={isLoadingFav}
+                            className="rounded-full border-white/30 bg-white/10 hover:bg-white/20 text-white w-12 h-12 p-0 flex items-center justify-center"
                           >
-                            {isMovieItem ? (
-                              <><Play className="w-5 h-5" /> Xem ngay</>
+                            {isLoadingFav ? (
+                              <Loader2 className="w-5 h-5 animate-spin" />
                             ) : (
-                              <><ExternalLink className="w-5 h-5" /> Khám phá</>
+                              <Heart className={cn("w-5 h-5", isFavorite ? "fill-red-500 text-red-500" : "text-white")} />
                             )}
                           </Button>
 
-                          {isMovieItem && (
-                            <>
-                              <Button
-                                variant="outline"
-                                onClick={handleToggleFavorite}
-                                disabled={isLoadingFav}
-                                className="rounded-full border-white/30 bg-white/10 hover:bg-white/20 text-white w-12 h-12 p-0 flex items-center justify-center"
-                              >
-                                {isLoadingFav ? (
-                                  <Loader2 className="w-5 h-5 animate-spin" />
-                                ) : (
-                                  <Heart className={cn("w-5 h-5", isFavorite ? "fill-red-500 text-red-500" : "text-white")} />
-                                )}
-                              </Button>
-
-                              <Button
-                                variant="outline"
-                                onClick={handleDetail}
-                                className="rounded-full border-white/30 bg-white/10 hover:bg-white/20 text-white w-12 h-12 p-0 flex items-center justify-center"
-                              >
-                                <Info className="w-5 h-5" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </motion.div>
-                    </motion.section>
-                  )}
-                </AnimatePresence>
+                          <Button
+                            variant="outline"
+                            onClick={handleDetail}
+                            className="rounded-full border-white/30 bg-white/10 hover:bg-white/20 text-white w-12 h-12 p-0 flex items-center justify-center"
+                          >
+                            <Info className="w-5 h-5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </motion.div>
+                </div>
               </CarouselItem>
             )
           })}

@@ -54,9 +54,9 @@ export function MovieCarousel({
       {/* Movie List */}
       <section
         ref={scrollRef}
-        className="overflow-visible no-scrollbar px-4 sm:px-8 lg:px-12"
+        className="overflow-x-auto no-scrollbar px-4 sm:px-8 lg:px-12 scroll-smooth pt-10 pb-20 -my-10"
       >
-        <div className="grid grid-flow-col auto-cols-[minmax(180px,1fr)] sm:auto-cols-[minmax(220px,1fr)] gap-6 items-start">
+        <div className="grid grid-flow-col auto-cols-[minmax(180px,1fr)] sm:auto-cols-[minmax(220px,1fr)] gap-8 items-start">
           {movies.map((movie) => (
             <MovieCard
               key={movie.id}

@@ -57,8 +57,17 @@ const Navbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const debouncedSearchText = useDebounce(searchText, 300);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const navItems = ['Phim hay', 'Thể loại', 'Phim lẻ', 'Phim bộ', 'Quốc gia', 'Diễn viên', 'Watching Party'];
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 0);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     if (!API_URL) return;
@@ -223,21 +232,24 @@ const Navbar = () => {
     );
   };
 
-  // ĐÃ XÓA: Đoạn code return null khi loading làm mất Navbar
-  // if (isLoading) { return ... }
-
   return (
     <>
-      <nav className="bg-[#0F0F0F] text-white flex items-center justify-between px-4 md:px-6 py-3">
+      <nav 
+        className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-6 py-3 transition-all duration-300 ${
+          isScrolled 
+            ? "bg-[#0F0F0F] shadow-xl border-b border-zinc-800" 
+            : "bg-black/40 backdrop-blur-md border-b border-white/5"
+        }`}
+      >
         {/* (Logo giữ nguyên) */}
         <div className="flex items-center space-x-4 md:space-x-8">
-          <Link href="/movies" className="flex items-center space-x-2 hover:opacity-80 transition">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <Link href="/movies" className="flex items-center space-x-2 transition-transform hover:scale-105">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-md">
               <path d="M6.34292 21.7071C5.56187 22.4882 4.29521 22.4882 3.51416 21.7071C2.73311 20.9261 2.73311 19.6594 3.51416 18.8784L12.0001 10.3924L20.4859 18.8784C21.267 19.6594 21.267 20.9261 20.4859 21.7071C19.7049 22.4882 18.4382 22.4882 17.6572 21.7071L12.0001 16.05L6.34292 21.7071Z" fill="#E50914" />
               <path d="M3.51416 5.12164C4.29521 4.34059 5.56187 4.34059 6.34292 5.12164L12.0001 10.7788L17.6572 5.12164C18.4382 4.34059 19.7049 4.34059 20.4859 5.12164C21.267 5.90269 21.267 7.16935 20.4859 7.9504L12.0001 16.4363L3.51416 7.9504C2.73311 7.16935 2.73311 5.90269 3.51416 5.12164Z" fill="#E50914" />
               <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="#E50914" />
             </svg>
-            <span className="text-xl md:text-2xl font-bold">Movix</span>
+            <span className="text-2xl md:text-3xl font-extrabold text-red-600 tracking-tight drop-shadow-lg">Movix</span>
           </Link>
 
           {/* Navigation Links  */}
