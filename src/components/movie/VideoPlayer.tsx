@@ -53,7 +53,12 @@ export default function VideoPlayer({
     }, [user, episodeId]);
     const handleTimeUpdate = () => {
         if (videoRef.current) {
-            setCurrentTime(videoRef.current.currentTime);
+            const current = videoRef.current.currentTime;
+            const duration = videoRef.current.duration;
+            setCurrentTime(current);
+            if (duration > 0) {
+                setProgress((current / duration) * 100);
+            }
         }
         if (!syncTimeoutRef.current) {
             syncTimeoutRef.current = setTimeout(() => {

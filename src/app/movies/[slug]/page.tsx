@@ -3,8 +3,9 @@ import Navbar from "@/components/layout/NavBar";
 import { getMovieData } from "@/services/movie.service"; 
 import MovieSharedLayout from "@/components/movie/MovieSharedLayout"; 
 
-export default async function MovieDetailPage({ params }: { params: { slug: string } }) {
-  const { movie, sidebarData } = await getMovieData(params.slug);
+export default async function MovieDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = await params;
+  const { movie, sidebarData } = await getMovieData(resolvedParams.slug);
 
   if (!movie) return <div>Not found</div>; 
 
