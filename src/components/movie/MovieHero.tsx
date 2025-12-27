@@ -4,13 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Plus, Heart, Bookmark, Loader2 } from "lucide-react";
+import { Play, Plus, Heart, Share2, Loader2 } from "lucide-react";
 import type { Movie } from "@/types/movie";
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { checkFavoriteStatus, toggleFavorite } from '../../services/interaction.service';
 import { toast } from 'sonner';
 import { AddToPlaylistDialog } from './AddToPlaylistDialog';
+import { ShareDialog } from './ShareDialog';
 
 interface MovieHeroProps {
     movie: Movie;
@@ -21,6 +22,7 @@ export default function MovieHero({ movie }: MovieHeroProps) {
     const [isFavorite, setIsFavorite] = useState(false);
     const [isLoadingFav, setIsLoadingFav] = useState(true);
     const [isPlaylistOpen, setIsPlaylistOpen] = useState(false);
+    const [isShareOpen, setIsShareOpen] = useState(false);
 
     useEffect(() => {
         if (isLoggedIn) {
@@ -63,6 +65,10 @@ export default function MovieHero({ movie }: MovieHeroProps) {
         }
         setIsPlaylistOpen(true);
     }
+    const handleShare = () => {
+        setIsShareOpen(true);
+    };
+
     return (
         <section className="relative h-screen w-full">
             {/* Backdrop*/}
@@ -132,8 +138,9 @@ export default function MovieHero({ movie }: MovieHeroProps) {
                                 variant="outline"
                                 size="lg"
                                 className="bg-white/20 border-white/30 hover:bg-white/30"
+                                onClick={handleShare}
                             >
-                                <Bookmark className="h-5 w-5" />
+                                <Share2 className="h-5 w-5" />
                             </Button>
                         </div>
 
@@ -149,6 +156,12 @@ export default function MovieHero({ movie }: MovieHeroProps) {
                         open={isPlaylistOpen}
                         onOpenChange={setIsPlaylistOpen}
                         movieId={movie.id.toString()}
+                    />
+                    <ShareDialog
+                        open={isShareOpen}
+                        onOpenChange={setIsShareOpen}
+                        movieTitle={movie.title}
+                        movieSlug={movie.slug}
                     />
                 </div>
             </div>
