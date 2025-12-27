@@ -29,7 +29,7 @@ import {
 import { useRouter } from "next/navigation";
 
 export default function WatchPartyLobby() {
-const { user } = useAuth();
+const { user, isLoggedIn, isLoading: isAuthLoading } = useAuth();
 const router = useRouter();
   const [filter, setFilter] = useState<'live' | 'scheduled' | 'ended'>('live');
   const [searchQuery, setSearchQuery] = useState(""); 
@@ -41,6 +41,13 @@ const router = useRouter();
   const [isJoining, setIsJoining] = useState(false);
 
   useEffect(() => {
+      if (isAuthLoading) return;
+      
+      if (!isLoggedIn) {
+        setLoading(false);
+        return;
+      }
+
       const fetchRooms = async () => {
           setLoading(true);
           try {
@@ -58,7 +65,7 @@ const router = useRouter();
       }, 500);
 
       return () => clearTimeout(timer);
-  }, [filter, searchQuery]);
+  }, [filter, searchQuery, isLoggedIn, isAuthLoading]);
 
   const handleNotify = async (e: React.MouseEvent, roomId: string) => {
       e.preventDefault();
@@ -198,7 +205,11 @@ const router = useRouter();
             </div>
         )}
 
-        {!loading && rooms.length === 0 ? (
+        {!loading && !isLoggedIn ? (
+            <div className="text-center py-20 text-slate-500">
+                <p>Vui lòng <Link href="/login" className="text-red-500 hover:underline">đăng nhập</Link> để xem danh sách phòng.</p>
+            </div>
+        ) : !loading && rooms.length === 0 ? (
             <div className="text-center py-20 text-slate-500">
                 <p>Không tìm thấy phòng nào phù hợp.</p>
             </div>

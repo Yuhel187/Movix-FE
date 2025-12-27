@@ -1073,19 +1073,29 @@ const HomepageSectionManager = () => {
         const { active, over } = event;
         if (!over || active.id === over.id) return;
 
+        // Check if dragging a Section
         if (active.id.toString().startsWith('sec-') || sections.some(s => s.id === active.id)) {
-            setSections((items) => {
-                const oldIndex = items.findIndex((i) => i.id === active.id);
-                const newIndex = items.findIndex((i) => i.id === over.id);
-                const newItems = arrayMove(items, oldIndex, newIndex);
+            const oldIndex = sections.findIndex((i) => i.id === active.id);
+            const newIndex = sections.findIndex((i) => i.id === over.id);
+            
+            if (oldIndex !== -1 && newIndex !== -1) {
+                const newItems = arrayMove(sections, oldIndex, newIndex);
                 
-                const updates = newItems.map((item, index) => ({ id: item.id, order: index + 1 }));
-                apiClient.put('/homepage/reorder', { items: updates }).catch(() => toast.error("Lỗi lưu thứ tự"));
+                // Optimistic update
+                setSections(newItems);
 
-                return newItems;
-            });
+                const updates = newItems.map((item, index) => ({ id: item.id, order: index + 1 }));
+                
+                apiClient.put('/homepage/reorder', { items: updates })
+                    .catch((err) => {
+                        console.error("Reorder error:", err);
+                        toast.error(err.response?.data?.message || "Lỗi lưu thứ tự");
+                        setSections(sections); // Revert if failed
+                    });
+            }
         } 
         else {
+            // Dragging a Movie within a Section
             const activeSection = sections.find(s => s.linkedMovies.some(m => m.id === active.id));
             if (activeSection) {
                 const oldIndex = activeSection.linkedMovies.findIndex(m => m.id === active.id);
@@ -1093,10 +1103,20 @@ const HomepageSectionManager = () => {
                 
                 if (oldIndex !== -1 && newIndex !== -1) {
                      const newMovies = arrayMove(activeSection.linkedMovies, oldIndex, newIndex);
+                     
+                     // Optimistic update
                      setSections(prev => prev.map(s => s.id === activeSection.id ? { ...s, linkedMovies: newMovies } : s));
                      
                      const updates = newMovies.map((item, index) => ({ id: item.id, order: index + 1 }));
-                     apiClient.put('/homepage/movies/reorder', { items: updates }).catch(() => toast.error("Lỗi lưu thứ tự phim"));
+                     
+                     apiClient.put('/homepage/movies/reorder', { items: updates })
+                        .catch((err) => {
+                            console.error("Movie reorder error:", err);
+                            toast.error(err.response?.data?.message || "Lỗi lưu thứ tự phim");
+                            // Revert logic could be added here, but it's a bit more complex for nested items
+                            // For now, we just show the error. To revert, we'd need to reset 'sections' to 'sections' (from closure)
+                            setSections(sections);
+                        });
                 }
             }
         }
