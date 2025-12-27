@@ -142,6 +142,7 @@ const NavGroup = ({
           <Link
             key={item.id}
             href={item.href}
+            prefetch={false}
             onClick={() => onClick(item.id)}
             className={clsx(
               "flex items-center gap-3 w-full text-sm rounded-md px-2 py-2 transition-colors duration-150 whitespace-nowrap pl-10", // pl-10 để thụt đầu dòng
@@ -313,6 +314,7 @@ export default function AdminSidebar({
                     <li key={id}>
                       <Link
                         href={href}
+                        prefetch={false}
                         onClick={() => handleSelect(id)}
                         title={!showLabels ? label : undefined}
                         className={clsx(

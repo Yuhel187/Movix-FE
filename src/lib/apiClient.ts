@@ -40,7 +40,10 @@ api.interceptors.response.use(
       try {
         await api.post('/auth/refresh-token');
         return api(originalRequest);
-      } catch (refreshError) {
+      } catch (refreshError: any) {
+        if (refreshError.response && refreshError.response.data) {
+            refreshError.response.data.message = "Vui lòng đăng nhập để sử dụng chức năng này";
+        }
         return Promise.reject(refreshError);
       }
     }

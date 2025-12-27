@@ -6,9 +6,11 @@ import { usePathname } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 import AIChatBox from "./AIChatBox";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AIChatWidget() {
   const pathname = usePathname();
+  const { isLoggedIn } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
 
@@ -29,7 +31,7 @@ export default function AIChatWidget() {
     }
   }, [isOpen, hasOpened]);
 
-  if (shouldHide) return null;
+  if (shouldHide || !isLoggedIn) return null;
 
   const handleClose = () => {
     setIsOpen(false);
