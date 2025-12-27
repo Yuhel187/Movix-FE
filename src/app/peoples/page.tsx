@@ -4,8 +4,9 @@ import ActorList from "@/components/actor/ActorList";
 import { getPeopleList } from "@/services/person.service";
 import { ServerPagination } from "@/components/common/ServerPagination"; 
 
-export default async function PeoplesPage({ searchParams }: { searchParams: { page?: string } }) {
-  const currentPage = Number(searchParams.page) || 1;
+export default async function PeoplesPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const resolvedSearchParams = await searchParams;
+  const currentPage = Number(resolvedSearchParams.page) || 1;
   const { people, totalPages } = await getPeopleList(currentPage);
 
   return (

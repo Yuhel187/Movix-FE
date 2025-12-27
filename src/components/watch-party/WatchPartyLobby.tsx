@@ -126,7 +126,7 @@ const router = useRouter();
   return (
     <>
     <Navbar />
-        <div className="min-h-screen bg-[#141414] text-white">
+        <div className="min-h-screen bg-[#141414] text-white pt-20">
       <div 
         className="relative h-[350px] border-b border-slate-800 flex items-center justify-center overflow-hidden bg-cover bg-center"
         style={{ backgroundImage: "url('/images/background-homepage.jpg')" }}

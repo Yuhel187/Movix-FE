@@ -455,7 +455,7 @@ export default function FilterPage({
         <div className="bg-black dark min-h-screen">
           <Navbar />
 
-          <section className="relative w-full bg-black px-6 pt-6 pb-4">
+          <section className="relative w-full bg-black px-6 pt-24 pb-4">
             <div className="flex flex-wrap gap-4 items-center justify-between">
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl text-white font-bold flex items-center gap-2">

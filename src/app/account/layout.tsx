@@ -10,9 +10,9 @@ export default function AccountLayout({
   return (
     <div className="bg-black">
       <Navbar />
-      <div className="lg:flex min-h-screen text-white">
+      <div className="lg:flex min-h-screen text-white pt-20">
         <AccountNavigation />
-        <main className="flex-1 bg-zinc-950 px-4 pb-4 pt-0 md:px-8 md:pb-8 lg:p-12">
+        <main className="flex-1 bg-zinc-950 px-4 pb-4 pt-4 md:px-8 md:pb-8 lg:p-12">
           {children}
         </main>
       </div>

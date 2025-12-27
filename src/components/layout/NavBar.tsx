@@ -151,7 +151,7 @@ const Navbar = () => {
   };
 
   const handlePersonResultClick = (personId: string | number) => {
-    alert(`Đã click vào Person ID: ${personId}. (Cài đặt trang chi tiết sau)`);
+    router.push(`/peoples/${personId}`);
     setIsDropdownOpen(false);
     setSearchText("");
   };
@@ -263,7 +263,7 @@ const Navbar = () => {
               onFocus={() => setIsDropdownOpen(true)}
               onKeyDown={handleSearchSubmit}
               placeholder="Tìm kiếm phim, diễn viên..."
-              className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-md pl-11 pr-9 h-10 w-72 text-sm font-normal text-gray-300 placeholder-gray-500 focus:ring-2 focus:ring-red-500 focus:border-transparent appearance-none relative z-0"
+              className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-md pl-11 pr-9 h-10 w-64 md:w-72 focus:w-80 md:focus:w-96 transition-all duration-300 text-sm font-normal text-gray-300 placeholder-gray-500 focus:ring-2 focus:ring-red-500 focus:border-transparent appearance-none relative z-0"
             />
             {searchText && (
               <button
