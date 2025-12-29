@@ -870,6 +870,7 @@ const HomepageSectionManager = () => {
     const [openSectionId, setOpenSectionId] = useState<string | null>(null);
     const [selectedMoviesInSection, setSelectedMoviesInSection] = useState<{ [sectionId: string]: Set<string> }>({});
     const [addingMovieToSectionId, setAddingMovieToSectionId] = useState<string | null>(null);
+    const [deleteSectionId, setDeleteSectionId] = useState<string | null>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -942,8 +943,13 @@ const HomepageSectionManager = () => {
         }
     };
 
-    const handleDeleteSection = async (id: string) => {
-        if (!confirm("Bạn có chắc muốn xóa chủ đề này?")) return;
+    const handleDeleteSection = (id: string) => {
+        setDeleteSectionId(id);
+    };
+
+    const confirmDeleteSection = async () => {
+        if (!deleteSectionId) return;
+        const id = deleteSectionId;
         const oldSections = [...sections];
         setSections(prev => prev.filter(s => s.id !== id));
         setSelectedMoviesInSection(prev => {
@@ -958,6 +964,8 @@ const HomepageSectionManager = () => {
         } catch (err) {
             setSections(oldSections);
             toast.error("Lỗi xóa chủ đề");
+        } finally {
+            setDeleteSectionId(null);
         }
     };
 
@@ -1175,6 +1183,21 @@ const HomepageSectionManager = () => {
                     </div>
                 )}
             </div>
+            
+            <AlertDialog open={!!deleteSectionId} onOpenChange={() => setDeleteSectionId(null)}>
+                <AlertDialogContent className="bg-[#1F1F1F] border-slate-700 text-white">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Xóa chủ đề?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-gray-400">
+                            Bạn có chắc chắn muốn xóa chủ đề này? Các phim trong chủ đề sẽ không bị xóa khỏi hệ thống.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-transparent border-slate-600 text-white hover:bg-slate-700 hover:text-white">Hủy</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteSection} className="bg-red-600 hover:bg-red-700 text-white">Xóa ngay</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </DndContext>
     );
 };

@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis,
-  CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LabelList, Sector, AreaChart, Area,
+  LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis,
+  CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LabelList, AreaChart, Area,
 } from "recharts";
-import { addDays, format } from "date-fns";
+import { addDays, format, eachDayOfInterval } from "date-fns";
 import { vi } from "date-fns/locale";
 import { DateRange } from "react-day-picker";
 import {
@@ -43,10 +43,10 @@ const COLORS: string[] = [
 ];
 
 const chartConfig = {
-  users: { label: "Người dùng mới", color: "hsl(var(--chart-2))" },
-  views: { label: "Lượt xem/Thích", color: "hsl(var(--chart-1))" },
-  comments: { label: "Bình luận", color: "hsl(var(--chart-4))" },
-  count: { label: "Số lượng", color: "hsl(var(--chart-3))" },
+  users: { label: "Người dùng mới", color: "var(--chart-2)" },
+  views: { label: "Lượt xem/Thích", color: "var(--chart-1)" },
+  comments: { label: "Bình luận", color: "var(--chart-4)" },
+  count: { label: "Số lượng", color: "var(--chart-3)" },
 } satisfies ChartConfig;
 
 // --- Component Tooltip ---
@@ -72,25 +72,6 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-// --- Component Pie Chart Active Sector ---
-const ActiveSectorMark = ({ cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value }: any) => {
-   return (
-     <g>
-       <Sector
-         cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 6}
-         startAngle={startAngle} endAngle={endAngle} fill={fill}
-         className="drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]"
-       />
-       <text x={cx} y={cy} dy={-10} textAnchor="middle" fill="#FFF" className="text-sm font-bold">
-         {payload.genre}
-       </text>
-       <text x={cx} y={cy} dy={20} textAnchor="middle" fill="#9CA3AF" className="text-xs">
-         {`${(percent * 100).toFixed(1)}%`}
-       </text>
-     </g>
-   );
-};
-
 type ReportTabId = "overview" | "content" | "users";
 const tabs: { id: ReportTabId; label: string; icon: React.ElementType }[] = [
   { id: "overview", label: "Tổng quan", icon: TrendingUp },
@@ -106,19 +87,13 @@ export default function ReportPage() {
     to: new Date(),
   });
   const [activeTab, setActiveTab] = useState<ReportTabId>("overview");
-  const [activeDonutIndex, setActiveDonutIndex] = useState(0);
   
   const [loading, setLoading] = useState(true);
   const [kpiData, setKpiData] = useState<any>({});
   const [trendData, setTrendData] = useState<any[]>([]); 
   const [topMoviesData, setTopMoviesData] = useState<any[]>([]);
-  const [genreData, setGenreData] = useState<any[]>([]);
   const [topUsersData, setTopUsersData] = useState<any[]>([]);
   const [isExporting, setIsExporting] = useState(false);
-
-  const onPieEnter = useCallback((_: any, index: number) => {
-    setActiveDonutIndex(index);
-  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -131,33 +106,99 @@ export default function ReportPage() {
             to: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined,
         };
 
-        const res = await apiClient.get('/dashboard/report-all', { params });
-        const data = res.data;
+        const [reportRes] = await Promise.allSettled([
+            apiClient.get('/dashboard/report-all', { params }),
+        ]);
 
-        setKpiData(data.kpi);
+        const data = reportRes.status === 'fulfilled' ? reportRes.value.data : {};
+
+        if (reportRes.status === 'rejected') {
+            console.error("Lỗi tải report-all:", reportRes.reason);
+            toast.error("Không thể tải dữ liệu báo cáo chi tiết.");
+        }
+
+        setKpiData(data.kpi || {});
 
         let formattedTrend = [];
-        if (data.monthlyData) {
+
+        if (view === 'day' && dateRange?.from && dateRange?.to) {
+            try {
+                const allDays = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
+                const dailyMap = new Map();
+                
+                (data.dailyData || []).forEach((item: any) => {
+                    if (item.date) {
+                        if (typeof item.date === 'string' && /^\d{1,2}\/\d{1,2}$/.test(item.date)) {
+                             dailyMap.set(item.date, item);
+                        } else {
+                            let d = new Date(item.date);
+                            if (typeof item.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.date)) {
+                                 d = new Date(item.date + 'T00:00:00');
+                            }
+                            
+                            if (!isNaN(d.getTime())) {
+                                dailyMap.set(format(d, 'yyyy-MM-dd'), item);
+                            }
+                        }
+                    }
+                });
+
+                formattedTrend = allDays.map(day => {
+                    let item = dailyMap.get(format(day, 'dd/MM'));
+                    if (!item) {
+                        item = dailyMap.get(format(day, 'yyyy-MM-dd'));
+                    }
+
+                    return {
+                        label: format(day, 'dd/MM'),
+                        rawDate: format(day, 'yyyy-MM-dd'),
+                        users: item ? (item.users || item.count || item.new_users || 0) : 0
+                    };
+                });
+            } catch (e) {
+                console.error("Error generating daily trend:", e);
+                formattedTrend = [];
+            }
+        } else {
+            let rawData = [];
+            if (view === 'month') {
+                rawData = data.monthlyData || [];
+            } else if (view === 'year') {
+                rawData = data.yearlyData || data.monthlyData || [];
+            }
+
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            formattedTrend = data.monthlyData.map((item: any) => {
-                let label = item.month; 
+            formattedTrend = rawData.map((item: any) => {
+                let label = item.date || item.month || item.year || "";
+                const rawDate = label;
+
                 if (view === 'month') {
-                    label = `Thg ${item.month.split('/')[0]}/${item.month.split('/')[1]}`;
+                    if (item.month && item.month.includes('/')) {
+                        const parts = item.month.split('/');
+                        if (parts.length >= 2) {
+                            label = `Thg ${parts[0]}/${parts[1]}`;
+                        }
+                    }
                 } else if (view === 'year') {
-                    label = `Năm ${item.month.split('/')[1]}`;
+                    if (item.year) {
+                        label = `Năm ${item.year}`;
+                    } else if (item.month && item.month.includes('/')) {
+                        label = `Năm ${item.month.split('/')[1]}`;
+                    }
                 }
+
                 return {
-                    label: label, 
-                    rawDate: item.month,
-                    users: item.users,
+                    label: label,
+                    rawDate: rawDate,
+                    users: item.users || item.count || item.new_users || 0,
                 };
             });
         }
 
         setTrendData(formattedTrend);
-        setTopMoviesData(data.topMoviesData); 
-        setGenreData(data.genreData);
-        setTopUsersData(data.topUsersData);
+        setTopMoviesData(data.topMoviesData || []); 
+        
+        setTopUsersData(data.topUsersData || []);
 
       } catch (error) {
         console.error("Lỗi tải báo cáo:", error);
@@ -169,10 +210,8 @@ export default function ReportPage() {
     fetchData();
   }, [view, dateRange]); 
 
-  // --- HÀM LOAD FONT STATIC TỪ LOCAL ---
   const loadStaticFont = async (doc: jsPDF) => {
     try {
-      // ĐƯỜNG DẪN CHÍNH XÁC MỚI
       const fontUrl = "/fonts/Roboto/static/Roboto-Regular.ttf"; 
       
       const response = await fetch(fontUrl);
@@ -189,12 +228,8 @@ export default function ReportPage() {
           const base64Content = base64data.split(',')[1];
           
           if (base64Content) {
-            // Đăng ký font 'Roboto' cho chế độ 'normal'
             doc.addFileToVFS("Roboto-Regular.ttf", base64Content);
             doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
-            
-            // QUAN TRỌNG: Đăng ký luôn font này cho chế độ 'bold' để tránh lỗi fallback khi in bảng
-            // (Tuy nhiên nó sẽ không đậm thực sự, nhưng sẽ hiển thị đúng tiếng Việt)
             doc.addFont("Roboto-Regular.ttf", "Roboto", "bold");
 
             doc.setFont("Roboto"); 
@@ -212,7 +247,6 @@ export default function ReportPage() {
     }
   };
 
-  // --- XUẤT BÁO CÁO PDF ---
   const handleExportReport = async () => {
     if (!kpiData.totalUsers && !trendData.length) {
         toast.warning("Chưa có dữ liệu để xuất.");
@@ -258,17 +292,16 @@ export default function ReportPage() {
             ? `${format(dateRange.from, "dd/MM/yyyy")} - ${dateRange.to ? format(dateRange.to, "dd/MM/yyyy") : "Nay"}`
             : "Toàn bộ thời gian";
 
-        // 3. HEADER BÁO CÁO
         doc.setFontSize(22);
-        doc.setTextColor(229, 9, 20); // Đỏ Movix
+        doc.setTextColor(229, 9, 20);
         doc.text("MOVIX REPORT", 105, 20, { align: "center" });
         
         doc.setFontSize(14);
-        doc.setTextColor(0, 0, 0); // Đen
+        doc.setTextColor(0, 0, 0); 
         doc.text(`${reportTitle} - ${viewLabel}`, 105, 30, { align: "center" });
 
         doc.setFontSize(10);
-        doc.setTextColor(80); // Xám đậm
+        doc.setTextColor(80); 
         
         doc.text(`Người xuất: ${adminName}`, 14, 42);
         doc.text(`Thời gian xuất: ${exportTime}`, 14, 48);
@@ -282,13 +315,11 @@ export default function ReportPage() {
 
         let currentY = 65;
 
-        // Style cho bảng - Ép dùng font 'Roboto' và style 'normal' cho tất cả
         const tableStyles = {
             font: "Roboto", 
-            fontStyle: "normal" as const, // Ép kiểu để TS không lỗi
+            fontStyle: "normal" as const,
         };
 
-        // 4. NỘI DUNG CHI TIẾT
         
         if (activeTab === 'overview') {
             doc.setFontSize(12);
@@ -306,8 +337,6 @@ export default function ReportPage() {
                     kpiData.totalComments?.toLocaleString('vi-VN') || "0"
                 ]],
                 theme: 'grid',
-                // QUAN TRỌNG: headStyles phải dùng 'normal' vì ta chỉ load 1 file font Regular
-                // Nhưng vì ta đã hack doc.addFont(..., 'bold') ở trên nên có thể để bold nếu muốn
                 headStyles: { fillColor: [50, 50, 50], textColor: 255, ...tableStyles, fontStyle: 'bold' as const },
                 bodyStyles: { textColor: 0, fontSize: 11, halign: 'center', ...tableStyles },
                 styles: { ...tableStyles }
@@ -351,24 +380,6 @@ export default function ReportPage() {
                     2: { halign: 'center' }
                 }
             });
-
-            // @ts-ignore
-            currentY = doc.lastAutoTable.finalY + 15;
-
-            doc.setFontSize(12);
-            doc.text("2. Phân Bố Thể Loại Phim", 14, currentY);
-            currentY += 6;
-
-            const genreRows = genreData.map(g => [g.genre, g.views.toLocaleString('vi-VN')]); 
-            autoTable(doc, {
-                startY: currentY,
-                head: [['Thể Loại', 'Số Lượng Phim']],
-                body: genreRows,
-                theme: 'grid',
-                headStyles: { fillColor: [50, 50, 50], ...tableStyles, fontStyle: 'bold' as const },
-                bodyStyles: { ...tableStyles },
-                styles: { ...tableStyles },
-            });
         }
         else if (activeTab === 'users') {
              doc.setFontSize(12);
@@ -407,7 +418,6 @@ export default function ReportPage() {
             });
         }
 
-        // --- 5. FOOTER ---
         const pageCount = doc.getNumberOfPages();
         for(let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
@@ -417,7 +427,6 @@ export default function ReportPage() {
             doc.text("Hệ thống Quản trị Movix", 14, 290);
         }
 
-        // --- 6. LƯU FILE ---
         const finalFileName = `BaoCao_${reportTypeSlug}_${viewSlug}_${fileNameTime}.pdf`;
         doc.save(finalFileName);
         
@@ -635,9 +644,9 @@ export default function ReportPage() {
 
         {/* Tab: NỘI DUNG (Content) */}
         {activeTab === 'content' && (
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               {/* Bar Chart: Top Movies (Favorites) */}
-              <Card className="lg:col-span-3 bg-[#262626] border-slate-800 text-white">
+              <Card className="bg-[#262626] border-slate-800 text-white">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                      <Heart className="w-5 h-5 text-red-500" /> Top Phim Yêu Thích Nhất
@@ -675,33 +684,6 @@ export default function ReportPage() {
                   </ChartContainer>
                 </CardContent>
               </Card>
-        
-              {/* Pie Chart: Genres */}
-              <Card className="lg:col-span-2 bg-[#262626] border-slate-800 text-white flex flex-col">
-                <CardHeader>
-                  <CardTitle>Phân bố Thể loại (Yêu thích)</CardTitle>
-                  <CardDescription>Tỷ trọng phim được yêu thích theo thể loại.</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 flex items-center justify-center pb-6">
-                  <ChartContainer config={chartConfig} className="h-[400px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
-                        <Pie
-                          data={genreData} dataKey="views" nameKey="genre" cx="50%" cy="50%"
-                          innerRadius={70} outerRadius={100} activeIndex={activeDonutIndex}
-                          activeShape={ActiveSectorMark} onMouseEnter={onPieEnter} paddingAngle={3}
-                          stroke="none"
-                        >
-                          {genreData.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </ChartContainer>
-                </CardContent>
-              </Card>
             </div>
         )}
 
@@ -735,6 +717,8 @@ export default function ReportPage() {
                             strokeWidth={3} 
                             stroke="var(--color-users)" 
                             fill="url(#colorUsers)" 
+                            dot={{ r: 4, fill: "#1a1b1f", strokeWidth: 2, stroke: "var(--color-users)" }}
+                            activeDot={{ r: 6, fill: "var(--color-users)" }}
                         />
                       </AreaChart>
                     </ResponsiveContainer>
