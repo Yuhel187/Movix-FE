@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import HeroBanner from "@/components/movie/HeroBanner";
 import { MovieCarousel } from "@/components/movie/MovieCarousel";
 import { GenreSection } from "@/components/movie/GenreSection";
+import { RankingSection } from "@/components/movie/ranking/RankingSection";
 import Navbar from "@/components/layout/NavBar";
 import Footer from "@/components/layout/Footer";
 import AIChatWidget from "@/components/ai/AIChatWidget";
@@ -62,7 +63,7 @@ export default function MoviesPage() {
         setPersonalizedMovies(personalized);
       } catch (error) {
         console.error("Failed to load personalized movies:", error);
-        setPersonalizedMovies([]); 
+        setPersonalizedMovies([]);
       }
     };
 
@@ -93,6 +94,11 @@ export default function MoviesPage() {
         ) : (
           <GenreSection genres={genres} />
         )}
+
+        {/* Ranking / Leaderboard Section */}
+        <div className="mt-4">
+          <RankingSection />
+        </div>
 
         {/* Personalized Movies (Heaviest) */}
         {personalizedMovies === null ? (
