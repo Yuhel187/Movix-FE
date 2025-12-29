@@ -122,7 +122,9 @@ function mapToMovie(raw: any): Movie {
 
     rating,
     duration,
-    views: raw.view_count || raw.views || raw.metadata?.vote_count || 0,
+    views: raw.view_count ?? raw.metadata?.view_count ?? raw.views ?? 0,
+    comment_count: raw.comment_count || 0,
+    favorite_count: raw.favorite_count || 0,
 
     seasons,
     cast: mapCast(raw.movie_people),

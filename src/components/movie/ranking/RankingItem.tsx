@@ -6,10 +6,11 @@ interface RankingItemProps {
     rank: number;
     movie: Movie;
     trend?: 'up' | 'down' | 'stable';
-    viewCount?: number;
+    count?: number;
+    unit?: string;
 }
 
-export function RankingItem({ rank, movie, trend = 'stable', viewCount }: RankingItemProps) {
+export function RankingItem({ rank, movie, trend = 'stable', count, unit = "lượt xem" }: RankingItemProps) {
     const getTrendIcon = () => {
         switch (trend) {
             case 'up':
@@ -65,9 +66,9 @@ export function RankingItem({ rank, movie, trend = 'stable', viewCount }: Rankin
                         {movie.subTitle}
                     </p>
                 )}
-                {(viewCount !== undefined && viewCount >= 0) && (
+                {(count !== undefined && count >= 0) && (
                     <p className="text-xs text-gray-500 mt-1">
-                        {viewCount.toLocaleString()} lượt xem
+                        {count.toLocaleString()} {unit}
                     </p>
                 )}
             </div>
