@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
 import AIChatWidget from "@/components/ai/AIChatWidget";
+import NextTopLoader from 'nextjs-toploader';
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -34,6 +35,17 @@ export default function RootLayout({
     <html lang="vi">
       <body className={`${manrope.className} antialiased`}>
         <AuthProvider>
+          <NextTopLoader
+            color="#E50914"
+            initialPosition={0.08}
+            crawlSpeed={200}
+            height={3}
+            crawl={true}
+            showSpinner={false}
+            easing="ease"
+            speed={200}
+            shadow="0 0 10px #E50914,0 0 5px #E50914"
+          />
           {children}
           <Toaster position="top-right" richColors />
           <AIChatWidget />
