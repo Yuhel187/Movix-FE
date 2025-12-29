@@ -59,10 +59,10 @@ function mapDirector(moviePeople: any[] = []): Director | undefined {
   );
   return directorRaw
     ? {
-        name: directorRaw.person.name,
-        avatarUrl: getPersonAvatarUrl(directorRaw.person.avatar_url),
-        origin: "Unknown",
-      }
+      name: directorRaw.person.name,
+      avatarUrl: getPersonAvatarUrl(directorRaw.person.avatar_url),
+      origin: "Unknown",
+    }
     : undefined;
 }
 
@@ -75,13 +75,13 @@ function mapToMovie(raw: any): Movie {
     raw.movie_genres?.map((mg: any) => mg.genre?.name).filter(Boolean) ||
     raw.tags ||
     [];
-  
+
   const seasons = mapSeasons(raw.seasons);
 
   // Determine video URL
   let videoUrl = raw.trailer_url || raw.videoUrl || null;
   const isMovie = raw.media_type === "MOVIE" || raw.type === "MOVIE";
-  
+
   if (isMovie) {
     const firstEpLink = seasons?.[0]?.episodes?.[0]?.videoUrl;
     if (firstEpLink) {
@@ -122,7 +122,7 @@ function mapToMovie(raw: any): Movie {
 
     rating,
     duration,
-    views: raw.views || raw.metadata?.vote_count || 0,
+    views: raw.view_count || raw.views || raw.metadata?.vote_count || 0,
 
     seasons,
     cast: mapCast(raw.movie_people),
@@ -139,8 +139,8 @@ export async function getMovieData(slug: string) {
       releaseYear: movie.releaseYear || "N/A",
       languages: ["Vietnamese", "English"],
       ratings: {
-        imdb: data.metadata?.tmdb_rating || 0,
-        movix: data.vote_average || data.voteAverage || 0,
+        imdb: data.metadata?.tmdb_rating || data.vote_average || 0,
+        movix: movie.rating || 0,
       },
       genres: movie.tags || [],
       director: movie.director || null,
@@ -200,6 +200,36 @@ export async function getGenres(): Promise<Genre[]> {
     return data;
   } catch (error) {
     console.error("Lỗi lấy danh sách thể loại:", error);
+    return [];
+  }
+}
+
+export async function getTopCommentedMovies(): Promise<Movie[]> {
+  try {
+    const { data } = await api.get<{ data: MovieResponse[] }>('/movies/top-commented');
+    return data.data ? data.data.map(mapToMovie) : [];
+  } catch (error) {
+    console.error("Lỗi lấy phim sôi nổi nhất:", error);
+    return [];
+  }
+}
+
+export async function getTopLikedMovies(): Promise<Movie[]> {
+  try {
+    const { data } = await api.get<{ data: MovieResponse[] }>('/movies/top-liked');
+    return data.data ? data.data.map(mapToMovie) : [];
+  } catch (error) {
+    console.error("Lỗi lấy phim yêu thích nhất:", error);
+    return [];
+  }
+}
+
+export async function getTopViewedMovies(): Promise<Movie[]> {
+  try {
+    const { data } = await api.get<{ data: MovieResponse[] }>('/movies/top-viewed');
+    return data.data ? data.data.map(mapToMovie) : [];
+  } catch (error) {
+    console.error("Lỗi lấy phim nhiều lượt xem nhất:", error);
     return [];
   }
 }
