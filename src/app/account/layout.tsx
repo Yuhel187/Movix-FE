@@ -8,7 +8,7 @@ export default function AccountLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-black">
+    <div className="bg-black dark">
       <Navbar />
       <div className="lg:flex min-h-screen text-white pt-20">
         <AccountNavigation />
