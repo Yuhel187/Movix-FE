@@ -17,9 +17,10 @@ import { RatingList } from '../movie/RatingList';
 
 interface MovieCommentSectionProps {
   movieId: string;
+  onRatingUpdate?: () => void;
 }
 
-export function MovieCommentSection({ movieId }: MovieCommentSectionProps) {
+export function MovieCommentSection({ movieId, onRatingUpdate }: MovieCommentSectionProps) {
   const [activeTab, setActiveTab] = useState<'comments' | 'reviews'>('comments');
   const [comments, setComments] = useState<CommentWithReplies[]>([]);
   const { user } = useAuth();
@@ -48,6 +49,9 @@ export function MovieCommentSection({ movieId }: MovieCommentSectionProps) {
   const handleRatingChanged = async () => {
     await fetchRatings();
     setRatingRefreshKey(prev => prev + 1);
+    if (onRatingUpdate) {
+      onRatingUpdate();
+    }
   };
   useEffect(() => {
     fetchComments();

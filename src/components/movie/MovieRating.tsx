@@ -73,6 +73,7 @@ export const MovieRating = ({ movieId, onRatingSubmit }: MovieRatingProps) => {
             toast.success(`Đã lưu đánh giá ${selectedRating}/10 điểm!`);
             const newStats = await getRatingStats(movieId);
             setStats(newStats);
+            if (onRatingSubmit) onRatingSubmit();
         } catch (error) {
             toast.error("Lỗi khi lưu đánh giá. Vui lòng thử lại.");
         } finally {
@@ -91,6 +92,7 @@ export const MovieRating = ({ movieId, onRatingSubmit }: MovieRatingProps) => {
 
             const newStats = await getRatingStats(movieId);
             setStats(newStats);
+            if (onRatingSubmit) onRatingSubmit();
         } catch (error) {
             toast.error("Xóa đánh giá thất bại.");
         } finally {

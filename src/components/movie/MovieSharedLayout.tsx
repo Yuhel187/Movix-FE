@@ -20,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Actor } from "@/types/actor";
 import type { SidebarData } from "@/services/movie.service";
 import type { Season, Episode, Movie } from "@/types/movie"; 
+import { getRatingStats } from "@/services/interaction.service";
 
 interface MovieSharedLayoutProps {
   castData: Actor[];
@@ -47,7 +48,20 @@ export default function MovieSharedLayout({
 
   const isSeries = type === "TV" || (seasons && seasons.length > 0);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>("");
+  const [ratings, setRatings] = useState(sidebarData.ratings);
   const router = useRouter();
+
+  const handleRatingUpdate = async () => {
+    try {
+      const stats = await getRatingStats(movieId);
+      setRatings(prev => ({
+        ...prev,
+        movix: stats.average
+      }));
+    } catch (error) {
+      console.error("Failed to update ratings:", error);
+    }
+  };
 
   useEffect(() => {
     if (isSeries && seasons.length > 0) {
@@ -144,13 +158,15 @@ export default function MovieSharedLayout({
             <MovieCast cast={castData} />
           </div>
 
-          <MovieCommentSection movieId={movieId} />
+          <MovieCommentSection movieId={movieId} onRatingUpdate={handleRatingUpdate} />
         </div>
 
         <div className="w-full lg:w-auto flex-shrink-0">
           <MovieDetailSidebar 
             {...sidebarData} 
+            ratings={ratings}
             director={sidebarData.director || { name: "Unknown", avatarUrl: "", origin: "" }}
+            duration={sidebarData.duration}
           />
           <MovieRecommendations recommendations={recommendations} />
         </div>

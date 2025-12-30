@@ -79,7 +79,7 @@ export function CommentForm({
             placeholder={
               showAvatar ? 'Viết bình luận...' : 'Viết trả lời...'
             }
-            className="bg-zinc-800 border-zinc-700 text-white min-h-[100px] pr-20"
+            className="bg-zinc-800 border-zinc-700 text-white min-h-[100px] break-words"
             maxLength={maxChars}
             disabled={isLoading}
           />
