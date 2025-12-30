@@ -59,6 +59,15 @@ export const createPlaylist = async (name: string): Promise<Playlist> => {
   return response.data;
 };
 
+export const updatePlaylist = async (id: string, name: string): Promise<Playlist> => {
+  const response = await apiClient.put(`/interact/playlists/${id}`, { name });
+  return response.data;
+};
+
+export const deletePlaylist = async (id: string): Promise<void> => {
+  await apiClient.delete(`/interact/playlists/${id}`);
+};
+
 export const addMovieToPlaylist = async (
   playlistId: string,
   movieId: string,

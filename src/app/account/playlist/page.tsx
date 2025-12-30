@@ -9,11 +9,22 @@ import {
   getPlaylists,
   getPlaylistDetail,
   removeMovieFromPlaylist,
+  updatePlaylist,
+  deletePlaylist,
   Playlist,
   PlaylistMovieResponse
 } from "@/services/interaction.service";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +47,10 @@ export default function PlaylistPage() {
   const [isLoadingList, setIsLoadingList] = useState(true);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [movieToDelete, setMovieToDelete] = useState<string | null>(null);
+  const [playlistToDelete, setPlaylistToDelete] = useState<string | null>(null);
+
+  const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
+  const [newName, setNewName] = useState("");
 
   // 1. Fetch danh sách Playlist
   useEffect(() => {
@@ -99,6 +114,40 @@ export default function PlaylistPage() {
     fetchDetail();
   }, [activePlaylistId]);
 
+  const handleUpdatePlaylist = async () => {
+    if (!editingPlaylist || !newName.trim()) return;
+    try {
+      const updated = await updatePlaylist(editingPlaylist.id, newName);
+      setPlaylists((prev) =>
+        prev.map((p) => (p.id === updated.id ? { ...p, name: updated.name } : p))
+      );
+      toast.success("Đã cập nhật tên playlist");
+      setEditingPlaylist(null);
+    } catch (error) {
+      toast.error("Cập nhật thất bại");
+    }
+  };
+
+  const handleDeletePlaylist = async () => {
+    if (!playlistToDelete) return;
+    try {
+      await deletePlaylist(playlistToDelete);
+      setPlaylists((prev) => prev.filter((p) => p.id !== playlistToDelete));
+      
+      // If deleted active playlist, switch to another one or null
+      if (activePlaylistId === playlistToDelete) {
+        const remaining = playlists.filter(p => p.id !== playlistToDelete);
+        setActivePlaylistId(remaining.length > 0 ? remaining[0].id : null);
+      }
+      
+      toast.success("Đã xóa playlist");
+    } catch (error) {
+      toast.error("Xóa playlist thất bại");
+    } finally {
+      setPlaylistToDelete(null);
+    }
+  };
+
   const handleRemoveMovie = async () => {
     if (!activePlaylistId || !movieToDelete) return;
     try {
@@ -156,11 +205,65 @@ export default function PlaylistPage() {
                 movieCount={playlist._count?.playlist_movies || 0}
                 isActive={playlist.id === activePlaylistId}
                 onClick={() => setActivePlaylistId(playlist.id)}
+                onEditClick={() => {
+                  setEditingPlaylist(playlist);
+                  setNewName(playlist.name);
+                }}
+                onDeleteClick={() => setPlaylistToDelete(playlist.id)}
               />
             ))}
           </div>
         </div>
       )}
+
+      {/* Dialog xác nhận xóa Playlist */}
+      <AlertDialog open={!!playlistToDelete} onOpenChange={(open) => !open && setPlaylistToDelete(null)}>
+        <AlertDialogContent className="bg-zinc-900 border-zinc-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa Playlist?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              Hành động này không thể hoàn tác. Toàn bộ phim trong playlist sẽ bị xóa.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-zinc-700 hover:bg-zinc-800 text-white">Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeletePlaylist} className="bg-red-600 hover:bg-red-700 text-white border-none">
+              Xóa vĩnh viễn
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={!!editingPlaylist} onOpenChange={(open) => !open && setEditingPlaylist(null)}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
+          <DialogHeader>
+            <DialogTitle>Đổi tên Playlist</DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              Nhập tên mới cho playlist của bạn.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="bg-zinc-800 border-zinc-700 text-white"
+              placeholder="Tên playlist..."
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditingPlaylist(null)}
+              className="bg-transparent border-zinc-700 hover:bg-zinc-800 text-white"
+            >
+              Hủy
+            </Button>
+            <Button onClick={handleUpdatePlaylist} className="bg-red-600 hover:bg-red-700 text-white">
+              Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="min-h-[300px]">
         {isLoadingDetail ? (

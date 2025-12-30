@@ -4,6 +4,7 @@ import {
   Star,
   LayoutGrid,
   User,
+  Clock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,6 +20,7 @@ interface MovieDetailSidebarProps {
   };
   genres: string[];
   director: Director;
+  duration?: string;
 }
 
 // Component con để tạo các mục
@@ -46,6 +48,7 @@ export function MovieDetailSidebar({
   ratings,
   genres,
   director,
+  duration,
 }: MovieDetailSidebarProps) {
   return (
     <aside className="w-full max-w-sm space-y-8 rounded-lg bg-zinc-900/50 p-6 text-white">
@@ -53,6 +56,11 @@ export function MovieDetailSidebar({
       <DetailSection icon={<Calendar size={18} />} title="Năm ra mắt">
         <p className="text-lg font-semibold text-white">{releaseYear}</p>
       </DetailSection>
+
+      <DetailSection icon={<Clock size={18} />} title="Thời lượng">
+        <p className="text-lg font-semibold text-white">{duration || "N/A"}</p>
+      </DetailSection>
+
 
       {/* Ngôn ngữ */}
       <DetailSection icon={<Globe size={18} />} title="Available Languages">
@@ -71,14 +79,13 @@ export function MovieDetailSidebar({
 
       {/* Đánh giá */}
       <DetailSection icon={<Star size={18} />} title="Đánh giá">
-        {/* SỬA 3: Dùng "grid grid-cols-2" cho layout ổn định */}
         <div className="grid grid-cols-2 gap-4">
           {/* Box IMDb */}
           <div className="rounded-md bg-zinc-800/60 p-3">
             <div className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-gray-300">IMDb</span>
               <div className="flex items-center gap-2">
-                <StarRating rating={ratings.imdb/2} size={18} />
+                <StarRating rating={ratings.imdb / 2} size={18} />
                 <span className="font-semibold">{ratings.imdb.toFixed(1)}</span>
               </div>
             </div>
@@ -88,7 +95,7 @@ export function MovieDetailSidebar({
             <div className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-gray-300">Movix</span>
               <div className="flex items-center gap-2">
-                <StarRating rating={ratings.movix/2} size={18} />
+                <StarRating rating={ratings.movix / 2} size={18} />
                 <span className="font-semibold">{ratings.movix.toFixed(1)}</span>
               </div>
             </div>

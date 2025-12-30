@@ -3,6 +3,7 @@ import type { Movie, MovieResponse, Season, Genre } from "@/types/movie";
 import type { Actor } from "@/types/actor";
 import type { Director } from "@/types/director";
 import { getTmdbImageUrl, getPersonAvatarUrl } from "@/lib/tmdb";
+import { metadata } from "@/app/layout";
 
 export interface SidebarData {
   releaseYear: number | string;
@@ -10,6 +11,7 @@ export interface SidebarData {
   ratings: { imdb: number; movix: number };
   genres: string[];
   director: Director | null;
+  duration?: string;
 }
 // --- Mappers ---
 
@@ -98,10 +100,11 @@ function mapToMovie(raw: any): Movie {
     0;
 
   // Determine Duration
-  let duration = raw.metadata?.duration || raw.duration || "N/A";
+  let duration = raw.metadata?.duration || raw.duration;
   if (!duration && raw.metadata?.runtime) {
     duration = `${raw.metadata.runtime} phút`;
   }
+  duration = duration || "N/A";
 
   return {
     id: raw.id,
@@ -146,6 +149,7 @@ export async function getMovieData(slug: string) {
       },
       genres: movie.tags || [],
       director: movie.director || null,
+      duration: movie.duration || "N/A",
     };
 
     return { movie, sidebarData };
