@@ -205,7 +205,7 @@ export default function AdminTopbar({
                 onClick={() => router.push('/movies')}
               >
                 <Home className="mr-2 h-4 w-4" />
-                <span>Về trang chủ</span>
+                <span className="hover:text-white">Về trang chủ</span>
               </DropdownMenuItem>
               
               <DropdownMenuSeparator className="bg-slate-700" />

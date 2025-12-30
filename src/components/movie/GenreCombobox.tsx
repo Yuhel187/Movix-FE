@@ -108,7 +108,6 @@ export function GenreCombobox({
             />
             <CommandList>
               <CommandEmpty asChild>
-                {/* Khi không tìm thấy kết quả */}
                 {searchQuery.trim() && !searchResultExists ? (
                   <Button
                     onClick={handleCreate}

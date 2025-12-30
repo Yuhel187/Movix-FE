@@ -277,7 +277,7 @@ export default function LandingView() {
                 </div>
             </div>
     </div>
-          <div className="relative w-full min-h-[30vh] overflow-hidden bg-black px-4 sm:px-8 lg:px-20">
+          <div className="relative w-full min-h-[30vh] overflow-hidden bg-black px-4 sm:px-8 lg:px-20 py-10">
             <div className="mb-10 text-center sm:text-left">
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">
                 Hệ thống xem phim trực tuyến hiện đại bậc nhất,
@@ -290,7 +290,7 @@ export default function LandingView() {
                 {features.map((f, i) => (
                   <div
                     key={i}
-                    className="bg-gradient-to-b from-neutral-900 to-black text-white p-6 rounded-2xl border border-neutral-800 hover:border-red-500 transition-all hover:scale-105 shadow-lg hover:shadow-red-900/30"
+                    className="bg-gradient-to-b from-neutral-900 to-black text-white p-8 rounded-2xl border border-neutral-800 hover:border-red-500 transition-all hover:scale-105 shadow-lg hover:shadow-red-900/30"
                   >
                     <div className="flex items-center gap-4 mb-6">
                       <div className="text-red-500 text-3xl">{f.icon}</div>
@@ -363,41 +363,6 @@ export default function LandingView() {
               </section>
             </div>
 
-            {genreSections.map((section) => (
-              <div key={section.id} className="relative w-full min-h-[30vh] overflow-hidden bg-black px-4 sm:px-8 lg:px-20">
-                  <div className="flex items-center justify-between mb-10 gap-4">
-                      <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center sm:text-left border-l-4 border-red-600 pl-3">
-                          {section.name}
-                      </h2>
-                      <ArrowNavigation 
-                          onPrev={() => {
-                            const ref = genreScrollRefs.current.get(section.id);
-                            if (ref) handleScroll({ current: ref }, "left");
-                          }} 
-                          onNext={() => {
-                            const ref = genreScrollRefs.current.get(section.id);
-                            if (ref) handleScroll({ current: ref }, "right");
-                          }} 
-                      />
-                  </div>
-                  <section 
-                      ref={(el) => { if(el) genreScrollRefs.current.set(section.id, el); }} 
-                      className="overflow-x-auto no-scrollbar px-4 py-12"
-                  >
-                      <div className="grid grid-flow-col auto-cols-[minmax(220px,1fr)] gap-6 items-start dark text-center">
-                          {section.movies.map((movie) => (
-                              <MovieCard 
-                                  key={movie.id} 
-                                  movie={movie} 
-                                  onWatch={handleWatch} 
-                                  onLike={handleLike} 
-                                  onDetail={handleDetail} 
-                              />
-                          ))}
-                      </div>
-                  </section>
-              </div>
-          ))}
 
               <div className="relative w-full bg-black px-4 sm:px-8 lg:px-20 pb-24">
                 <div className="relative w-full rounded-md overflow-hidden">

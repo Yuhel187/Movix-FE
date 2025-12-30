@@ -253,6 +253,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
   }, []);
 
   const [singleMovieFile, setSingleMovieFile] = useState<string>("");
+  const [duration, setDuration] = useState<number>(0);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [newSeasonName, setNewSeasonName] = useState("");
   const [selectedSeasonId, setSelectedSeasonId] = useState("");
@@ -271,6 +272,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     setSelectedGenres([]);
     setTrailerUrl("");
     setVoteAverage(0);
+    setDuration(0);
     setPeople([]);
     setIsTmdbDataLoaded(false);
   };
@@ -298,6 +300,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
 
       setMovieTitle(data.title);
       setVoteAverage(data.vote_average || 0);
+      setDuration(data.runtime || 0);
       setOriginalTitle(data.original_title);
       setOverview(data.overview);
       if (data.release_date) {
@@ -393,14 +396,19 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     } catch (err: any) {
       console.error("Lỗi fetch TMDB:", err);
       setIsTmdbDataLoaded(false);
-      if (selectedMovieType === "single") {
-        toast.error(
-          "Không tìm thấy Phim Lẻ (Movie) với ID này. Bạn có chắc đây là ID phim lẻ?"
-        );
+      
+      if (err.response && err.response.status === 404) {
+        if (selectedMovieType === "single") {
+          toast.error(
+            "Không tìm thấy Phim Lẻ (Movie) với ID này. Bạn có chắc đây là ID phim lẻ?"
+          );
+        } else {
+          toast.error(
+            "Không tìm thấy Phim Bộ (TV Show) với ID này. Bạn có chắc đây là ID phim bộ?"
+          );
+        }
       } else {
-        toast.error(
-          "Không tìm thấy Phim Bộ (TV Show) với ID này. Bạn có chắc đây là ID phim bộ?"
-        );
+        toast.error("Không tìm thấy phim hoặc ID không hợp lệ. Vui lòng kiểm tra lại.");
       }
     } finally {
       setIsFetching(false);
@@ -432,8 +440,8 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
         duration: e.duration,
         fileName: e.fileName,
         video_image_url: e.video_image_url,
-        videoImageUrl: e.video_image_url, // Send camelCase as well
-        still_path: e.video_image_url, // Send still_path as well just in case
+        videoImageUrl: e.video_image_url, 
+        still_path: e.video_image_url, 
       })),
     }));
 
@@ -450,7 +458,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
       selectedMovieType,
       trailerUrl: trailerUrl,
       singleMovieFile: singleMovieUrl
-        ? { fileName: singleMovieUrl, duration: 0 }
+        ? { fileName: singleMovieUrl, duration: duration }
         : null,
       seasons: seasonsWithFileNames,
       people,
@@ -459,16 +467,39 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
 
     try {
       setIsFetching(true);
-      await apiClient.post("/movies", formData);
+      const res = await apiClient.post("/movies", formData);
+
+      // Gửi thông báo push cho toàn bộ user
+      try {
+        const createdMovie = res.data?.data || res.data;
+        const movieSlug = createdMovie?.slug;
+
+        await apiClient.post("/notifications/send", {
+          targetType: "all_users",
+          title: "Phim mới cập bến! 🎬",
+          message: `Phim "${movieTitle}" đã có mặt trên Movix. Xem ngay!`,
+          url: movieSlug ? `/movies/${movieSlug}` : "/movies",
+        });
+      } catch (notiError) {
+        console.error("Lỗi gửi thông báo:", notiError);
+      }
 
       toast.success("Tạo phim mới thành công!");
       onClose();
     } catch (err: any) {
       console.error("Lỗi khi tạo phim:", err);
-      if (err.response && err.response.data && err.response.data.message) {
-        toast.error(err.response.data.message);
+      if (err.response) {
+        if (err.response.status === 409) {
+          toast.error(err.response.data.message || "Phim này đã tồn tại trong hệ thống.");
+        } else if (err.response.status === 400) {
+          toast.error(err.response.data.message || "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại các trường thông tin.");
+        } else if (err.response.data && err.response.data.message) {
+          toast.error(err.response.data.message);
+        } else {
+          toast.error(`Lỗi ${err.response.status}: Không thể tạo phim.`);
+        }
       } else {
-        toast.error("Đã xảy ra lỗi khi tạo phim.");
+        toast.error("Đã xảy ra lỗi kết nối hoặc lỗi không xác định.");
       }
     } finally {
       setIsFetching(false);
@@ -1057,6 +1088,21 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                     value={singleMovieFile}
                     onChange={(e) => setSingleMovieFile(e.target.value)}
                   />
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="duration"
+                      className="text-sm font-medium text-gray-300 whitespace-nowrap"
+                    >
+                      Thời lượng (phút):
+                    </label>
+                    <Input
+                      id="duration"
+                      type="number"
+                      className="bg-white/10 text-white border-slate-700"
+                      value={duration}
+                      onChange={(e) => setDuration(Number(e.target.value))}
+                    />
+                  </div>
                 </div>
               </div>
             )}

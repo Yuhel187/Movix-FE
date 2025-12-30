@@ -68,6 +68,19 @@ const defaultFilters: FilterState = {
   q: "",
 };
 
+const useDebounce = (value: string, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  return debouncedValue;
+};
+
 const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: { 
   movie: Movie | null;
   onMovieDeleted: (movieId: string) => void; 
@@ -391,6 +404,7 @@ export default function MovieStoragePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [showAddForm, setShowAddForm] = useState(false);
 
   const [genres, setGenres] = useState<Genre[]>([]);
@@ -460,8 +474,8 @@ export default function MovieStoragePage() {
             params.append("year", appliedFilters.year);
         }
         // Thêm search term
-        if (searchTerm.trim()) {
-            params.set('q', searchTerm.trim());
+        if (debouncedSearchTerm.trim()) {
+            params.set('q', debouncedSearchTerm.trim());
         }
 
         // 3. Gọi API
@@ -492,7 +506,7 @@ export default function MovieStoragePage() {
     fetchMovies();
     
     // 6. Cập nhật dependencies
-  }, [showAddForm, appliedFilters, currentPage, searchTerm]);
+  }, [showAddForm, appliedFilters, currentPage, debouncedSearchTerm]);
 
 const handleMarkMovieAsDeleted = (movieId: string) => {
     const newMovies = movies.map(m => {
