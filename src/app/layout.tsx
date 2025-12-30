@@ -14,6 +14,9 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "Movix",
   description: "Xem phim miễn phí chất lượng cao",
+  icons: {
+    icon: "/images/logo.png",
+  },
 };
 
 export const viewport = {

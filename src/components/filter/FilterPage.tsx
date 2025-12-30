@@ -263,10 +263,16 @@ export default function FilterPage({
         },
       });
 
-      setMovies(res.data.map(mapResponseToMovie));
+      const responseData = res.data;
+      const moviesData = Array.isArray(responseData) ? responseData : responseData.data || [];
+      const recognizedText = responseData.recognizedText 
+        ? `Voice: "${responseData.recognizedText}"` 
+        : "Tìm kiếm bằng giọng nói...";
+
+      setMovies(moviesData.map(mapResponseToMovie));
       setTotalPages(1);
       setShowAISearch(false);
-      setAiQuery("Tìm kiếm bằng giọng nói...");
+      setAiQuery(recognizedText);
     } catch (err) {
       console.error("AI Voice Search Error:", err);
       setError("AI không nghe rõ hoặc không tìm thấy phim phù hợp.");
