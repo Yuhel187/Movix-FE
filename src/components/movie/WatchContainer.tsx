@@ -16,38 +16,43 @@ interface WatchContainerProps {
 export default function WatchContainer({ movie, sidebarData }: WatchContainerProps) {
   const searchParams = useSearchParams();
   const episodeIdFromUrl = searchParams.get("episodeId");
-  const findInitialUrl = () => {
-    if (episodeIdFromUrl && movie.seasons) {
-      for (const season of movie.seasons) {
-        const ep = season.episodes.find(e => e.id === episodeIdFromUrl);
-        if (ep?.videoUrl) return ep.videoUrl;
-      }
+  const startTimeFromUrl = searchParams.get("t");
+
+  const findEpisodeById = (id: string | null) => {
+    if (!id || !movie.seasons) return null;
+    for (const season of movie.seasons) {
+      const ep = season.episodes.find((e) => e.id === id);
+      if (ep) return ep;
     }
-    return movie.videoUrl || movie.seasons?.[0]?.episodes?.[0]?.videoUrl || "";
+    return null;
   };
-  const currentEpisode = useMemo(() => {
-    if (episodeIdFromUrl && movie.seasons) {
-      for (const season of movie.seasons) {
-        const ep = season.episodes.find((e) => e.id === episodeIdFromUrl);
-        if (ep) return ep;
-      }
-    }
-    return movie.seasons?.[0]?.episodes?.[0];
+
+  const initialEpisode = useMemo(() => {
+      return findEpisodeById(episodeIdFromUrl) || movie.seasons?.[0]?.episodes?.[0];
   }, [episodeIdFromUrl, movie.seasons]);
 
-  const [currentVideoUrl, setCurrentVideoUrl] = useState<string>(findInitialUrl());
-
+  const [currentEpisode, setCurrentEpisode] = useState<Episode | undefined>(initialEpisode);
+  const [currentVideoUrl, setCurrentVideoUrl] = useState<string>(
+      initialEpisode?.videoUrl || movie.videoUrl || ""
+  );
 
   useEffect(() => {
-    const newUrl = findInitialUrl();
-    if (newUrl && newUrl !== currentVideoUrl) {
-      setCurrentVideoUrl(newUrl);
+    if (initialEpisode) {
+        setCurrentEpisode(initialEpisode);
+        setCurrentVideoUrl(initialEpisode.videoUrl || "");
+    } else if (movie.videoUrl) {
+        setCurrentVideoUrl(movie.videoUrl);
     }
-  }, [episodeIdFromUrl]);
+  }, [initialEpisode, movie.videoUrl]);
 
   const handleEpisodeSelect = (episode: Episode) => {
+    setCurrentEpisode(episode);
     if (episode.videoUrl) setCurrentVideoUrl(episode.videoUrl);
   };
+
+  const startTime = (currentEpisode?.id === episodeIdFromUrl && startTimeFromUrl) 
+    ? parseInt(startTimeFromUrl, 10) 
+    : 0;
 
   return (
     <div className="w-full">
@@ -56,6 +61,7 @@ export default function WatchContainer({ movie, sidebarData }: WatchContainerPro
           src={currentVideoUrl}
           poster={movie.posterUrl || ""}
           episodeId={currentEpisode?.id || ""}
+          startTime={startTime}
         />
       </section>
       <MovieSharedLayout
