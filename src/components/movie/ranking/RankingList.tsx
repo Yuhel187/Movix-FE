@@ -16,11 +16,18 @@ interface RankingListProps {
     icon: LucideIcon;
     movies: Movie[];
     color?: string; // Optional accent color class
+    valueKey?: keyof Movie;
+    unit?: string;
 }
 
-export function RankingList({ title, icon: Icon, movies, color = "text-yellow-500" }: RankingListProps) {
+export function RankingList({ title, icon: Icon, movies, color = "text-yellow-500", valueKey = "views", unit = "lượt xem" }: RankingListProps) {
     // Only take top 5 for the list display
     const topMovies = movies.slice(0, 5);
+
+    const getValue = (movie: Movie) => {
+        const val = movie[valueKey];
+        return typeof val === 'number' ? val : 0;
+    };
 
     return (
         <div className="flex flex-col h-full bg-white/5 rounded-2xl p-6 border border-white/10">
@@ -40,7 +47,8 @@ export function RankingList({ title, icon: Icon, movies, color = "text-yellow-50
                         rank={index + 1}
                         movie={movie}
                         trend={(movie as any).trend || 'stable'}
-                        viewCount={movie.views || (movie as any).viewCount}
+                        count={getValue(movie)}
+                        unit={unit}
                     />
                 ))}
 
@@ -74,7 +82,8 @@ export function RankingList({ title, icon: Icon, movies, color = "text-yellow-50
                                         rank={index + 1}
                                         movie={movie}
                                         trend={(movie as any).trend || 'stable'}
-                                        viewCount={movie.views || (movie as any).viewCount}
+                                        count={getValue(movie)}
+                                        unit={unit}
                                     />
                                 ))}
                             </div>

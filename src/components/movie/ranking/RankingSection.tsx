@@ -45,18 +45,24 @@ export function RankingSection() {
                 icon={MessageCircle}
                 movies={commentedMovies}
                 color="text-yellow-500"
+                valueKey="comment_count"
+                unit="bình luận"
             />
             <RankingList
                 title="Yêu thích nhất"
                 icon={Heart}
                 movies={likedMovies}
-                color="text-pink-500" // Custom color for Love
+                color="text-pink-500"
+                valueKey="favorite_count"
+                unit="lượt thích"
             />
             <RankingList
                 title="Nhiều lượt xem nhất"
                 icon={Eye}
                 movies={viewedMovies}
-                color="text-blue-500" // Custom color for Views
+                color="text-blue-500"
+                valueKey="views"
+                unit="lượt xem"
             />
         </section>
     );

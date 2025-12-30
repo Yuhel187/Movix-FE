@@ -114,5 +114,7 @@ export interface Movie {
   vote_count?: number;
   type: "MOVIE" | "TV";
   views?: number;
+  comment_count?: number;
+  favorite_count?: number;
   recommendations?: Movie[];
 }
