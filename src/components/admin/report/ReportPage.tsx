@@ -44,7 +44,8 @@ const COLORS: string[] = [
 
 const chartConfig = {
   users: { label: "Người dùng mới", color: "var(--chart-2)" },
-  views: { label: "Lượt xem/Thích", color: "var(--chart-1)" },
+  views: { label: "Lượt xem", color: "var(--chart-1)" },
+  favorites: { label: "Lượt thích", color: "var(--chart-1)" },
   comments: { label: "Bình luận", color: "var(--chart-4)" },
   count: { label: "Số lượng", color: "var(--chart-3)" },
 } satisfies ChartConfig;
@@ -106,18 +107,28 @@ export default function ReportPage() {
             to: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined,
         };
 
-        const [reportRes] = await Promise.allSettled([
+        const [reportRes, topMoviesRes, statsRes] = await Promise.allSettled([
             apiClient.get('/dashboard/report-all', { params }),
+            apiClient.get('/dashboard/top-movies'),
+            apiClient.get('/dashboard/stats'),
         ]);
 
         const data = reportRes.status === 'fulfilled' ? reportRes.value.data : {};
+        const topMovies = topMoviesRes.status === 'fulfilled' ? topMoviesRes.value.data : [];
+        const stats = statsRes.status === 'fulfilled' ? statsRes.value.data : {};
 
         if (reportRes.status === 'rejected') {
             console.error("Lỗi tải report-all:", reportRes.reason);
             toast.error("Không thể tải dữ liệu báo cáo chi tiết.");
         }
 
-        setKpiData(data.kpi || {});
+        // Map KPI data from stats endpoint if available, otherwise fallback to report-all
+        setKpiData({
+            totalUsers: stats.users || data.kpi?.totalUsers || 0,
+            totalMovies: stats.movies || data.kpi?.totalMovies || 0,
+            totalViews: stats.views || data.kpi?.totalViews || 0,
+            totalComments: data.kpi?.totalComments || 0 // stats only has comments_today
+        });
 
         let formattedTrend = [];
 
@@ -196,7 +207,7 @@ export default function ReportPage() {
         }
 
         setTrendData(formattedTrend);
-        setTopMoviesData(data.topMoviesData || []); 
+        setTopMoviesData(topMovies.length > 0 ? topMovies : (data.topMoviesData || [])); 
         
         setTopUsersData(data.topUsersData || []);
 
@@ -366,7 +377,7 @@ export default function ReportPage() {
             doc.text("1. Top Phim Được Yêu Thích Nhất", 14, currentY);
             currentY += 6;
 
-            const movieRows = topMoviesData.map((m, i) => [i + 1, m.movie, m.views.toLocaleString('vi-VN')]);
+            const movieRows = topMoviesData.map((m, i) => [i + 1, m.movie, (m.favorites || m.views || 0).toLocaleString('vi-VN')]);
             autoTable(doc, {
                 startY: currentY,
                 head: [['#', 'Tên Phim', 'Lượt Thích']],
@@ -673,11 +684,11 @@ export default function ReportPage() {
                             cursor={{ fill: "var(--chart-1) / 0.1" }} 
                             content={<ChartTooltipContent indicator="line" hideLabel />} 
                         />
-                        <Bar dataKey="views" name="Lượt thích" radius={[0, 4, 4, 0]} barSize={32}>
+                        <Bar dataKey="favorites" name="Lượt thích" radius={[0, 4, 4, 0]} barSize={32}>
                           {topMoviesData.map((_, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
-                          <LabelList dataKey="views" position="right" offset={10} className="fill-white font-bold" fontSize={12} />
+                          <LabelList dataKey="favorites" position="right" offset={10} className="fill-white font-bold" fontSize={12} />
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
