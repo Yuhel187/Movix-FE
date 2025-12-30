@@ -201,7 +201,7 @@ export default function AdminTopbar({
               <DropdownMenuSeparator className="bg-slate-700" />
               
               <DropdownMenuItem 
-                className="cursor-pointer hover:bg-white/10 focus:bg-white/10"
+                className="cursor-pointer hover:bg-white/10 focus:bg-white/10 hover:text-white"
                 onClick={() => router.push('/movies')}
               >
                 <Home className="mr-2 h-4 w-4" />
