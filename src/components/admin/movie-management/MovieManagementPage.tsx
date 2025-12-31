@@ -106,13 +106,19 @@ export default function MovieManagement() {
   const [isTraining, setIsTraining] = useState(false);
   const [showRetrainDialog, setShowRetrainDialog] = useState(false);
 
+  const [isDeleteSeasonDialogOpen, setIsDeleteSeasonDialogOpen] = useState(false);
+  const [seasonToDelete, setSeasonToDelete] = useState<string | null>(null);
+
   useEffect(() => {
     if (movieToEdit?.seasons?.length > 0) {
-      setSelectedSeasonId(movieToEdit.seasons[0].id);
+      const currentSeasonExists = movieToEdit.seasons.some((s: any) => s.id === selectedSeasonId);
+      if (!selectedSeasonId || !currentSeasonExists) {
+        setSelectedSeasonId(movieToEdit.seasons[0].id);
+      }
     } else {
       setSelectedSeasonId(null);
     }
-  }, [movieToEdit]);
+  }, [movieToEdit?.id, movieToEdit?.seasons?.length]);
 
   useEffect(() => {
     const slugToEdit = searchParams.get('slug');
@@ -353,7 +359,7 @@ export default function MovieManagement() {
       updateMovieField('seasons', newSeasons);
   };
 
-  const handleEpisodeChange = (episodeId: string | number, field: 'title' | 'duration' | 'video_url', value: string | number | null) => {
+  const handleEpisodeChange = (episodeId: string | number, field: 'title' | 'duration' | 'video_url' | 'video_image_url', value: string | number | null) => {
       if (!selectedSeasonId || !movieToEdit) return;
       
       const newSeasons = movieToEdit.seasons.map((season: Season) => {
@@ -368,6 +374,38 @@ export default function MovieManagement() {
           return season;
       });
       updateMovieField('seasons', newSeasons);
+  };
+
+  const handleRenameSeason = (seasonId: string, newName: string) => {
+    if (!movieToEdit) return;
+    const newSeasons = movieToEdit.seasons.map((season: Season) => {
+      if (season.id === seasonId) {
+        return { ...season, name: newName };
+      }
+      return season;
+    });
+    updateMovieField('seasons', newSeasons);
+  };
+
+  const handleDeleteSeason = (seasonId: string) => {
+    setSeasonToDelete(seasonId);
+    setIsDeleteSeasonDialogOpen(true);
+  };
+
+  const confirmDeleteSeason = () => {
+    if (!movieToEdit || !seasonToDelete) return;
+
+    const newSeasons = movieToEdit.seasons.filter((s: Season) => s.id !== seasonToDelete);
+    updateMovieField('seasons', newSeasons);
+    
+    if (newSeasons.length > 0) {
+        setSelectedSeasonId(newSeasons[0].id);
+    } else {
+        setSelectedSeasonId(null);
+    }
+    toast.success("Đã xóa mùa phim.");
+    setIsDeleteSeasonDialogOpen(false);
+    setSeasonToDelete(null);
   };
 
   const currentSelectedSeason = movieToEdit?.seasons?.find((s: Season) => s.id === selectedSeasonId);
@@ -708,32 +746,61 @@ export default function MovieManagement() {
                       {/* 2. Chọn Mùa */}
                       {movieToEdit.seasons?.length > 0 && (
                         <>
-                          <div>
-                            <Label
-                              htmlFor="seasonSelect"
-                              className="block text-sm font-medium text-gray-300 mb-1"
-                            >
-                              Chỉnh sửa mùa
-                            </Label>
-                            <Select
-                              value={selectedSeasonId || ""}
-                              onValueChange={handleSeasonSelect}
-                            >
-                              <SelectTrigger
-                                id="seasonSelect"
-                                className="w-full bg-white/10 border-slate-700 text-white"
+                          <div className="flex flex-col sm:flex-row gap-4 items-end">
+                            <div className="flex-1">
+                              <Label
+                                htmlFor="seasonSelect"
+                                className="block text-sm font-medium text-gray-300 mb-1"
                               >
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="bg-[#262626] border-slate-700 text-white">
-                                {movieToEdit.seasons.map((season: Season) => (
-                                  <SelectItem key={season.id} value={season.id}>
-                                    {season.name ||
-                                      `Mùa ${season.season_number}`}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                                Chọn mùa để chỉnh sửa
+                              </Label>
+                              <Select
+                                value={selectedSeasonId || ""}
+                                onValueChange={handleSeasonSelect}
+                              >
+                                <SelectTrigger
+                                  id="seasonSelect"
+                                  className="w-full bg-white/10 border-slate-700 text-white"
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-[#262626] border-slate-700 text-white">
+                                  {movieToEdit.seasons.map((season: Season) => (
+                                    <SelectItem key={season.id} value={season.id}>
+                                      {season.name ||
+                                        `Mùa ${season.season_number}`}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            {currentSelectedSeason && (
+                              <div className="flex-1">
+                                <Label
+                                  htmlFor="renameSeasonInput"
+                                  className="block text-sm font-medium text-gray-300 mb-1"
+                                >
+                                  Đổi tên mùa hiện tại
+                                </Label>
+                                <div className="flex gap-2">
+                                  <Input
+                                    id="renameSeasonInput"
+                                    className="bg-white/10 border-slate-700 text-white"
+                                    value={currentSelectedSeason.name}
+                                    onChange={(e) => handleRenameSeason(currentSelectedSeason.id, e.target.value)}
+                                  />
+                                  <Button
+                                    variant="destructive"
+                                    size="icon"
+                                    onClick={() => handleDeleteSeason(currentSelectedSeason.id)}
+                                    title="Xóa mùa này"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                           <hr className="border-slate-700" />
 
@@ -824,6 +891,41 @@ export default function MovieManagement() {
                                             )
                                           }
                                         />
+                                      </div>
+                                      <div className="md:col-span-2">
+                                        <Label
+                                          htmlFor={`ep_image_${episode.id}`}
+                                          className="block text-sm font-medium text-gray-300 mb-1"
+                                        >
+                                          Ảnh Poster Tập (URL)
+                                        </Label>
+                                        <div className="flex gap-4">
+                                          <div className="flex-1">
+                                            <Input
+                                              id={`ep_image_${episode.id}`}
+                                              className="bg-white/10 text-white border-slate-600"
+                                              placeholder="https://.../image.jpg"
+                                              value={(episode as any).video_image_url || ""}
+                                              onChange={(e) =>
+                                                handleEpisodeChange(
+                                                  episode.id,
+                                                  "video_image_url",
+                                                  e.target.value
+                                                )
+                                              }
+                                            />
+                                          </div>
+                                          {(episode as any).video_image_url && (
+                                            <div className="w-24 h-14 bg-slate-800 rounded overflow-hidden border border-slate-600 flex-shrink-0">
+                                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                                              <img
+                                                src={(episode as any).video_image_url}
+                                                alt="Preview"
+                                                className="w-full h-full object-cover"
+                                              />
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
@@ -1039,6 +1141,28 @@ export default function MovieManagement() {
         onOpenChange={setIsAddActorOpen}
         onAddActor={handleAddActorToList}
       />
+
+      <AlertDialog open={isDeleteSeasonDialogOpen} onOpenChange={setIsDeleteSeasonDialogOpen}>
+        <AlertDialogContent className="bg-[#1F1F1F] border-slate-700 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa mùa phim</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Bạn có chắc chắn muốn xóa mùa này và tất cả các tập trong đó? Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-slate-600 hover:bg-slate-800 text-white">
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteSeason}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={showRetrainDialog} onOpenChange={setShowRetrainDialog}>
         <AlertDialogContent className="bg-[#1F1F1F] border-slate-700 text-white">

@@ -46,6 +46,16 @@ import {
   Download,
   FileVideo,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import {
   InputGroup,
@@ -436,7 +446,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     const seasonsWithFileNames = seasons.map((s) => ({
       name: s.name,
       episodes: s.episodes.map((e) => ({
-        title: e.title,
+        title: e.title || movieTitle,
         duration: e.duration,
         fileName: e.fileName,
         video_image_url: e.video_image_url,
@@ -538,6 +548,9 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     }
   };
 
+  const [isDeleteSeasonDialogOpen, setIsDeleteSeasonDialogOpen] = useState(false);
+  const [seasonToDelete, setSeasonToDelete] = useState<string | null>(null);
+
   const handleAddNewSeason = () => {
     if (newSeasonName.trim() === "") return;
     const newSeasonId = `client-id-${Date.now()}`;
@@ -554,6 +567,38 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
 
   const handleSeasonSelect = (seasonId: string) => {
     setSelectedSeasonId(seasonId);
+  };
+
+  const handleRenameSeason = (seasonId: string, newName: string) => {
+    setSeasons((prevSeasons) =>
+      prevSeasons.map((season) => {
+        if (season.id === seasonId) {
+          return { ...season, name: newName };
+        }
+        return season;
+      })
+    );
+  };
+
+  const handleDeleteSeason = (seasonId: string) => {
+    setSeasonToDelete(seasonId);
+    setIsDeleteSeasonDialogOpen(true);
+  };
+
+  const confirmDeleteSeason = () => {
+    if (!seasonToDelete) return;
+    
+    const newSeasons = seasons.filter((s) => s.id !== seasonToDelete);
+    setSeasons(newSeasons);
+    
+    if (newSeasons.length > 0) {
+        setSelectedSeasonId(newSeasons[0].id);
+    } else {
+        setSelectedSeasonId("");
+    }
+    toast.success("Đã xóa mùa phim.");
+    setIsDeleteSeasonDialogOpen(false);
+    setSeasonToDelete(null);
   };
 
   const handleAddEpisode = () => {
@@ -1142,31 +1187,60 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
 
                 {seasons.length > 0 && (
                   <>
-                    <div>
-                      <label
-                        htmlFor="seasonSelect"
-                        className="block text-sm font-medium text-gray-300 mb-1"
-                      >
-                        Chỉnh sửa mùa
-                      </label>
-                      <Select
-                        value={selectedSeasonId || ""}
-                        onValueChange={handleSeasonSelect}
-                      >
-                        <SelectTrigger
-                          id="seasonSelect"
-                          className="w-full bg-white/10 border-slate-700"
+                    <div className="flex flex-col sm:flex-row gap-4 items-end">
+                      <div className="flex-1">
+                        <label
+                          htmlFor="seasonSelect"
+                          className="block text-sm font-medium text-gray-300 mb-1"
                         >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#262626] border-slate-700 text-white">
-                          {seasons.map((season) => (
-                            <SelectItem key={season.id} value={season.id}>
-                              {season.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                          Chỉnh sửa mùa
+                        </label>
+                        <Select
+                          value={selectedSeasonId || ""}
+                          onValueChange={handleSeasonSelect}
+                        >
+                          <SelectTrigger
+                            id="seasonSelect"
+                            className="w-full bg-white/10 border-slate-700"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#262626] border-slate-700 text-white">
+                            {seasons.map((season) => (
+                              <SelectItem key={season.id} value={season.id}>
+                                {season.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {currentSelectedSeason && (
+                        <div className="flex-1">
+                          <label
+                            htmlFor="renameSeasonInput"
+                            className="block text-sm font-medium text-gray-300 mb-1"
+                          >
+                            Đổi tên mùa hiện tại
+                          </label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="renameSeasonInput"
+                              className="bg-white/10 border-slate-700 text-white"
+                              value={currentSelectedSeason.name}
+                              onChange={(e) => handleRenameSeason(currentSelectedSeason.id, e.target.value)}
+                            />
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              onClick={() => handleDeleteSeason(currentSelectedSeason.id)}
+                              title="Xóa mùa này"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <hr className="border-slate-700" />
@@ -1472,6 +1546,27 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
           </Button>
         </div>
       </div>
+      <AlertDialog open={isDeleteSeasonDialogOpen} onOpenChange={setIsDeleteSeasonDialogOpen}>
+        <AlertDialogContent className="bg-[#1F1F1F] border-slate-700 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa mùa phim</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Bạn có chắc chắn muốn xóa mùa này và tất cả các tập trong đó? Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-slate-600 hover:bg-slate-800 text-white">
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteSeason}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
