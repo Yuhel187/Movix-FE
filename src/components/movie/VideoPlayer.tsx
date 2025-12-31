@@ -19,10 +19,12 @@ export default function VideoPlayer({
     src,
     poster,
     episodeId,
+    startTime = 0,
 }: {
     src: string;
     poster?: string;
     episodeId?: string;
+    startTime?: number;
 }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -34,9 +36,15 @@ export default function VideoPlayer({
     const [showControls, setShowControls] = useState(true);
     const [showPoster, setShowPoster] = useState(true);
     const [showCenterIcon, setShowCenterIcon] = useState(false);
+    const hasSeekedRef = useRef(false);
 
     const { user } = useAuth();
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Reset hasSeekedRef when src changes
+    useEffect(() => {
+        hasSeekedRef.current = false;
+    }, [src]);
 
     const saveProgress = useCallback(async (isFinished = false) => {
         if (!user || !episodeId || !videoRef.current) return;
@@ -71,6 +79,10 @@ export default function VideoPlayer({
     const handleLoadedMetadata = () => {
         if (videoRef.current) {
             setDuration(videoRef.current.duration);
+            if (startTime > 0 && !hasSeekedRef.current) {
+                videoRef.current.currentTime = startTime;
+                hasSeekedRef.current = true;
+            }
         }
     };
 

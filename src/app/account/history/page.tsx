@@ -76,7 +76,7 @@ export default function HistoryPage() {
                         const movieData = item.episode.season.movie;
                         const episode = item.episode;
                         const progressPercent = calculateProgress(item.progress_seconds, episode.runtime);
-                        const watchLink = `/movies/${movieData.slug}/watch?episodeId=${episode.id}`;
+                        const watchLink = `/movies/${movieData.slug}/watch?episodeId=${episode.id}&t=${item.progress_seconds}`;
                         const mappedMovie: Movie = {
                             id: movieData.id,
                             slug: movieData.slug,
