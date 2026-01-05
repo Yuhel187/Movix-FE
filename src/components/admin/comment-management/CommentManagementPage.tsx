@@ -30,6 +30,8 @@ import {
   Inbox,
   Sparkles,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,6 +42,16 @@ import { cn } from "@/lib/utils";
 import apiClient from "@/lib/apiClient";
 import { Pagination } from "@/components/common/pagination";
 import { CommentData } from "@/types/comment";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type TabId = 'all' | 'flagged' | 'hidden';
 
@@ -74,6 +86,8 @@ export default function CommentManagementPage() {
     totalPages: 1,
     total: 0
   });
+
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -151,18 +165,24 @@ export default function CommentManagementPage() {
   };
 
   // 2. Xóa bình luận (Soft delete)
-  const handleDelete = async (id: string) => {
-    if (!confirm("Bạn có chắc muốn xóa bình luận này? Hành động này sẽ ẩn bình luận vĩnh viễn.")) return;
+  const handleDeleteClick = (id: string) => {
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
     
     try {
-        await apiClient.delete(`/comments/admin/${id}`);
+        await apiClient.delete(`/comments/admin/${deleteId}`);
         
-        setComments(prev => prev.filter(c => c.id !== id));
-        if (selectedComment?.id === id) setSelectedComment(null);
+        setComments(prev => prev.filter(c => c.id !== deleteId));
+        if (selectedComment?.id === deleteId) setSelectedComment(null);
         
         toast.success("Đã xóa bình luận.");
     } catch (error) {
         toast.error("Lỗi khi xóa bình luận.");
+    } finally {
+        setDeleteId(null);
     }
   };
 
@@ -284,13 +304,29 @@ export default function CommentManagementPage() {
               </div>
 
               {pagination.totalPages > 1 && (
-                  <div className="border-t border-slate-800 p-2 bg-[#262626]">
-                      <Pagination 
-                        currentPage={pagination.page}
-                        totalPages={pagination.totalPages}
-                        onPageChange={(p) => setPagination(prev => ({...prev, page: p}))}
-                      />
-                  </div>
+                <div className="border-t border-slate-800 p-2 bg-[#262626] flex items-center justify-end gap-2">
+                  <span className="text-xs text-gray-400 mr-2">
+                    Trang {pagination.page} / {pagination.totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 border-slate-700 bg-slate-800 hover:bg-slate-700 text-white"
+                    onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                    disabled={pagination.page === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 border-slate-700 bg-slate-800 hover:bg-slate-700 text-white"
+                    onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.totalPages, prev.page + 1) }))}
+                    disabled={pagination.page === pagination.totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               )}
             </Card>
           )}
@@ -301,9 +337,26 @@ export default function CommentManagementPage() {
         <CommentDetailPanel
           comment={selectedComment}
           onToggleHide={handleToggleHide}
-          onDelete={handleDelete}
+          onDelete={handleDeleteClick}
         />
       </div>
+
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent className="bg-[#1F1F1F] border-slate-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa bình luận?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
+              Hành động này sẽ xóa vĩnh viễn bình luận này khỏi hệ thống và không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-slate-700 text-white hover:bg-slate-800">Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700 text-white border-none">
+              Xóa vĩnh viễn
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -355,57 +408,57 @@ const CommentDetailPanel = ({
   };
 
   return (
-    <Card className="bg-[#262626] border-slate-800 text-white h-full flex flex-col">
-      <CardHeader className="p-4 border-b border-slate-700 flex-shrink-0">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase">Thông tin ngữ cảnh</h3>
-        <div className="flex items-center gap-3 mt-2">
-            <Image 
-                src={comment.movie?.poster_url || "/images/placeholder-poster.png"} 
-                alt="Poster" width={40} height={60} className="rounded bg-slate-800 object-cover"
-            />
-            <div className="overflow-hidden">
-                <p className="font-bold text-sm line-clamp-1" title={comment.movie?.title}>{comment.movie?.title}</p>
-                <a 
-                    href={`/movies/${comment.movie?.slug}`} 
-                    target="_blank" 
-                    className="text-xs text-blue-400 hover:underline truncate block"
-                >
-                    Xem trang phim
-                </a>
+    <Card className="bg-[#262626] border-slate-800 text-white h-full flex flex-col overflow-hidden">
+      <CardHeader className="p-4 border-b border-slate-700 flex-shrink-0 space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-400 uppercase">Thông tin ngữ cảnh</h3>
+          <div className="flex items-center gap-3 mt-2">
+              <Image 
+                  src={comment.movie?.poster_url || "/images/placeholder-poster.png"} 
+                  alt="Poster" width={40} height={60} className="rounded bg-slate-800 object-cover"
+              />
+              <div className="overflow-hidden">
+                  <p className="font-bold text-sm line-clamp-1" title={comment.movie?.title}>{comment.movie?.title}</p>
+                  <a 
+                      href={`/movies/${comment.movie?.slug}`} 
+                      target="_blank" 
+                      className="text-xs text-blue-400 hover:underline truncate block"
+                  >
+                      Xem trang phim
+                  </a>
+              </div>
+          </div>
+        </div>
+
+        <div className="bg-black/20 p-3 rounded border border-slate-700">
+            <div className="flex justify-between items-center mb-2">
+                <p className="text-xs text-gray-400 font-semibold">CHỈ SỐ ĐỘC HẠI</p>
+                <span className="text-sm font-mono font-bold text-white">
+                    {((comment.toxicity_score || 0) * 100).toFixed(1)}%
+                </span>
+            </div>
+            <div className="h-2 w-full bg-slate-700 rounded-full overflow-hidden">
+                <div 
+                    className={`h-full transition-all duration-500 ${comment.toxicity_score > 0.7 ? 'bg-red-500' : 'bg-green-500'}`} 
+                    style={{ width: `${(comment.toxicity_score || 0) * 100}%` }}
+                />
             </div>
         </div>
       </CardHeader>
       
-      <ScrollArea className="flex-1 p-4">
-        <div className="pb-10 space-y-6">
-            <div className="break-words break-all whitespace-pre-wrap w-full">
-                <CommentItem 
-                    comment={displayComment} 
-                    movieId={comment.movie?.id} 
-                    onCommentUpdated={() => {}} 
-                />
-            </div>
-            
-            <div className="bg-black/20 p-3 rounded border border-slate-700">
-                <p className="text-xs text-gray-400 mb-2 font-semibold">CHỈ SỐ ĐỘC HẠI (TOXICITY SCORE)</p>
-                <div className="flex items-center gap-3">
-                    <div className="h-3 flex-1 bg-slate-700 rounded-full overflow-hidden min-w-0">
-                        <div 
-                            className={`h-full transition-all duration-500 ${comment.toxicity_score > 0.7 ? 'bg-red-500' : 'bg-green-500'}`} 
-                            style={{ width: `${(comment.toxicity_score || 0) * 100}%` }}
-                        />
-                    </div>
-                    <span className="text-sm font-mono font-bold text-white flex-shrink-0">
-                        {((comment.toxicity_score || 0) * 100).toFixed(1)}%
-                    </span>
+      <div className="flex-1 min-h-0">
+        <ScrollArea className="h-full">
+            <div className="p-4 pb-10">
+                <div className="break-words break-all whitespace-pre-wrap w-full">
+                    <CommentItem 
+                        comment={displayComment} 
+                        movieId={comment.movie?.id} 
+                        onCommentUpdated={() => {}} 
+                    />
                 </div>
-                <p className="text-[10px] text-gray-500 mt-1">
-                    * Điểm trên 70% được coi là có khả năng độc hại cao.
-                </p>
             </div>
-
-        </div>
-      </ScrollArea>
+        </ScrollArea>
+      </div>
 
       <div className="p-4 border-t border-slate-700 space-y-3 bg-[#1F1F1F] flex-shrink-0">
          <div className="flex justify-between items-center">
