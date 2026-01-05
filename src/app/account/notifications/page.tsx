@@ -194,15 +194,6 @@ export default function NotificationsPage() {
           )}
         </div>
         <div className="flex items-center gap-2 mt-4 sm:mt-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-gray-300 hover:text-white"
-            onClick={() => router.push('/account/profile')}
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            Cài đặt
-          </Button>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
