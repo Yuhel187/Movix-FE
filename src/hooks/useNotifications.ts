@@ -43,6 +43,12 @@ export const useNotifications = (isAuthenticated: boolean = false, options: UseN
     const [currentPage, setCurrentPage] = useState(1);
     const socketRef = useRef<Socket | null>(null);
 
+    // Store latest onAccountLocked callback
+    const onAccountLockedRef = useRef(options.onAccountLocked);
+    useEffect(() => {
+        onAccountLockedRef.current = options.onAccountLocked;
+    }, [options.onAccountLocked]);
+
     // Kết nối WebSocket
     useEffect(() => {
         console.log('[useNotifications] isAuthenticated:', isAuthenticated);
@@ -144,8 +150,8 @@ export const useNotifications = (isAuthenticated: boolean = false, options: UseN
         // Event: Tài khoản bị khóa
         newSocket.on('account:locked', () => {
             console.log('Account locked event received');
-            if (options.onAccountLocked) {
-                options.onAccountLocked();
+            if (onAccountLockedRef.current) {
+                onAccountLockedRef.current();
             }
         });
 
@@ -195,7 +201,7 @@ export const useNotifications = (isAuthenticated: boolean = false, options: UseN
             newSocket.close();
             socketRef.current = null;
         };
-    }, [isAuthenticated, options.enableSoundAndToast, options.onAccountLocked]);
+    }, [isAuthenticated, options.enableSoundAndToast]);
 
     const fetchNotifications = useCallback(async (page: number = 1, limit: number = 20) => {
         try {
