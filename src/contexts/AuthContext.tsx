@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import apiClient from '@/lib/apiClient';
 
@@ -24,33 +24,32 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const normalizeUser = (data: any): AuthUser => {
+  if (!data) return data;
+  const roleNormalized = (typeof data.role === 'object' && data.role !== null)
+    ? data.role.name
+    : data.role;
+
+  return {
+    ...data,
+    role: roleNormalized,
+    avatarUrl: data.avatar_url || data.avatarUrl || null
+  };
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, _setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const normalizeUser = (data: any): AuthUser => {
-    if (!data) return data;
-    const roleNormalized = (typeof data.role === 'object' && data.role !== null)
-      ? data.role.name
-      : data.role;
-
-    return {
-      ...data,
-      role: roleNormalized,
-      avatarUrl: data.avatar_url || data.avatarUrl || null
-    };
-  };
-
-  const checkAuth = async (isSilent = false) => {
+  const checkAuth = useCallback(async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
     try {
       const res = await apiClient.get("/profile/me");
       const userSafe = normalizeUser(res.data);
       _setUser(userSafe);
       localStorage.setItem("user_cache", JSON.stringify(userSafe));
-    } catch (error) {
+    } catch {
       if (!isSilent) {
         _setUser(null);
         localStorage.removeItem("user_cache");
@@ -58,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -68,13 +67,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const parsed = JSON.parse(cached);
           const userSafe = normalizeUser(parsed);
           if (!user) _setUser(userSafe);
-        } catch (e) {
+        } catch {
           localStorage.removeItem("user_cache");
         }
       }
     }
     checkAuth();
-  }, []);
+  }, [checkAuth]);
 
   useEffect(() => {
     if (!user) return;
@@ -84,7 +83,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, 5 * 60 * 1000);
 
     return () => clearInterval(intervalId);
-  }, [user]);
+  }, [user, checkAuth]);
 
   const setUser = (newUser: AuthUser | null) => {
     const userSafe = newUser ? normalizeUser(newUser) : null;

@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Bell, Film, MessageSquare, Users, AlertTriangle, Check, Settings, Trash2 } from "lucide-react";
+import { Bell, Film, MessageSquare, Users, AlertTriangle, Check, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { Notification, NotificationType } from "@/types/notification";
@@ -121,7 +120,7 @@ const NotificationItem = ({
 export default function NotificationsPage() {
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const router = useRouter();
-  const { user, isLoggedIn, logout } = useAuth();
+  const { isLoggedIn, logout } = useAuth();
 
   const {
     notifications,
@@ -134,7 +133,7 @@ export default function NotificationsPage() {
     deleteNotification,
     hasMore,
     currentPage,
-  } = useNotifications(isLoggedIn, { 
+  } = useNotifications(isLoggedIn, {
     enableSoundAndToast: false,
     onAccountLocked: () => {
       logout();

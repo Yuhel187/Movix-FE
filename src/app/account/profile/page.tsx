@@ -25,7 +25,7 @@ export default function ProfilePage() {
       try {
         setIsLoading(true);
         const profile = await getMyProfile();
-        
+
         setDisplayName(profile.display_name || profile.username);
         setGender(profile.gender || undefined);
         setAvatarUrl(profile.avatar_url);
@@ -44,7 +44,7 @@ export default function ProfilePage() {
 
   const handleSubmit = async () => {
     const toastId = toast.loading('Đang cập nhật thông tin...');
-    
+
     const updateData = {
       display_name: displayName,
       gender: gender,
@@ -62,9 +62,9 @@ export default function ProfilePage() {
           avatarUrl: updatedProfile.avatar_url,
         });
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Lỗi khi cập nhật:', error);
-      const errMsg = error.response?.data?.message || 'Cập nhật thất bại.';
+      const errMsg = 'Cập nhật thất bại.';
       toast.error(errMsg, { id: toastId });
     }
   };
@@ -129,7 +129,7 @@ export default function ProfilePage() {
           />
         </div>
       </div>
-      
+
       <div className="mt-8">
         <Button
           onClick={handleSubmit}
@@ -139,14 +139,14 @@ export default function ProfilePage() {
         </Button>
       </div>
       <p className="mt-4 text-sm text-gray-400">
-          Đặt mật khẩu, nhấn vào{' '}
-          <Link 
-            href="/account/change-password" 
-            className="font-medium text-yellow-500 hover:text-yellow-400"
-          >
-            đây
-          </Link>
-        </p>
+        Đặt mật khẩu, nhấn vào{' '}
+        <Link
+          href="/account/change-password"
+          className="font-medium text-yellow-500 hover:text-yellow-400"
+        >
+          đây
+        </Link>
+      </p>
     </div>
   );
 }

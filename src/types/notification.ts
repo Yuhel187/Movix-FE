@@ -16,6 +16,7 @@ export interface Notification {
     movieSlug?: string;
     partyId?: string;
     actionUrl?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
   };
   actionUrl?: string | null;

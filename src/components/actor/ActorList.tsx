@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { User } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import type { Person } from "@/types/person";
 
 interface ActorListProps {
@@ -33,17 +32,17 @@ export default function ActorList({ people }: ActorListProps) {
                   <User size={48} />
                 </div>
               )}
-              
+
               {/* Overlay gradient */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
-              
+
               <div className="absolute bottom-0 left-0 w-full p-3">
-                 <p className="text-white font-semibold truncate text-sm md:text-base">
-                    {person.name}
-                 </p>
-                 <p className="text-xs text-gray-400">
-                    {person.role}
-                 </p>
+                <p className="text-white font-semibold truncate text-sm md:text-base">
+                  {person.name}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {person.role}
+                </p>
               </div>
             </div>
           </Card>

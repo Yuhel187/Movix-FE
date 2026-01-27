@@ -7,7 +7,6 @@ import { GenreSection } from "@/components/movie/GenreSection";
 import { RankingSection } from "@/components/movie/ranking/RankingSection";
 import Navbar from "@/components/layout/NavBar";
 import Footer from "@/components/layout/Footer";
-import AIChatWidget from "@/components/ai/AIChatWidget";
 import {
   getTrendingMovies,
   getDynamicSections,
@@ -18,7 +17,6 @@ import {
 import { getBanners } from "@/services/banner.service";
 import type { Movie, Genre } from "@/types/movie";
 import type { Banner } from "@/types/banner";
-import { Loader2 } from "lucide-react";
 import { HeroSkeleton } from "@/components/skeletons/HeroSkeleton";
 import { GenreSkeleton } from "@/components/skeletons/GenreSkeleton";
 import { MovieCarouselSkeleton } from "@/components/skeletons/MovieCarouselSkeleton";

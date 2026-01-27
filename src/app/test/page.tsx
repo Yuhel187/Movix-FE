@@ -7,7 +7,7 @@ import { YearSelect } from "@/components/movie/YearSelect"
 import { MonthSelect } from "@/components/movie/MonthSelect"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
-import { InputGroup, InputGroupAddon,InputGroupButton,InputGroupInput,InputGroupText,InputGroupTextarea } from "@/components/ui/input-group"
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput, InputGroupText, InputGroupTextarea } from "@/components/ui/input-group"
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp"
 import { SearchBar } from "@/components/common/search-bar"
 import { NotificationIcon } from "@/components/common/noti-icon"
@@ -39,27 +39,27 @@ export default function TestPage() {
     setTags(tags.filter(tag => tag.id !== id))
   }
   const trendingActionMovies = [
-  { id: "1", title: "Movie 1", posterUrl: "/path/movie1.jpg" },
-  { id: "2", title: "Movie 2", posterUrl: "/path/movie2.jpg" },
-  { id: "3", title: "Movie 3", posterUrl: "/path/movie3.jpg" },
-  { id: "4", title: "Movie 4", posterUrl: "/path/movie4.jpg" },
-];
-const allMovies = [
-  {
-    title: "Hồi sinh thế giới",
-    subTitle: "Dr. STONE",
-    imageUrl: "/favicon.ico",
-    season: "4",
-    episode: "24",
-  },
-  {
-    title: "Thanh gươm diệt quỷ",
-    subTitle: "Kimetsu no Yaiba",
-    imageUrl: "/favicon.ico",
-    season: "3",
-    episode: "11",
-  },
-]
+    { id: "1", title: "Movie 1", posterUrl: "/path/movie1.jpg" },
+    { id: "2", title: "Movie 2", posterUrl: "/path/movie2.jpg" },
+    { id: "3", title: "Movie 3", posterUrl: "/path/movie3.jpg" },
+    { id: "4", title: "Movie 4", posterUrl: "/path/movie4.jpg" },
+  ];
+  const allMovies = [
+    {
+      title: "Hồi sinh thế giới",
+      subTitle: "Dr. STONE",
+      imageUrl: "/favicon.ico",
+      season: "4",
+      episode: "24",
+    },
+    {
+      title: "Thanh gươm diệt quỷ",
+      subTitle: "Kimetsu no Yaiba",
+      imageUrl: "/favicon.ico",
+      season: "3",
+      episode: "11",
+    },
+  ]
   return (
     <div className="dark p-10 space-y-4 min-h-screen bg-background text-foreground">
       <Button>Primary Button</Button>
@@ -69,7 +69,7 @@ const allMovies = [
 
       <Select>
         <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder="Pick one" />
+          <SearchBar placeholder="Tìm kiếm phim..." value="" onChange={() => { }} />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="1">Option 1</SelectItem>
@@ -113,10 +113,10 @@ const allMovies = [
           <InputOTPSlot index={5} />
         </InputOTPGroup>
       </InputOTP>
-      
+
       <button onClick={() => toast.success("Success!")}>Show Success Toast</button>
       <button onClick={() => toast.error("Error!")}>Show Error Toast</button>
-      <Toaster position="top-right"/>
+      <Toaster position="top-right" />
 
       <InputGroup className="w-80">
         <InputGroupAddon>$</InputGroupAddon>
@@ -134,26 +134,26 @@ const allMovies = [
       <SearchBar></SearchBar>
       <NotificationIcon></NotificationIcon>
       <div className="flex">
-        <ActorCard name="Quang Khải" imageUrl="/favicon.ico"/>
-        <ActorCard name="Quang Khải" imageUrl="/favicon.ico"/>
+        <ActorCard name="Quang Khải" imageUrl="/favicon.ico" />
+        <ActorCard name="Quang Khải" imageUrl="/favicon.ico" />
       </div>
-      
-      <ActorCard layout="horizontal" name="Quang Khải" imageUrl="/favicon.ico"/>
-      <div className="flex flex-wrap gap-3">
-      {tags.map(tag => (
-        <TagItem
-          key={tag.id}
-          label={tag.label}
-          variant="active"
-          onRemove={() => removeTag(tag.id)}
-        />
-      ))}
-      <TagItem label="Thêm tag..." variant="default" />
-    </div>
 
-    <MovieCategoryCard category="Hành động" movies={trendingActionMovies} onClickMore={() => console.log("Xem thêm")}/>
-    <ArrowNavigation/>
-     <div className="w-full max-w-md flex flex-col gap-3 mt-2">
+      <ActorCard layout="horizontal" name="Quang Khải" imageUrl="/favicon.ico" />
+      <div className="flex flex-wrap gap-3">
+        {tags.map(tag => (
+          <TagItem
+            key={tag.id}
+            label={tag.label}
+            variant="active"
+            onRemove={() => removeTag(tag.id)}
+          />
+        ))}
+        <TagItem label="Thêm tag..." variant="default" />
+      </div>
+
+      <MovieCategoryCard category="Hành động" movies={trendingActionMovies} onClickMore={() => console.log("Xem thêm")} />
+      <ArrowNavigation />
+      <div className="w-full max-w-md flex flex-col gap-3 mt-2">
         {allMovies.map((movie, index) => (
           <MovieSearchCard key={index} {...movie} />
         ))}

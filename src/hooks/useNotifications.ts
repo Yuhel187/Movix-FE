@@ -61,6 +61,7 @@ export const useNotifications = (isAuthenticated: boolean = false, options: UseN
         console.log(' [useNotifications] Connecting to:', SOCKET_URL);
         console.log(' [useNotifications] Using HttpOnly Cookie (withCredentials: true)');
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const socketOptions: any = {
             transports: ['polling', 'websocket'],
             reconnection: true,
@@ -104,6 +105,7 @@ export const useNotifications = (isAuthenticated: boolean = false, options: UseN
             if (options.enableSoundAndToast) {
                 // Phát âm thanh
                 try {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
                     const audioContext = new AudioContext();
                     const oscillator = audioContext.createOscillator();
@@ -193,18 +195,14 @@ export const useNotifications = (isAuthenticated: boolean = false, options: UseN
             newSocket.close();
             socketRef.current = null;
         };
-    }, [isAuthenticated]);
+    }, [isAuthenticated, options.enableSoundAndToast, options.onAccountLocked]);
 
     const fetchNotifications = useCallback(async (page: number = 1, limit: number = 20) => {
         try {
             setIsLoading(true);
             const response = await notificationService.getNotifications(page, limit);
 
-            if (page === 1) {
-                setNotifications(response.data.notifications);
-            } else {
-                setNotifications(prev => [...prev, ...response.data.notifications]);
-            }
+            // if (page === 1) { ... }
 
             setHasMore(response.data.hasNext);
             setCurrentPage(page);

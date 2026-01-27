@@ -30,11 +30,11 @@ import { AddActorDialog } from "@/components/movie/AddActorDialog";
 import { MovieTypeSelect } from "@/components/movie/MovieTypeSelect";
 import { GenreCombobox, Genre } from "@/components/movie/GenreCombobox";
 import { CountrySelect } from "@/components/movie/CountrySelect";
-import { SearchBar } from "@/components/common/search-bar"; 
-import { ApiSearchResult, SearchResultDropdown } from "@/components/common/SearchResultDropdown"; 
-import apiClient from "@/lib/apiClient"; 
-import { toast } from "sonner"; 
-import { Skeleton } from "@/components/ui/skeleton"; 
+import { SearchBar } from "@/components/common/search-bar";
+import { ApiSearchResult, SearchResultDropdown } from "@/components/common/SearchResultDropdown";
+import apiClient from "@/lib/apiClient";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
@@ -60,22 +60,20 @@ const useDebounce = (value: string, delay: number) => {
   return debouncedValue;
 };
 
-interface MovieActor {
-  id: string; name: string; avatar?: string; character: string; 
-}
+
 
 type Episode = {
-  id: string | number; 
+  id: string | number;
   title: string;
   duration: number | null;
-  video_url: string | null; 
+  video_url: string | null;
   episode_number: number;
 };
 
 type Season = {
-  id: string; 
+  id: string;
   name: string;
-  season_number: number; 
+  season_number: number;
   episodes: Episode[];
 };
 
@@ -125,7 +123,7 @@ export default function MovieManagement() {
     if (slugToEdit) {
       handleSelectMovieToEdit(slugToEdit);
     }
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     if (debouncedSearch) {
@@ -145,7 +143,7 @@ export default function MovieManagement() {
       setIsSearchLoading(false);
     }
   }, [debouncedSearch]);
-  
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
@@ -159,27 +157,28 @@ export default function MovieManagement() {
   useEffect(() => {
     setBackdropError(false);
     setPosterError(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [movieToEdit?.id]);
 
   useEffect(() => {
     const fetchGenres = async () => {
-        try {
-            const res = await apiClient.get('/genres');
-            if (Array.isArray(res.data)) {
-                setAllGenres(res.data);
-            }
-        } catch (error) {
-            console.error("Lỗi tải danh sách thể loại:", error);
-            toast.error("Không thể tải danh sách thể loại.");
+      try {
+        const res = await apiClient.get('/genres');
+        if (Array.isArray(res.data)) {
+          setAllGenres(res.data);
         }
+      } catch (error) {
+        console.error("Lỗi tải danh sách thể loại:", error);
+        toast.error("Không thể tải danh sách thể loại.");
+      }
     };
     fetchGenres();
   }, []);
-  
+
   const handleSelectMovieToEdit = async (slug: string) => {
     setIsDropdownOpen(false);
     setIsLoadingMovie(true);
-    setSearchTerm(""); 
+    setSearchTerm("");
     try {
       const res = await apiClient.get(`/movies/${slug}`);
       setMovieToEdit(res.data);
@@ -208,7 +207,7 @@ export default function MovieManagement() {
       });
     } finally {
       setIsTraining(false);
-      setShowRetrainDialog(false); 
+      setShowRetrainDialog(false);
     }
   };
 
@@ -221,13 +220,13 @@ export default function MovieManagement() {
   };
 
   const handleSave = async () => {
-      if (!movieToEdit) return;
-      setIsSaving(true);
-      const toastId = toast.loading("Đang lưu thay đổi...");
-      try {
-        await apiClient.put(`/movies/${movieToEdit.id}`, movieToEdit); 
-        toast.success("Lưu thay đổi thành công!", { id: toastId });
-        setIsFormDirty(false);
+    if (!movieToEdit) return;
+    setIsSaving(true);
+    const toastId = toast.loading("Đang lưu thay đổi...");
+    try {
+      await apiClient.put(`/movies/${movieToEdit.id}`, movieToEdit);
+      toast.success("Lưu thay đổi thành công!", { id: toastId });
+      setIsFormDirty(false);
     } catch (err) {
       console.error(err);
       toast.error("Lưu thất bại. Vui lòng thử lại.", { id: toastId });
@@ -239,13 +238,13 @@ export default function MovieManagement() {
   const handleDeleteMovie = async () => {
     if (!movieToEdit) return;
     if (!confirm(`Bạn có chắc muốn xóa (soft delete) phim "${movieToEdit.title}"?`)) return;
-    
+
     setIsDeleting(true);
     const toastId = toast.loading("Đang xóa phim...");
     try {
       await apiClient.delete(`/movies/${movieToEdit.id}`);
       toast.success("Xóa phim thành công.", { id: toastId });
-      setMovieToEdit(null); 
+      setMovieToEdit(null);
     } catch (err) {
       console.error(err);
       toast.error("Xóa thất bại.", { id: toastId });
@@ -253,20 +252,20 @@ export default function MovieManagement() {
       setIsDeleting(false);
     }
   };
-  
+
   const handleCreateGenreAPI = async (name: string) => {
     try {
-        const res = await apiClient.post('/genres', { name });
-        const newGenre: Genre = res.data;
-        
-        setAllGenres((currentDB) => [...currentDB, newGenre]);
-        
-        updateMovieField('movie_genres', [...(movieToEdit.movie_genres || []), { genre: newGenre }]);
-        
-        toast.success(`Đã tạo thể loại: ${newGenre.name}`);
+      const res = await apiClient.post('/genres', { name });
+      const newGenre: Genre = res.data;
+
+      setAllGenres((currentDB) => [...currentDB, newGenre]);
+
+      updateMovieField('movie_genres', [...(movieToEdit.movie_genres || []), { genre: newGenre }]);
+
+      toast.success(`Đã tạo thể loại: ${newGenre.name}`);
     } catch (error) {
-        console.error("Lỗi tạo thể loại:", error);
-        toast.error("Không thể tạo thể loại mới.");
+      console.error("Lỗi tạo thể loại:", error);
+      toast.error("Không thể tạo thể loại mới.");
     }
   };
 
@@ -294,86 +293,86 @@ export default function MovieManagement() {
 
   // --- SEASONS & EPISODES LOGIC ---
   const handleSeasonSelect = (seasonId: string) => {
-      setSelectedSeasonId(seasonId);
+    setSelectedSeasonId(seasonId);
   };
 
   const handleAddNewSeason = () => {
-      if (newSeasonName.trim() === "") return;
-      if (!movieToEdit) return;
+    if (newSeasonName.trim() === "") return;
+    if (!movieToEdit) return;
 
-      const newSeasonNumber = (movieToEdit.seasons?.length || 0) + 1;
-      
-      const newSeason: Season = {
-          id: `temp-${Date.now()}`, 
-          name: newSeasonName,
-          season_number: newSeasonNumber,
-          episodes: [
-              { id: `temp-ep-${Date.now()}`, title: "Tập 1", duration: 0, video_url: "", episode_number: 1 }
-          ],
-      };
+    const newSeasonNumber = (movieToEdit.seasons?.length || 0) + 1;
 
-      updateMovieField('seasons', [...(movieToEdit.seasons || []), newSeason]);
-      setNewSeasonName("");
-      setSelectedSeasonId(newSeason.id);
-      toast.success(`Đã thêm ${newSeason.name}.`);
+    const newSeason: Season = {
+      id: `temp-${Date.now()}`,
+      name: newSeasonName,
+      season_number: newSeasonNumber,
+      episodes: [
+        { id: `temp-ep-${Date.now()}`, title: "Tập 1", duration: 0, video_url: "", episode_number: 1 }
+      ],
+    };
+
+    updateMovieField('seasons', [...(movieToEdit.seasons || []), newSeason]);
+    setNewSeasonName("");
+    setSelectedSeasonId(newSeason.id);
+    toast.success(`Đã thêm ${newSeason.name}.`);
   };
 
   const handleAddEpisode = () => {
-      if (!selectedSeasonId || !movieToEdit) return;
+    if (!selectedSeasonId || !movieToEdit) return;
 
-      const currentSeason = movieToEdit.seasons.find((s: Season) => s.id === selectedSeasonId);
-      if (!currentSeason) return;
+    const currentSeason = movieToEdit.seasons.find((s: Season) => s.id === selectedSeasonId);
+    if (!currentSeason) return;
 
-      const newEpisodeNumber = (currentSeason.episodes.length || 0) + 1;
-      const newEpisode: Episode = {
-          id: `temp-ep-${Date.now()}`,
-          title: `Tập ${newEpisodeNumber}`,
-          duration: 0,
-          video_url: "",
-          episode_number: newEpisodeNumber
-      };
+    const newEpisodeNumber = (currentSeason.episodes.length || 0) + 1;
+    const newEpisode: Episode = {
+      id: `temp-ep-${Date.now()}`,
+      title: `Tập ${newEpisodeNumber}`,
+      duration: 0,
+      video_url: "",
+      episode_number: newEpisodeNumber
+    };
 
-      const newSeasons = movieToEdit.seasons.map((season: Season) => {
-          if (season.id === selectedSeasonId) {
-              return { ...season, episodes: [...season.episodes, newEpisode] };
-          }
-          return season;
-      });
-      updateMovieField('seasons', newSeasons);
-      toast.success(`Đã thêm tập mới vào ${currentSeason.name}.`);
+    const newSeasons = movieToEdit.seasons.map((season: Season) => {
+      if (season.id === selectedSeasonId) {
+        return { ...season, episodes: [...season.episodes, newEpisode] };
+      }
+      return season;
+    });
+    updateMovieField('seasons', newSeasons);
+    toast.success(`Đã thêm tập mới vào ${currentSeason.name}.`);
   };
 
   const handleRemoveEpisode = (episodeId: string | number) => {
-      if (!selectedSeasonId || !movieToEdit) return;
+    if (!selectedSeasonId || !movieToEdit) return;
 
-      const newSeasons = movieToEdit.seasons.map((season: Season) => {
-          if (season.id === selectedSeasonId) {
-              if (season.episodes.length <= 1) {
-                  toast.error("Một mùa phải có ít nhất 1 tập.");
-                  return season;
-              }
-              return { ...season, episodes: season.episodes.filter((ep: Episode) => ep.id !== episodeId) };
-          }
+    const newSeasons = movieToEdit.seasons.map((season: Season) => {
+      if (season.id === selectedSeasonId) {
+        if (season.episodes.length <= 1) {
+          toast.error("Một mùa phải có ít nhất 1 tập.");
           return season;
-      });
-      updateMovieField('seasons', newSeasons);
+        }
+        return { ...season, episodes: season.episodes.filter((ep: Episode) => ep.id !== episodeId) };
+      }
+      return season;
+    });
+    updateMovieField('seasons', newSeasons);
   };
 
   const handleEpisodeChange = (episodeId: string | number, field: 'title' | 'duration' | 'video_url' | 'video_image_url', value: string | number | null) => {
-      if (!selectedSeasonId || !movieToEdit) return;
-      
-      const newSeasons = movieToEdit.seasons.map((season: Season) => {
-          if (season.id === selectedSeasonId) {
-              return {
-                  ...season,
-                  episodes: season.episodes.map((ep: Episode) => 
-                      ep.id === episodeId ? { ...ep, [field]: value } : ep
-                  )
-              };
-          }
-          return season;
-      });
-      updateMovieField('seasons', newSeasons);
+    if (!selectedSeasonId || !movieToEdit) return;
+
+    const newSeasons = movieToEdit.seasons.map((season: Season) => {
+      if (season.id === selectedSeasonId) {
+        return {
+          ...season,
+          episodes: season.episodes.map((ep: Episode) =>
+            ep.id === episodeId ? { ...ep, [field]: value } : ep
+          )
+        };
+      }
+      return season;
+    });
+    updateMovieField('seasons', newSeasons);
   };
 
   const handleRenameSeason = (seasonId: string, newName: string) => {
@@ -397,11 +396,11 @@ export default function MovieManagement() {
 
     const newSeasons = movieToEdit.seasons.filter((s: Season) => s.id !== seasonToDelete);
     updateMovieField('seasons', newSeasons);
-    
+
     if (newSeasons.length > 0) {
-        setSelectedSeasonId(newSeasons[0].id);
+      setSelectedSeasonId(newSeasons[0].id);
     } else {
-        setSelectedSeasonId(null);
+      setSelectedSeasonId(null);
     }
     toast.success("Đã xóa mùa phim.");
     setIsDeleteSeasonDialogOpen(false);
@@ -508,7 +507,7 @@ export default function MovieManagement() {
                             className={cn(
                               "mt-2 w-full justify-start text-left font-normal text-white bg-[#262626] border-slate-700 hover:bg-[#333] hover:text-white",
                               !movieToEdit.release_date &&
-                                "text-muted-foreground"
+                              "text-muted-foreground"
                             )}
                           >
                             <CalendarIconLucide className="mr-2 h-4 w-4" />
@@ -774,7 +773,7 @@ export default function MovieManagement() {
                                 </SelectContent>
                               </Select>
                             </div>
-                            
+
                             {currentSelectedSeason && (
                               <div className="flex-1">
                                 <Label
@@ -931,7 +930,7 @@ export default function MovieManagement() {
                                   </div>
                                   {currentSelectedSeason &&
                                     currentSelectedSeason.episodes.length >
-                                      0 && (
+                                    0 && (
                                       <Button
                                         variant="ghost"
                                         size="icon"
@@ -1006,7 +1005,7 @@ export default function MovieManagement() {
                             if (episodes.length === 0) {
                               episodes.push({
                                 id: `temp-ep-${Date.now()}`,
-                                title: movieToEdit.title || "Phim lẻ", 
+                                title: movieToEdit.title || "Phim lẻ",
                                 episode_number: 1,
                                 duration: movieToEdit.duration || 0,
                                 video_url: "",
@@ -1075,7 +1074,7 @@ export default function MovieManagement() {
                   isLoading={isSearchLoading}
                   onClose={() => setIsDropdownOpen(false)}
                   onMovieClick={handleSelectMovieToEdit}
-                  onPersonClick={() => {}}
+                  onPersonClick={() => { }}
                 />
               )}
             </div>

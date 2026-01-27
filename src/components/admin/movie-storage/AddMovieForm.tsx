@@ -221,7 +221,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
         } else {
           toast.error("AI không tìm thấy phim này trên TMDB.");
         }
-      } catch (parseError) {
+      } catch (err) {
         console.error("Lỗi parse JSON từ AI:", reply);
         toast.error(
           "AI trả về định dạng không đúng. Vui lòng thử lại cụ thể hơn."
@@ -317,7 +317,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
         setReleaseDate(new Date(data.release_date));
       }
       setPosterPreview(data.poster_url);
-      setBackdropPreview(data.backdrop_url); 
+      setBackdropPreview(data.backdrop_url);
       if (data.production_country) {
         const mappedIso = countryIsoMap[data.production_country];
         const mappedName = countryMap[data.production_country];
@@ -363,17 +363,17 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
       }));
       const directorFromTmdb = data.director
         ? [
-            {
-              id: data.director.id.toString(),
-              name: data.director.name,
-              character: "Đạo diễn",
-              avatarUrl: getPersonAvatarUrl(data.director.profile_path),
-              role: "director",
-              biography: data.director.biography,
-              birthday: data.director.birthday,
-              gender: data.director.gender,
-            },
-          ]
+          {
+            id: data.director.id.toString(),
+            name: data.director.name,
+            character: "Đạo diễn",
+            avatarUrl: getPersonAvatarUrl(data.director.profile_path),
+            role: "director",
+            biography: data.director.biography,
+            birthday: data.director.birthday,
+            gender: data.director.gender,
+          },
+        ]
         : [];
       setPeople([...directorFromTmdb, ...castFromTmdb]);
 
@@ -406,7 +406,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
     } catch (err: any) {
       console.error("Lỗi fetch TMDB:", err);
       setIsTmdbDataLoaded(false);
-      
+
       if (err.response && err.response.status === 404) {
         if (selectedMovieType === "single") {
           toast.error(
@@ -450,8 +450,8 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
         duration: e.duration,
         fileName: e.fileName,
         video_image_url: e.video_image_url,
-        videoImageUrl: e.video_image_url, 
-        still_path: e.video_image_url, 
+        videoImageUrl: e.video_image_url,
+        still_path: e.video_image_url,
       })),
     }));
 
@@ -587,14 +587,14 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
 
   const confirmDeleteSeason = () => {
     if (!seasonToDelete) return;
-    
+
     const newSeasons = seasons.filter((s) => s.id !== seasonToDelete);
     setSeasons(newSeasons);
-    
+
     if (newSeasons.length > 0) {
-        setSelectedSeasonId(newSeasons[0].id);
+      setSelectedSeasonId(newSeasons[0].id);
     } else {
-        setSelectedSeasonId("");
+      setSelectedSeasonId("");
     }
     toast.success("Đã xóa mùa phim.");
     setIsDeleteSeasonDialogOpen(false);
@@ -689,7 +689,6 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
   };
 
   const currentSelectedSeason = seasons.find((s) => s.id === selectedSeasonId);
-  const isDisabled = isTmdbDataLoaded;
   return (
     <div className="flex flex-col md:flex-row w-full gap-6 text-white min-h-[calc(100vh-theme(space.16)-theme(space.12))]">
       {/* --- Sidebar Steps --- */}
@@ -708,11 +707,10 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
             {steps.map((step) => (
               <li key={step.id} className="mb-4">
                 <button
-                  className={`flex items-center w-full text-left px-3 py-2 rounded-md transition-colors ${
-                    currentStep === step.id
+                  className={`flex items-center w-full text-left px-3 py-2 rounded-md transition-colors ${currentStep === step.id
                       ? "bg-[#E50914] text-white font-semibold"
                       : "text-gray-400 hover:bg-slate-700/50 hover:text-white"
-                  }`}
+                    }`}
                   onClick={() => {
                     if (step.id < currentStep) {
                       setCurrentStep(step.id);
@@ -720,13 +718,12 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                   }}
                 >
                   <span
-                    className={`flex items-center justify-center w-6 h-6 rounded-full mr-3 text-xs font-bold border flex-shrink-0 ${
-                      currentStep === step.id
+                    className={`flex items-center justify-center w-6 h-6 rounded-full mr-3 text-xs font-bold border flex-shrink-0 ${currentStep === step.id
                         ? "bg-white text-[#E50914] border-white"
                         : step.id < currentStep
-                        ? "bg-green-600 border-green-500 text-white"
-                        : "border-gray-500 text-gray-400"
-                    }`}
+                          ? "bg-green-600 border-green-500 text-white"
+                          : "border-gray-500 text-gray-400"
+                      }`}
                   >
                     {step.id}
                   </span>
@@ -810,11 +807,10 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                     </label>
                     <div className="flex flex-col sm:flex-row gap-4">
                       <Card
-                        className={`flex-1 p-4 cursor-pointer transition-all border ${
-                          selectedMovieType === "single"
+                        className={`flex-1 p-4 cursor-pointer transition-all border ${selectedMovieType === "single"
                             ? "bg-[#E50914]/20 border-[#E50914]"
                             : "bg-[#262626] border-slate-700 hover:border-slate-500"
-                        }`}
+                          }`}
                         onClick={() => {
                           if (selectedMovieType !== "single") {
                             setSelectedMovieType("single");
@@ -824,11 +820,10 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                       >
                         <div className="flex items-center gap-3">
                           <Film
-                            className={`w-6 h-6 ${
-                              selectedMovieType === "single"
+                            className={`w-6 h-6 ${selectedMovieType === "single"
                                 ? "text-[#E50914]"
                                 : "text-gray-400"
-                            }`}
+                              }`}
                           />
                           <div>
                             <h3 className="font-semibold text-white">
@@ -841,11 +836,10 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                         </div>
                       </Card>
                       <Card
-                        className={`flex-1 p-4 cursor-pointer transition-all border ${
-                          selectedMovieType === "series"
+                        className={`flex-1 p-4 cursor-pointer transition-all border ${selectedMovieType === "series"
                             ? "bg-[#E50914]/20 border-[#E50914]"
                             : "bg-[#262626] border-slate-700 hover:border-slate-500"
-                        }`}
+                          }`}
                         onClick={() => {
                           if (selectedMovieType !== "series") {
                             setSelectedMovieType("series");
@@ -855,11 +849,10 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                       >
                         <div className="flex items-center gap-3">
                           <Tv
-                            className={`w-6 h-6 ${
-                              selectedMovieType === "series"
+                            className={`w-6 h-6 ${selectedMovieType === "series"
                                 ? "text-[#E50914]"
                                 : "text-gray-400"
-                            }`}
+                              }`}
                           />
                           <div>
                             <h3 className="font-semibold text-white">
@@ -1214,7 +1207,7 @@ export default function AddMovieForm({ onClose }: AddMovieFormProps) {
                           </SelectContent>
                         </Select>
                       </div>
-                      
+
                       {currentSelectedSeason && (
                         <div className="flex-1">
                           <label

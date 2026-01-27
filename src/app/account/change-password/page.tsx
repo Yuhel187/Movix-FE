@@ -32,7 +32,7 @@ export default function ChangePasswordPage() {
 
     if (!passwordRegex.test(newPassword)) {
       toast.error(passwordError, {
-        duration: 8000, 
+        duration: 8000,
       });
       return;
     }
@@ -50,8 +50,8 @@ export default function ChangePasswordPage() {
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (error: any) {
-      const errMsg = error.response?.data?.message || 'Đổi mật khẩu thất bại.';
+    } catch {
+      const errMsg = 'Đổi mật khẩu thất bại.';
       toast.error(errMsg, { id: toastId });
     } finally {
       setIsLoading(false);

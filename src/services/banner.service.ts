@@ -3,17 +3,18 @@ import type { Banner } from "@/types/banner";
 
 export async function getBanners(): Promise<Banner[]> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data } = await api.get<any[]>('/banners');
-    
+
     return data.map(item => ({
       id: item.id,
       title: item.title,
       imageUrl: item.image_url || "/images/placeholder-backdrop.png",
       linkUrl: item.link_url || "#",
       isActive: item.is_active,
-      movieId: item.movie_id,    
-      description: item.description, 
-      movie: item.movie   
+      movieId: item.movie_id,
+      description: item.description,
+      movie: item.movie
     }));
   } catch (error) {
     console.error("Lỗi lấy banner:", error);

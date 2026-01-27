@@ -1,15 +1,18 @@
-import FilterPage from "@/components/filter/FilterPage";
+import FilterPageClient from "@/components/filter/FilterPage";
 
-export default function Page({
+export default async function FilterPage({
   searchParams,
 }: {
-  searchParams?: {
-    q?: string;
-    type?: string;
-    genre?: string;
-    country?: string;
-    year?: string;
-  };
+  searchParams: Promise<{ [key: string]: string | undefined }>;
 }) {
-  return <FilterPage searchParams={searchParams} />;
+  const resolvedParams = await searchParams;
+  const initialFilters = {
+    q: resolvedParams.q || "",
+    type: resolvedParams.type || "all",
+    genre: resolvedParams.genre || "all",
+    country: resolvedParams.country || "all",
+    year: resolvedParams.year || "all",
+  };
+
+  return <FilterPageClient initialFilters={initialFilters} />;
 }

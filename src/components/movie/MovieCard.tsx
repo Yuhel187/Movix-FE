@@ -68,7 +68,7 @@ export function MovieCard({
 
     const subTitle = movie.subTitle || "";
     const displayDuration = duration || (displayType === 'Phim bộ' ? `${seasons?.length || 0} Mùa` : 'Phim lẻ');
-    const displayPoster = movie.posterUrl || movie.poster_url || "https://static.vecteezy.com/system/resources/previews/020/276/914/non_2x/404-internet-error-page-icon-404-number-symbol-free-vector.jpg";
+    const displayPoster = movie.posterUrl || (movie as any).posterUrl || "https://static.vecteezy.com/system/resources/previews/020/276/914/non_2x/404-internet-error-page-icon-404-number-symbol-free-vector.jpg";
     const cardRef = useRef<HTMLDivElement>(null)
     const [previewPosition, setPreviewPosition] = useState<"left" | "right" | "center">("center")
 
@@ -209,10 +209,10 @@ export function MovieCard({
                                 {!isPreviewImageLoaded && (
                                     <Skeleton className="absolute inset-0 h-full w-full bg-zinc-800" />
                                 )}
-                                <Image 
-                                    src={displayPoster} 
-                                    alt={title} 
-                                    fill 
+                                <Image
+                                    src={displayPoster}
+                                    alt={title}
+                                    fill
                                     className={cn(
                                         "object-cover transition-opacity duration-300",
                                         isPreviewImageLoaded ? "opacity-100" : "opacity-0"

@@ -32,7 +32,7 @@ const CountryManagement = () => {
   const [countries, setCountries] = useState<Country[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -86,16 +86,9 @@ const CountryManagement = () => {
         toast.success("Thêm mới thành công");
       }
       setIsDialogOpen(false);
-      fetchCountries(); 
-    } catch (error: any) {
-      if (error.response && error.response.status === 409) {
-            toast.error("Quốc gia này đã tồn tại trong hệ thống!");
-        } 
-        else {
-            console.error(error);
-            const errorMessage = error.response?.data?.message || "Có lỗi xảy ra, vui lòng thử lại";
-            toast.error(errorMessage);
-        }
+      fetchCountries();
+    } catch {
+      toast.error("Có lỗi xảy ra, vui lòng thử lại");
     } finally {
       setIsSubmitting(false);
     }
@@ -115,7 +108,7 @@ const CountryManagement = () => {
     }
   };
 
-  const filteredCountries = countries.filter(c => 
+  const filteredCountries = countries.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -137,10 +130,10 @@ const CountryManagement = () => {
             <CardTitle>Danh sách quốc gia</CardTitle>
             <div className="relative w-full max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input 
-                type="search" 
-                placeholder="Tìm kiếm quốc gia..." 
-                className="pl-8" 
+              <Input
+                type="search"
+                placeholder="Tìm kiếm quốc gia..."
+                className="pl-8"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -167,7 +160,7 @@ const CountryManagement = () => {
                 </TableRow>
               ) : filteredCountries.length === 0 ? (
                 <TableRow>
-                   <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
                     Không tìm thấy dữ liệu.
                   </TableCell>
                 </TableRow>
@@ -193,7 +186,7 @@ const CountryManagement = () => {
                           <DropdownMenuItem onClick={() => handleOpenEdit(country)}>
                             <Edit className="mr-2 h-4 w-4" /> Sửa
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="text-red-600 focus:text-red-600"
                             onClick={() => setItemToDelete(country.id)}
                           >
@@ -259,7 +252,7 @@ const CountryManagement = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >

@@ -4,7 +4,7 @@ import { MovieCard } from "@/components/movie/MovieCard";
 import { PlaylistItemCard } from "@/components/account/PlaylistItem";
 import type { Movie } from "@/types/movie";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, List, Trash2 } from "lucide-react";
+import { List, Trash2 } from "lucide-react";
 import {
   getPlaylists,
   getPlaylistDetail,
@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // Hàm helper để xử lý dữ liệu thiếu từ API
-const getYear = (dateString?: string) => dateString ? new Date(dateString).getFullYear() : 0;
+
 
 export default function PlaylistPage() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -60,8 +60,8 @@ export default function PlaylistPage() {
         const data = await getPlaylists();
         setPlaylists(data);
         if (data.length > 0) setActivePlaylistId(data[0].id);
-      } catch (err) {
-        console.error("Lỗi tải playlist:", err);
+      } catch {
+        // console.error("Lỗi tải playlist:", err); 
       } finally {
         setIsLoadingList(false);
       }
@@ -103,7 +103,7 @@ export default function PlaylistPage() {
         });
 
         setCurrentMovies(mappedMovies);
-      } catch (err) {
+      } catch {
         toast.error("Không thể tải nội dung playlist");
         setCurrentMovies([]);
       } finally {
@@ -123,7 +123,7 @@ export default function PlaylistPage() {
       );
       toast.success("Đã cập nhật tên playlist");
       setEditingPlaylist(null);
-    } catch (error) {
+    } catch {
       toast.error("Cập nhật thất bại");
     }
   };
@@ -133,15 +133,15 @@ export default function PlaylistPage() {
     try {
       await deletePlaylist(playlistToDelete);
       setPlaylists((prev) => prev.filter((p) => p.id !== playlistToDelete));
-      
+
       // If deleted active playlist, switch to another one or null
       if (activePlaylistId === playlistToDelete) {
         const remaining = playlists.filter(p => p.id !== playlistToDelete);
         setActivePlaylistId(remaining.length > 0 ? remaining[0].id : null);
       }
-      
+
       toast.success("Đã xóa playlist");
-    } catch (error) {
+    } catch {
       toast.error("Xóa playlist thất bại");
     } finally {
       setPlaylistToDelete(null);
@@ -160,7 +160,7 @@ export default function PlaylistPage() {
       ));
 
       toast.success("Đã xóa phim khỏi playlist");
-    } catch (error) {
+    } catch {
       toast.error("Xóa phim thất bại");
     } finally {
       setMovieToDelete(null);

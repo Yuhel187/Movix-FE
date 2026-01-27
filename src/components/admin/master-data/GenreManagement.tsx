@@ -41,7 +41,7 @@ const GenreManagement = () => {
       const data = await genreService.getAll();
       setGenres(data);
     } catch (error) {
-        console.error(error);
+      console.error(error);
       toast.error("Không thể tải danh sách thể loại");
     } finally {
       setIsLoading(false);
@@ -82,9 +82,9 @@ const GenreManagement = () => {
       }
       setIsDialogOpen(false);
       fetchGenres();
-    } catch (error: any) {
-        const msg = error.response?.data?.message || "Có lỗi xảy ra";
-        toast.error(msg);
+    } catch {
+      const msg = "Có lỗi xảy ra";
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -96,8 +96,8 @@ const GenreManagement = () => {
       await genreService.delete(itemToDelete);
       toast.success("Đã xóa thể loại");
       fetchGenres();
-    } catch (error: any) {
-      const msg = error.response?.data?.message || "Không thể xóa thể loại này";
+    } catch {
+      const msg = "Không thể xóa thể loại này";
       toast.error(msg);
     } finally {
       setItemToDelete(null);
@@ -150,7 +150,7 @@ const GenreManagement = () => {
                 <TableRow>
                   <TableCell colSpan={3} className="h-24 text-center">
                     <div className="flex justify-center items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Đang tải...
+                      <Loader2 className="h-4 w-4 animate-spin" /> Đang tải...
                     </div>
                   </TableCell>
                 </TableRow>
@@ -164,13 +164,13 @@ const GenreManagement = () => {
                 filteredGenres.map((genre) => (
                   <TableRow key={genre.id}>
                     <TableCell className="font-medium flex items-center gap-2">
-                        <Tag className="h-4 w-4 text-muted-foreground" />
-                        {genre.name}
+                      <Tag className="h-4 w-4 text-muted-foreground" />
+                      {genre.name}
                     </TableCell>
                     <TableCell className="text-center">
-                        <span className="inline-flex items-center rounded-md bg-secondary px-2 py-1 text-xs font-medium ring-1 ring-inset ring-gray-500/10">
-                            {genre._count?.movie_genres || 0} phim
-                        </span>
+                      <span className="inline-flex items-center rounded-md bg-secondary px-2 py-1 text-xs font-medium ring-1 ring-inset ring-gray-500/10">
+                        {genre._count?.movie_genres || 0} phim
+                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -184,7 +184,7 @@ const GenreManagement = () => {
                           <DropdownMenuItem onClick={() => handleOpenEdit(genre)}>
                             <Edit className="mr-2 h-4 w-4" /> Sửa
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="text-red-600 focus:text-red-600"
                             onClick={() => setItemToDelete(genre.id)}
                           >
@@ -248,11 +248,11 @@ const GenreManagement = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction 
-                onClick={handleDelete}
-                className="bg-red-600 hover:bg-red-700"
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700"
             >
-                Xóa ngay
+              Xóa ngay
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

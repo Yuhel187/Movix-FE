@@ -3,7 +3,6 @@ import type { Movie, MovieResponse, Season, Genre } from "@/types/movie";
 import type { Actor } from "@/types/actor";
 import type { Director } from "@/types/director";
 import { getTmdbImageUrl, getPersonAvatarUrl } from "@/lib/tmdb";
-import { metadata } from "@/app/layout";
 
 export interface SidebarData {
   releaseYear: number | string;
@@ -15,6 +14,7 @@ export interface SidebarData {
 }
 // --- Mappers ---
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapSeasons(rawSeasons: any[] = []): Season[] {
   return rawSeasons.map((s) => ({
     id: s.id,
@@ -40,6 +40,7 @@ function mapSeasons(rawSeasons: any[] = []): Season[] {
   }));
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapCast(moviePeople: any[] = []): Actor[] {
   return moviePeople
     .filter((mp) => mp.person.role_type === "actor" || mp.credit_type === "cast")
@@ -55,6 +56,7 @@ function mapCast(moviePeople: any[] = []): Actor[] {
     }));
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapDirector(moviePeople: any[] = []): Director | undefined {
   const directorRaw = moviePeople.find(
     (mp) => mp.person.role_type === "director" || mp.credit_type === "crew"
@@ -68,6 +70,7 @@ function mapDirector(moviePeople: any[] = []): Director | undefined {
     : undefined;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapToMovie(raw: any): Movie {
   const releaseYear = raw.release_date
     ? new Date(raw.release_date).getFullYear()
@@ -153,6 +156,7 @@ export async function getMovieData(slug: string) {
     };
 
     return { movie, sidebarData };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error("Lỗi lấy phim:", error.response?.data || error.message);
     throw new Error("Không tìm thấy phim");
@@ -175,6 +179,7 @@ export interface MovieSection {
 
 export async function getDynamicSections(): Promise<MovieSection[]> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data } = await api.get<any[]>("/homepage");
     return data.map((section) => ({
       id: section.id,
@@ -191,6 +196,7 @@ export async function getDynamicSections(): Promise<MovieSection[]> {
 
 export async function getPersonalizedMovies(): Promise<Movie[]> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response = await api.get<any>("/movies/for-you");
     // The API returns { message: string, data: [...] }
     return response.data.data.map(mapToMovie);

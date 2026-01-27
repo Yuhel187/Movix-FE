@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import FilterPanel, { FilterState } from "@/components/filter/FilterPanel";
 import { Pagination } from "@/components/common/pagination";
 import AddMovieForm from "./AddMovieForm";
-import apiClient from "@/lib/apiClient"; 
+import apiClient from "@/lib/apiClient";
 import { SearchBar } from "@/components/common/search-bar";
 import {
   List,
@@ -81,9 +81,9 @@ const useDebounce = (value: string, delay: number) => {
   return debouncedValue;
 };
 
-const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: { 
+const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
   movie: Movie | null;
-  onMovieDeleted: (movieId: string) => void; 
+  onMovieDeleted: (movieId: string) => void;
   onEditMovie: (slug: string) => void;
 }) => {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
@@ -99,7 +99,7 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
     );
   }
 
-  const movieData = movie as any; 
+  const movieData = movie as any;
   const isDeleted = movieData.is_deleted;
   const isActive = movieData.is_active;
   let contentInfo = { icon: <FilmIcon className="w-4 h-4 mr-2" />, text: "Phim lẻ" };
@@ -112,12 +112,12 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
     };
   }
   const genres: string[] = movieData.movie_genres?.map((mg: any) => mg.genre.name) || [];
-  
-  const displayPoster =  movie.posterUrl || movie.poster_url || "/images/placeholder-poster.png"; 
+
+  const displayPoster = movie.posterUrl || movie.poster_url || "/images/placeholder-poster.png";
 
   const handleDelete = async () => {
     if (!movie || !movie.id) return;
-    
+
     const toastId = toast.loading("Đang xóa phim...");
     try {
       await apiClient.delete(`/movies/${movie.id.toString()}`);
@@ -133,11 +133,11 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
   return (
     <Card className="bg-[#262626] border-slate-800 text-white h-full flex flex-col overflow-hidden shadow-xl">
       <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
-        
+
         <div className="max-w-[160px] mx-auto">
           <div className="aspect-[2/3] relative rounded-md overflow-hidden bg-slate-800">
             <Image
-              src={displayPoster || "/images/placeholder-poster.png"}
+              src={movie.posterUrl || "/images/placeholder-poster.png"}
               alt={movie.title}
               fill
               className="object-contain"
@@ -181,12 +181,12 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
             </span>
           </div>
           <div className="flex justify-between items-center">
-             <span className="text-gray-400">Quốc gia:</span>
-             <span className="font-medium">{movieData.country?.name || 'N/A'}</span>
+            <span className="text-gray-400">Quốc gia:</span>
+            <span className="font-medium">{movieData.country?.name || 'N/A'}</span>
           </div>
-           <div className="flex justify-between items-center">
-             <span className="text-gray-400">Mã TMDB:</span>
-             <span className="font-medium text-gray-300">{movieData.tmdb_id || 'N/A'}</span>
+          <div className="flex justify-between items-center">
+            <span className="text-gray-400">Mã TMDB:</span>
+            <span className="font-medium text-gray-300">{movieData.tmdb_id || 'N/A'}</span>
           </div>
         </div>
 
@@ -228,11 +228,11 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
       </div>
 
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-         <AlertDialogContent>
-           <AlertDialogHeader>
+        <AlertDialogContent>
+          <AlertDialogHeader>
             <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
             <AlertDialogDescription>
-              Hành động này sẽ xóa (soft delete) phim <strong className="text-white">{movie.title}</strong>. <br/>Phim sẽ bị ẩn khỏi người dùng. Bạn có chắc chắn muốn tiếp tục?
+              Hành động này sẽ xóa (soft delete) phim <strong className="text-white">{movie.title}</strong>. <br />Phim sẽ bị ẩn khỏi người dùng. Bạn có chắc chắn muốn tiếp tục?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -241,7 +241,7 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
               Tiếp tục xóa
             </AlertDialogAction>
           </AlertDialogFooter>
-         </AlertDialogContent>
+        </AlertDialogContent>
       </AlertDialog>
     </Card>
   );
@@ -264,9 +264,9 @@ const RenderGridView = ({
         <MovieCard
           key={movie.id}
           movie={movie}
-          onDetail={handleAction} 
+          onDetail={handleAction}
           onWatch={handleAction}
-          disablePreview={true} 
+          disablePreview={true}
         />
       ))}
     </div>
@@ -301,7 +301,7 @@ const RenderListView = ({
             <TableCell className="font-medium">
               <div className="flex items-center gap-3">
                 <Image
-                  src={movie.posterUrl || movie.poster_url || "/images/placeholder-poster.png"} 
+                  src={movie.posterUrl || "/images/placeholder-poster.png"}
                   alt={movie.title}
                   width={40}
                   height={56}
@@ -411,15 +411,15 @@ export default function MovieStoragePage() {
   const [countries, setCountries] = useState<Country[]>([]);
   const [isLoadingFilterData, setIsLoadingFilterData] = useState(true);
   const [pendingFilters, setPendingFilters] = useState<FilterState>(defaultFilters);
-  const [appliedFilters, setAppliedFilters] = useState<FilterState>(defaultFilters);
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>(defaultFilters);
 
   const handleGoToEditPage = (slug: string) => {
-      if (!slug) {
-        toast.error("Phim này bị lỗi, không có slug để chỉnh sửa.");
-        return;
-      }
-      router.push(`/admin/movie-management?slug=${slug}`);
-    };
+    if (!slug) {
+      toast.error("Phim này bị lỗi, không có slug để chỉnh sửa.");
+      return;
+    }
+    router.push(`/admin/movie-management?slug=${slug}`);
+  };
 
   useEffect(() => {
     const fetchFilterData = async () => {
@@ -447,11 +447,11 @@ export default function MovieStoragePage() {
         setLoading(false);
         return;
       }
-      
+
       try {
         setLoading(true);
         setError(null);
-        
+
         // 2. Chuẩn bị params cho API
         const params = new URLSearchParams();
         params.append('page', currentPage.toString());
@@ -461,34 +461,34 @@ export default function MovieStoragePage() {
         // Thêm filter từ state
         if (appliedFilters.q) params.append('q', appliedFilters.q);
         if (appliedFilters.type && appliedFilters.type !== "Tất cả") {
-            const typeValue = appliedFilters.type === 'Phim lẻ' ? 'phim-le' : (appliedFilters.type === 'Phim bộ' ? 'phim-bo' : appliedFilters.type);
-            params.append("type", typeValue);
+          const typeValue = appliedFilters.type === 'Phim lẻ' ? 'phim-le' : (appliedFilters.type === 'Phim bộ' ? 'phim-bo' : appliedFilters.type);
+          params.append("type", typeValue);
         }
         if (appliedFilters.genre && appliedFilters.genre.length > 0) {
-            appliedFilters.genre.forEach(g => params.append('genre', g));
+          appliedFilters.genre.forEach(g => params.append('genre', g));
         }
         if (appliedFilters.country && appliedFilters.country !== "Tất cả") {
-            params.append("country", appliedFilters.country);
+          params.append("country", appliedFilters.country);
         }
         if (appliedFilters.year && appliedFilters.year !== "Tất cả") {
-            params.append("year", appliedFilters.year);
+          params.append("year", appliedFilters.year);
         }
         // Thêm search term
         if (debouncedSearchTerm.trim()) {
-            params.set('q', debouncedSearchTerm.trim());
+          params.set('q', debouncedSearchTerm.trim());
         }
 
         // 3. Gọi API
         const res = await apiClient.get('/movies/filter', { params });
-        
+
         // 4. Cập nhật state từ response của API
         setMovies(res.data.data);
         setTotalPages(res.data.pagination.totalPages || 1);
-        
+
         if (currentPage === 1 && res.data.data.length > 0) {
-            setSelectedMovie(res.data.data[0]);
+          setSelectedMovie(res.data.data[0]);
         } else if (res.data.data.length === 0) {
-            setSelectedMovie(null);
+          setSelectedMovie(null);
         }
 
       } catch (err: unknown) {
@@ -504,25 +504,25 @@ export default function MovieStoragePage() {
 
     // 5. Gọi hàm fetch
     fetchMovies();
-    
+
     // 6. Cập nhật dependencies
   }, [showAddForm, appliedFilters, currentPage, debouncedSearchTerm]);
 
-const handleMarkMovieAsDeleted = (movieId: string) => {
+  const handleMarkMovieAsDeleted = (movieId: string) => {
     const newMovies = movies.map(m => {
-        if (m.id.toString() === movieId) {
-            return { ...m, is_deleted: true, is_active: false } as any;
-        }
-        return m; 
+      if (m.id.toString() === movieId) {
+        return { ...m, is_deleted: true, is_active: false } as any;
+      }
+      return m;
     });
-    
+
     setMovies(newMovies);
 
     // Cập nhật phim đang chọn (nếu đang xem đúng phim vừa xóa)
     if (selectedMovie?.id.toString() === movieId) {
-        setSelectedMovie(prev => prev ? ({ ...prev, is_deleted: true, is_active: false } as any) : null);
+      setSelectedMovie(prev => prev ? ({ ...prev, is_deleted: true, is_active: false } as any) : null);
     }
-};
+  };
 
   const renderContent = () => {
     if (loading) {
@@ -539,14 +539,14 @@ const handleMarkMovieAsDeleted = (movieId: string) => {
     }
 
     if (movies.length === 0 && totalPages > 1 && currentPage > 1) {
-       setCurrentPage(1); 
-       return null;
+      setCurrentPage(1);
+      return null;
     } else if (movies.length === 0) {
-       return (
-         <div className="flex flex-col items-center justify-center h-64 text-gray-400 bg-[#262626] border border-slate-800 rounded-md">
-           <p>{searchTerm || appliedFilters.q ? `Không tìm thấy phim nào khớp.` : "Không tìm thấy phim nào trong kho."}</p>
-         </div>
-       );
+      return (
+        <div className="flex flex-col items-center justify-center h-64 text-gray-400 bg-[#262626] border border-slate-800 rounded-md">
+          <p>{searchTerm || appliedFilters.q ? `Không tìm thấy phim nào khớp.` : "Không tìm thấy phim nào trong kho."}</p>
+        </div>
+      );
     }
 
     return viewMode === "list" ? (
@@ -564,30 +564,30 @@ const handleMarkMovieAsDeleted = (movieId: string) => {
   };
 
   const handleFilterChange = (key: keyof FilterState, value: string | string[]) => {
-      if (key === 'q') {
-          setSearchTerm(value as string); 
-      }
-      setPendingFilters(prev => ({ ...prev, [key]: value }));
-    };
+    if (key === 'q') {
+      setSearchTerm(value as string);
+    }
+    setPendingFilters(prev => ({ ...prev, [key]: value }));
+  };
 
-  const handleSubmit = () => {
+  const handleSubmit = () => {
     setAppliedFilters({ ...pendingFilters, q: searchTerm || pendingFilters.q });
-    setCurrentPage(1); 
-    setShowFilter(true); 
-  };
+    setCurrentPage(1);
+    setShowFilter(true);
+  };
 
-  const handleReset = () => {
+  const handleReset = () => {
     setPendingFilters(defaultFilters);
     setAppliedFilters(defaultFilters);
     setSearchTerm("");
-    setCurrentPage(1);
-  };
+    setCurrentPage(1);
+  };
 
   const sidebarTopOffset = "top-[calc(4rem+1.5rem)]";
   const sidebarHeight = "h-[calc(100vh-4rem-1.5rem-1.5rem)]";
 
   if (showAddForm) {
-      return <AddMovieForm onClose={() => setShowAddForm(false)} />;
+    return <AddMovieForm onClose={() => setShowAddForm(false)} />;
   }
 
   return (
@@ -636,7 +636,7 @@ const handleMarkMovieAsDeleted = (movieId: string) => {
               </Button>
               <Button
                 className="bg-green-600 hover:bg-green-700 text-white"
-                onClick={() => setShowAddForm(true)} 
+                onClick={() => setShowAddForm(true)}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Thêm phim
@@ -682,20 +682,20 @@ const handleMarkMovieAsDeleted = (movieId: string) => {
             {renderContent()}
           </div>
 
-           {!loading && !error && totalPages > 1 && (
-             <Pagination
-               totalPages={totalPages}
-               currentPage={currentPage}
-               onPageChange={setCurrentPage}
-             />
-           )}
+          {!loading && !error && totalPages > 1 && (
+            <Pagination
+              totalPages={totalPages}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
       </main>
 
       {!showAddForm && (
         <aside className={`hidden lg:block fixed right-0 ${sidebarTopOffset} ${sidebarHeight} lg:w-80 xl:w-96 2xl:w-[450px] pr-6 pl-0 py-0 z-40`}>
-          <div className="h-full overflow-hidden"> 
-            <RenderPreviewCard 
+          <div className="h-full overflow-hidden">
+            <RenderPreviewCard
               movie={selectedMovie}
               onMovieDeleted={handleMarkMovieAsDeleted}
               onEditMovie={handleGoToEditPage}

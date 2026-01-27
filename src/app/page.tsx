@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import LandingView from "@/components/home/LandingView";
 
-import { Skeleton } from "@/components/ui/skeleton";
+
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Home() {
@@ -19,7 +19,7 @@ export default function Home() {
 
     if (user) {
       if (user.role === "Admin") {
-        router.push("/admin"); 
+        router.push("/admin");
       } else {
         router.push("/movies");
       }

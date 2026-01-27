@@ -3,16 +3,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { FcGoogle } from "react-icons/fc";
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation"; 
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import OtpModal from "@/components/auth/OtpModal";
-import apiClient from "@/lib/apiClient"; 
-import { toast } from "sonner"; 
+import apiClient from "@/lib/apiClient";
+import { toast } from "sonner";
 
 export default function RegisterPage() {
   const [username, setUsername] = useState("");
@@ -23,7 +22,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [otpOpen, setOtpOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter(); 
+  const router = useRouter();
 
   const handleValidate = () => {
     if (username.trim().length < 4) {
@@ -49,7 +48,7 @@ export default function RegisterPage() {
       setError(msg);
       return;
     }
-    
+
     setError("");
     setIsLoading(true);
 
@@ -62,19 +61,19 @@ export default function RegisterPage() {
       toast.success("Đăng ký thành công! Vui lòng kiểm tra email.");
       setOtpOpen(true);
 
-    } catch (err: any) { 
+    } catch (err: any) {
       const message = err.response?.data?.message || "";
       if (message.includes("already exists") || message.includes("đã tồn tại")) {
-          try {
-              await apiClient.post('/auth/resend-verification', { email });
-              toast.info("Email này đã đăng ký nhưng chưa xác thực. Đã gửi lại mã OTP.");
-              setOtpOpen(true);
-              return;
-          } catch (e) {
-            setError(message);
-          }
+        try {
+          await apiClient.post('/auth/resend-verification', { email });
+          toast.info("Email này đã đăng ký nhưng chưa xác thực. Đã gửi lại mã OTP.");
+          setOtpOpen(true);
+          return;
+        } catch {
+          setError(message);
+        }
       } else {
-          setError(message || "Đã xảy ra lỗi.");
+        setError(message || "Đã xảy ra lỗi.");
       }
     }
   };
@@ -91,11 +90,11 @@ export default function RegisterPage() {
 
       setOtpOpen(false);
       toast.success("Xác thực thành công! Vui lòng đăng nhập.");
-      router.push("/login"); 
+      router.push("/login");
 
     } catch (err: any) {
       if (err.response && err.response.data && err.response.data.message) {
-        setError(err.response.data.message); 
+        setError(err.response.data.message);
       } else {
         setError("Lỗi xác thực. Vui lòng thử lại.");
       }
@@ -157,7 +156,7 @@ export default function RegisterPage() {
             </p>
 
             <form className="space-y-5" onSubmit={handleRegister}>
-              {error && !otpOpen && ( 
+              {error && !otpOpen && (
                 <p className="text-red-400 text-sm bg-red-950/30 border border-red-700 rounded-md p-2">
                   {error}
                 </p>
@@ -185,7 +184,7 @@ export default function RegisterPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Nhập email"
                   className="bg-zinc-800/80 border-zinc-700 placeholder:text-zinc-500 text-base py-5"
-                  disabled={isLoading || otpOpen} 
+                  disabled={isLoading || otpOpen}
                 />
               </div>
 
@@ -216,14 +215,14 @@ export default function RegisterPage() {
               </div>
 
               <Button
-                type="submit" 
-                disabled={isLoading} 
+                type="submit"
+                disabled={isLoading}
                 className="bg-red-600 hover:bg-red-700 text-white w-full py-5 text-base font-semibold"
               >
                 {isLoading ? "Đang xử lý..." : "Đăng ký"}
               </Button>
 
-              
+
             </form>
           </div>
         </div>
@@ -234,10 +233,10 @@ export default function RegisterPage() {
         open={otpOpen}
         onClose={() => setOtpOpen(false)}
         onVerify={handleVerify}
-        isLoading={isLoading} 
-        targetEmail={email} 
-        onResend={handleResend} 
-        apiError={error} 
+        isLoading={isLoading}
+        targetEmail={email}
+        onResend={handleResend}
+        apiError={error}
       />
     </main>
   );

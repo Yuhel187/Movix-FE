@@ -1,15 +1,15 @@
 import Navbar from "@/components/layout/NavBar";
 import Footer from "@/components/layout/Footer";
 import ActorDetailPage from "@/components/actor/ActorDetailPage";
-import AIChatWidget from "@/components/ai/AIChatWidget";
+
 import { getPersonDetail } from "@/services/person.service";
 
-export default async function PersonDetailPage({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
+export default async function PersonDetailPage({
+  params
+}: {
+  params: Promise<{ id: string }>
 }) {
-  const { id } = await params; 
+  const { id } = await params;
   const person = await getPersonDetail(id);
 
   return (
@@ -18,7 +18,7 @@ export default async function PersonDetailPage({
         <Navbar />
       </div>
       <ActorDetailPage person={person} />
-      
+
       <Footer />
     </main>
   );

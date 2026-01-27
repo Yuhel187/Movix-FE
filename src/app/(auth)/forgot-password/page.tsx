@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import Image from "next/image";
 import ResetPasswordModal from '@/components/auth/ResetPasswordModal';
-import apiClient from '@/lib/apiClient'; 
+import apiClient from '@/lib/apiClient';
 import { toast } from 'sonner';
 
 export default function ForgotPassword() {
@@ -15,23 +15,21 @@ export default function ForgotPassword() {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
         setIsLoading(true);
 
         try {
             await apiClient.post('/auth/forgot-password', { email });
             toast.success("Đã gửi link, vui lòng kiểm tra email của bạn.");
             setIsModalOpen(true);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             if (err.response && err.response.data && err.response.data.message) {
-                setError(err.response.data.message);
+                toast.error(err.response.data.message);
             } else {
-                setError("Đã xảy ra lỗi. Vui lòng thử lại.");
+                toast.error("Đã xảy ra lỗi. Vui lòng thử lại.");
             }
         } finally {
             setIsLoading(false);
@@ -90,9 +88,9 @@ export default function ForgotPassword() {
                                 />
                             </div>
 
-                            <Button 
+                            <Button
                                 type="submit"
-                                disabled={isLoading} 
+                                disabled={isLoading}
                                 className="bg-red-600 hover:bg-red-700 text-white w-full py-5 text-base font-semibold rounded-lg"
                             >
                                 {isLoading ? "Đang gửi..." : "Gửi yêu cầu"}

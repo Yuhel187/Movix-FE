@@ -24,12 +24,9 @@ import {
   Eye,
   EyeOff,
   Reply,
-  AlertCircle,
   MessageSquare,
-  CheckCircle,
   Inbox,
   Sparkles,
-  Loader2,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -40,7 +37,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { CommentItem } from "@/components/comment/CommentItem";
 import { cn } from "@/lib/utils";
 import apiClient from "@/lib/apiClient";
-import { Pagination } from "@/components/common/pagination";
 import { CommentData } from "@/types/comment";
 import {
   AlertDialog,
@@ -79,7 +75,7 @@ export default function CommentManagementPage() {
 
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<TabId>("all");
-  
+
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -103,27 +99,27 @@ export default function CommentManagementPage() {
         page: pagination.page,
         take: 20,
         q: debouncedSearchTerm,
-        filter: activeTab, 
+        filter: activeTab,
       };
-      
+
       const res = await apiClient.get('/comments/admin/list', { params });
-      
+
       setComments(res.data.data);
       setPagination(prev => ({
         ...prev,
         totalPages: res.data.pagination.totalPages,
         total: res.data.pagination.total
       }));
-      
+
       if (res.data.data.length > 0) {
         setSelectedComment((prev) => {
-            if (prev && res.data.data.some((c: AdminCommentData) => c.id === prev.id)) {
-                return res.data.data.find((c: AdminCommentData) => c.id === prev.id) || res.data.data[0];
-            }
-            return res.data.data[0];
+          if (prev && res.data.data.some((c: AdminCommentData) => c.id === prev.id)) {
+            return res.data.data.find((c: AdminCommentData) => c.id === prev.id) || res.data.data[0];
+          }
+          return res.data.data[0];
         });
       } else {
-          setSelectedComment(null);
+        setSelectedComment(null);
       }
 
     } catch (err) {
@@ -146,21 +142,21 @@ export default function CommentManagementPage() {
   const handleToggleHide = async (id: string, currentStatus: boolean) => {
     const actionText = currentStatus ? "Hiện" : "Ẩn";
     const previousComments = [...comments];
-    
+
     setComments(prev => prev.map(c => c.id === id ? { ...c, is_hidden: !c.is_hidden } : c));
     if (selectedComment?.id === id) {
-        setSelectedComment((prev: any) => ({ ...prev, is_hidden: !prev.is_hidden }));
+      setSelectedComment((prev: any) => ({ ...prev, is_hidden: !prev.is_hidden }));
     }
 
     try {
-        await apiClient.put(`/comments/admin/${id}/toggle-hide`);
-        toast.success(`Đã ${actionText.toLowerCase()} bình luận.`);
-    } catch (error) {
-        setComments(previousComments);
-        if (selectedComment?.id === id) {
-             setSelectedComment((prev: any) => ({ ...prev, is_hidden: currentStatus }));
-        }
-        toast.error(`Lỗi khi ${actionText.toLowerCase()} bình luận.`);
+      await apiClient.put(`/comments/admin/${id}/toggle-hide`);
+      toast.success(`Đã ${actionText.toLowerCase()} bình luận.`);
+    } catch {
+      setComments(previousComments);
+      if (selectedComment?.id === id) {
+        setSelectedComment((prev: any) => ({ ...prev, is_hidden: currentStatus }));
+      }
+      toast.error(`Lỗi khi ${actionText.toLowerCase()} bình luận.`);
     }
   };
 
@@ -171,37 +167,37 @@ export default function CommentManagementPage() {
 
   const confirmDelete = async () => {
     if (!deleteId) return;
-    
+
     try {
-        await apiClient.delete(`/comments/admin/${deleteId}`);
-        
-        setComments(prev => prev.filter(c => c.id !== deleteId));
-        if (selectedComment?.id === deleteId) setSelectedComment(null);
-        
-        toast.success("Đã xóa bình luận.");
-    } catch (error) {
-        toast.error("Lỗi khi xóa bình luận.");
+      await apiClient.delete(`/comments/admin/${deleteId}`);
+
+      setComments(prev => prev.filter(c => c.id !== deleteId));
+      if (selectedComment?.id === deleteId) setSelectedComment(null);
+
+      toast.success("Đã xóa bình luận.");
+    } catch {
+      toast.error("Lỗi khi xóa bình luận.");
     } finally {
-        setDeleteId(null);
+      setDeleteId(null);
     }
   };
 
   // Helper xác định AI Flag để hiển thị Badge
   const getAiStatus = (comment: AdminCommentData) => {
-      const score = comment.toxicity_score || 0;
-      if (score > 0.7) return { label: "Độc hại", color: "text-red-400 border-red-500 bg-red-900/30" };
-      if (comment.is_spoiler) return { label: "Spoiler", color: "text-yellow-400 border-yellow-500 bg-yellow-900/30" };
-      return null;
+    const score = comment.toxicity_score || 0;
+    if (score > 0.7) return { label: "Độc hại", color: "text-red-400 border-red-500 bg-red-900/30" };
+    if (comment.is_spoiler) return { label: "Spoiler", color: "text-yellow-400 border-yellow-500 bg-yellow-900/30" };
+    return null;
   };
 
   const fixedHeight = "h-[calc(100vh-theme(space.16)-theme(space.24))]";
 
   return (
     <div className={`flex w-full gap-6 ${fixedHeight}`}>
-      
+
       <div className="flex flex-1 flex-col space-y-4 min-h-0">
         <h1 className="text-2xl font-bold text-white flex-shrink-0">Quản lý Bình luận</h1>
-        
+
         <Card className="bg-[#262626] border-slate-800 text-white flex-shrink-0">
           <CardHeader className="p-3 border-b border-slate-700">
             <div className="flex items-center gap-2">
@@ -233,7 +229,7 @@ export default function CommentManagementPage() {
 
         <div className="flex-grow overflow-hidden min-h-0">
           {loading && comments.length === 0 ? (
-             <CommentTableSkeleton />
+            <CommentTableSkeleton />
           ) : comments.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 bg-[#262626] border border-slate-800 rounded-md p-6">
               <MessageSquare className="h-16 w-16 mb-4 text-slate-700" />
@@ -273,7 +269,7 @@ export default function CommentManagementPage() {
                                 </Avatar>
                                 <div className="flex flex-col">
                                   <span className="text-sm font-medium text-white">{comment.user?.display_name}</span>
-                                  <span className="text-xs text-gray-500">@{comment.user?.username || 'unknown'}</span>
+                                  <span className="text-xs text-gray-500">@{(comment.user as any)?.username || 'unknown'}</span>
                                 </div>
                               </div>
                             </TableCell>
@@ -285,15 +281,15 @@ export default function CommentManagementPage() {
                             </TableCell>
                             <TableCell>
                               {aiStatus ? (
-                                  <Badge variant="outline" className={`${aiStatus.color} border whitespace-nowrap`}>
-                                      {aiStatus.label} {((comment.toxicity_score || 0) * 100).toFixed(0)}%
-                                  </Badge>
+                                <Badge variant="outline" className={`${aiStatus.color} border whitespace-nowrap`}>
+                                  {aiStatus.label} {((comment.toxicity_score || 0) * 100).toFixed(0)}%
+                                </Badge>
                               ) : (
-                                  <Badge variant="outline" className="text-green-400 border-green-900 bg-green-900/10 whitespace-nowrap">An toàn</Badge>
+                                <Badge variant="outline" className="text-green-400 border-green-900 bg-green-900/10 whitespace-nowrap">An toàn</Badge>
                               )}
                             </TableCell>
                             <TableCell className="text-gray-300 text-sm max-w-[150px] truncate" title={comment.movie?.title}>
-                                {comment.movie?.title}
+                              {comment.movie?.title}
                             </TableCell>
                           </TableRow>
                         );
@@ -362,29 +358,29 @@ export default function CommentManagementPage() {
 }
 
 const CommentTableSkeleton = () => (
-    <Card className="h-full overflow-hidden bg-[#262626] border-slate-800 text-white">
-      <div className="p-4 space-y-4">
-        {Array.from({ length: 10 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-4">
-            <Skeleton className="h-10 w-10 rounded-full bg-slate-700" />
-            <div className="space-y-2 flex-1">
-              <Skeleton className="h-4 w-1/3 bg-slate-700" />
-              <Skeleton className="h-4 w-full bg-slate-700" />
-            </div>
+  <Card className="h-full overflow-hidden bg-[#262626] border-slate-800 text-white">
+    <div className="p-4 space-y-4">
+      {Array.from({ length: 10 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4">
+          <Skeleton className="h-10 w-10 rounded-full bg-slate-700" />
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-4 w-1/3 bg-slate-700" />
+            <Skeleton className="h-4 w-full bg-slate-700" />
           </div>
-        ))}
-      </div>
-    </Card>
+        </div>
+      ))}
+    </div>
+  </Card>
 );
 
-const CommentDetailPanel = ({ 
-    comment, 
-    onToggleHide, 
-    onDelete 
-}: { 
-    comment: AdminCommentData | null, 
-    onToggleHide: (id: string, status: boolean) => void, 
-    onDelete: (id: string) => void 
+const CommentDetailPanel = ({
+  comment,
+  onToggleHide,
+  onDelete
+}: {
+  comment: AdminCommentData | null,
+  onToggleHide: (id: string, status: boolean) => void,
+  onDelete: (id: string) => void
 }) => {
   if (!comment) {
     return (
@@ -400,11 +396,11 @@ const CommentDetailPanel = ({
   }
 
   const displayComment: any = {
-      ...comment,
-      user: {
-          ...comment.user,
-          avatar_url: comment.user.avatar_url 
-      }
+    ...comment,
+    user: {
+      ...comment.user,
+      avatar_url: comment.user.avatar_url
+    }
   };
 
   return (
@@ -413,80 +409,80 @@ const CommentDetailPanel = ({
         <div>
           <h3 className="text-sm font-semibold text-gray-400 uppercase">Thông tin ngữ cảnh</h3>
           <div className="flex items-center gap-3 mt-2">
-              <Image 
-                  src={comment.movie?.poster_url || "/images/placeholder-poster.png"} 
-                  alt="Poster" width={40} height={60} className="rounded bg-slate-800 object-cover"
-              />
-              <div className="overflow-hidden">
-                  <p className="font-bold text-sm line-clamp-1" title={comment.movie?.title}>{comment.movie?.title}</p>
-                  <a 
-                      href={`/movies/${comment.movie?.slug}`} 
-                      target="_blank" 
-                      className="text-xs text-blue-400 hover:underline truncate block"
-                  >
-                      Xem trang phim
-                  </a>
-              </div>
+            <Image
+              src={comment.movie?.poster_url || "/images/placeholder-poster.png"}
+              alt="Poster" width={40} height={60} className="rounded bg-slate-800 object-cover"
+            />
+            <div className="overflow-hidden">
+              <p className="font-bold text-sm line-clamp-1" title={comment.movie?.title}>{comment.movie?.title}</p>
+              <a
+                href={`/movies/${comment.movie?.slug}`}
+                target="_blank"
+                className="text-xs text-blue-400 hover:underline truncate block"
+              >
+                Xem trang phim
+              </a>
+            </div>
           </div>
         </div>
 
         <div className="bg-black/20 p-3 rounded border border-slate-700">
-            <div className="flex justify-between items-center mb-2">
-                <p className="text-xs text-gray-400 font-semibold">CHỈ SỐ ĐỘC HẠI</p>
-                <span className="text-sm font-mono font-bold text-white">
-                    {((comment.toxicity_score || 0) * 100).toFixed(1)}%
-                </span>
-            </div>
-            <div className="h-2 w-full bg-slate-700 rounded-full overflow-hidden">
-                <div 
-                    className={`h-full transition-all duration-500 ${comment.toxicity_score > 0.7 ? 'bg-red-500' : 'bg-green-500'}`} 
-                    style={{ width: `${(comment.toxicity_score || 0) * 100}%` }}
-                />
-            </div>
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-xs text-gray-400 font-semibold">CHỈ SỐ ĐỘC HẠI</p>
+            <span className="text-sm font-mono font-bold text-white">
+              {((comment.toxicity_score || 0) * 100).toFixed(1)}%
+            </span>
+          </div>
+          <div className="h-2 w-full bg-slate-700 rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 ${comment.toxicity_score > 0.7 ? 'bg-red-500' : 'bg-green-500'}`}
+              style={{ width: `${(comment.toxicity_score || 0) * 100}%` }}
+            />
+          </div>
         </div>
       </CardHeader>
-      
+
       <div className="flex-1 min-h-0">
         <ScrollArea className="h-full">
-            <div className="p-4 pb-10">
-                <div className="break-words break-all whitespace-pre-wrap w-full">
-                    <CommentItem 
-                        comment={displayComment} 
-                        movieId={comment.movie?.id} 
-                        onCommentUpdated={() => {}} 
-                    />
-                </div>
+          <div className="p-4 pb-10">
+            <div className="break-words break-all whitespace-pre-wrap w-full">
+              <CommentItem
+                comment={displayComment}
+                movieId={comment.movie?.id}
+                onCommentUpdated={() => { }}
+              />
             </div>
+          </div>
         </ScrollArea>
       </div>
 
       <div className="p-4 border-t border-slate-700 space-y-3 bg-[#1F1F1F] flex-shrink-0">
-         <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-400">Trạng thái hiện tại:</span>
-            <Badge variant={comment.is_hidden ? "destructive" : "secondary"} className="capitalize">
-                {comment.is_hidden ? "Đang ẩn" : "Đang hiển thị"}
-            </Badge>
-         </div>
-         <div className="grid grid-cols-2 gap-3">
-            <Button 
-                variant={comment.is_hidden ? "default" : "secondary"}
-                className={cn(
-                    "w-full",
-                    comment.is_hidden ? "bg-green-600 hover:bg-green-700" : "bg-slate-700 hover:bg-slate-600 text-white"
-                )}
-                onClick={() => onToggleHide(comment.id, comment.is_hidden)}
-            >
-                {comment.is_hidden ? <Eye className="w-4 h-4 mr-2"/> : <EyeOff className="w-4 h-4 mr-2"/>}
-                {comment.is_hidden ? "Hiển thị lại" : "Ẩn bình luận"}
-            </Button>
-            <Button 
-                variant="destructive" 
-                className="w-full bg-red-600 hover:bg-red-700"
-                onClick={() => onDelete(comment.id)}
-            >
-                <Trash className="w-4 h-4 mr-2"/> Xóa vĩnh viễn
-            </Button>
-         </div>
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-400">Trạng thái hiện tại:</span>
+          <Badge variant={comment.is_hidden ? "destructive" : "secondary"} className="capitalize">
+            {comment.is_hidden ? "Đang ẩn" : "Đang hiển thị"}
+          </Badge>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            variant={comment.is_hidden ? "default" : "secondary"}
+            className={cn(
+              "w-full",
+              comment.is_hidden ? "bg-green-600 hover:bg-green-700" : "bg-slate-700 hover:bg-slate-600 text-white"
+            )}
+            onClick={() => onToggleHide(comment.id, comment.is_hidden)}
+          >
+            {comment.is_hidden ? <Eye className="w-4 h-4 mr-2" /> : <EyeOff className="w-4 h-4 mr-2" />}
+            {comment.is_hidden ? "Hiển thị lại" : "Ẩn bình luận"}
+          </Button>
+          <Button
+            variant="destructive"
+            className="w-full bg-red-600 hover:bg-red-700"
+            onClick={() => onDelete(comment.id)}
+          >
+            <Trash className="w-4 h-4 mr-2" /> Xóa vĩnh viễn
+          </Button>
+        </div>
       </div>
     </Card>
   );

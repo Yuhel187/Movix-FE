@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use client"; 
+"use client";
 
 import Image from "next/image";
 import Link from "next/link";
-import { FcGoogle } from "react-icons/fc";
-import { FormEvent, useState } from "react"; 
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext"; 
-import apiClient from "@/lib/apiClient"; 
+import { useAuth } from "@/contexts/AuthContext";
+import apiClient from "@/lib/apiClient";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -23,9 +22,9 @@ export default function LoginPage() {
 
   const [otpOpen, setOtpOpen] = useState(false);
   const [targetEmail, setTargetEmail] = useState("");
-  
+
   const router = useRouter();
-  const { login } = useAuth(); 
+  const { login } = useAuth();
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -38,14 +37,14 @@ export default function LoginPage() {
         password,
       });
 
-      const { accessToken, refreshToken, ...user } = res.data.data;
+      const { ...user } = res.data.data;
 
       login(user);
 
       toast.success("Đăng nhập thành công!");
-      
+
       if (user.role === "Admin") {
-        router.push("/admin"); 
+        router.push("/admin");
       } else {
         router.push("/movies");
       }
@@ -57,26 +56,26 @@ export default function LoginPage() {
 
       // Check for locked account first
       const isLocked = message.includes("khóa") || message.includes("locked") || code === "USER_LOCKED";
-      
+
       if (isLocked) {
         setError(resData.message || "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.");
         setIsLoading(false);
         return;
       }
 
-      const isUnverified = 
-        message.includes("xác thực") || 
+      const isUnverified =
+        message.includes("xác thực") ||
         code === "USER_NOT_VERIFIED";
 
       if (isUnverified) {
         toast.warning("Tài khoản chưa được xác thực. Vui lòng nhập mã OTP đã gửi đến email.");
-        setTargetEmail(email); 
+        setTargetEmail(email);
 
         try {
-            await apiClient.post('/auth/resend-verification', { email });
-            setOtpOpen(true); 
-        } catch (resendErr) {
-            toast.error("Không thể gửi lại mã OTP.");
+          await apiClient.post('/auth/resend-verification', { email });
+          setOtpOpen(true);
+        } catch {
+          toast.error("Không thể gửi lại mã OTP.");
         }
       } else if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
@@ -207,16 +206,16 @@ export default function LoginPage() {
                 Quên mật khẩu?
               </Link>
 
-              
+
             </form>
           </div>
         </div>
       </div>
-    <OtpModal
+      <OtpModal
         open={otpOpen}
         onClose={() => setOtpOpen(false)}
         onVerify={handleVerify}
-        isLoading={isLoading} 
+        isLoading={isLoading}
         targetEmail={targetEmail}
         onResend={handleResend}
       />
