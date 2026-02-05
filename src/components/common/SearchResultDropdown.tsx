@@ -38,12 +38,10 @@ export function SearchResultDropdown({
 
   const handleMovieClick = (slug: string) => {
     onMovieClick(slug);
-    onClose();
   }
   
   const handlePersonClick = (personId: string | number) => {
     onPersonClick(personId);
-    onClose();
   }
 
   return (

@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
 import AIChatWidget from "@/components/ai/AIChatWidget";
+import AccessGateway from "@/components/common/AccessGateway";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -34,9 +35,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi">
-      <body className={`${manrope.className} antialiased`}>
+    <html lang="vi" suppressHydrationWarning>
+      <body className={`${manrope.className} antialiased`} suppressHydrationWarning>
         <AuthProvider>
+          <AccessGateway />
           {children}
           <Toaster position="top-right" richColors />
           <AIChatWidget />

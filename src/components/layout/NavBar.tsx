@@ -146,14 +146,18 @@ const Navbar = () => {
 
   const handleMovieResultClick = (slug: string) => {
     router.push(`/movies/${slug}`);
-    setIsDropdownOpen(false);
-    setSearchText("");
+    setTimeout(() => {
+      setIsDropdownOpen(false);
+      setSearchText("");
+    }, 300);
   };
 
   const handlePersonResultClick = (personId: string | number) => {
     router.push(`/peoples/${personId}`);
-    setIsDropdownOpen(false);
-    setSearchText("");
+    setTimeout(() => {
+      setIsDropdownOpen(false);
+      setSearchText("");
+    }, 300);
   };
 
   const renderDropdownItems = (item: string) => {
