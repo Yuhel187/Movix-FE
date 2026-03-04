@@ -20,7 +20,8 @@ import {
   Tag,
   Globe,
   Database,
-  ChevronDown 
+  ChevronDown,
+  CreditCard
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/contexts/AuthContext";
@@ -59,6 +60,12 @@ const navGroups: NavGroupConfig[] = [
       { id: "users", label: "Quản lý user", href: "/admin/user-management", icon: Users },
       { id: "comment", label: "Quản lý bình luận", href: "/admin/comment-management", icon: MessageSquare },
       { id: "notification", label: "Quản lý thông báo", href: "/admin/notification-management", icon: Bell },
+    ]
+  },
+  {
+    title: "Dịch vụ & Thanh toán",
+    items: [
+      { id: "subscription", label: "Quản lý gói dịch vụ", href: "/admin/subscription-management", icon: CreditCard },
     ]
   },
 ];
