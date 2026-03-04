@@ -21,7 +21,8 @@ import {
   Globe,
   Database,
   ChevronDown,
-  CreditCard
+  CreditCard,
+  DollarSign
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/contexts/AuthContext";
@@ -66,6 +67,7 @@ const navGroups: NavGroupConfig[] = [
     title: "Dịch vụ & Thanh toán",
     items: [
       { id: "subscription", label: "Quản lý gói dịch vụ", href: "/admin/subscription-management", icon: CreditCard },
+      { id: "billing", label: "Quản lý giao dịch", href: "/admin/billing-management", icon: DollarSign },
     ]
   },
 ];
