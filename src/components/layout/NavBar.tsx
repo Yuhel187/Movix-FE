@@ -295,7 +295,7 @@ const Navbar = () => {
           ) : isLoggedIn ? (
             <>
               <NotificationDropdown />
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <div className="flex items-center cursor-pointer">
                     <Avatar>
@@ -346,7 +346,7 @@ const Navbar = () => {
               <Search className="h-6 w-6" />
             </Button>
             {isLoggedIn ? (
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <div className="flex items-center cursor-pointer">
                     <Avatar className="h-8 w-8">
