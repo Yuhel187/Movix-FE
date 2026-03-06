@@ -22,7 +22,8 @@ import {
   Database,
   ChevronDown,
   CreditCard,
-  DollarSign
+  DollarSign,
+  Trophy
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/contexts/AuthContext";
@@ -61,6 +62,7 @@ const navGroups: NavGroupConfig[] = [
       { id: "users", label: "Quản lý user", href: "/admin/user-management", icon: Users },
       { id: "comment", label: "Quản lý bình luận", href: "/admin/comment-management", icon: MessageSquare },
       { id: "notification", label: "Quản lý thông báo", href: "/admin/notification-management", icon: Bell },
+      { id: "gamification", label: "Gamification", href: "/admin/gamification", icon: Trophy },
     ]
   },
   {
