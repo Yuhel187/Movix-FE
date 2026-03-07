@@ -76,6 +76,12 @@ const navGroups: NavGroupConfig[] = [
       { id: "billing", label: "Quản lý giao dịch", href: "/admin/billing-management", icon: DollarSign },
     ]
   },
+  {
+    title: "Hệ thống",
+    items: [
+      { id: "system-settings", label: "Cấu hình hệ thống", href: "/admin/system-settings", icon: Settings },
+    ]
+  },
 ];
 
 const masterDataNavItems = [
