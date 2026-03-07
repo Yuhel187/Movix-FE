@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Heart, List, History, Bell, User, LogOut, Gem, MonitorSmartphone } from "lucide-react";
+import { Heart, List, History, Bell, User, LogOut, Gem, MonitorSmartphone, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -20,6 +20,7 @@ const navItems = [
   { href: "/account/history", label: "Xem tiếp", icon: History },
   { href: "/account/notifications", label: "Thông báo", icon: Bell },
   { href: "/account/device", label: "Thiết bị", icon: MonitorSmartphone },
+  { href: "/account/achievements", label: "Thành tựu", icon: Trophy },
   { href: "/account/subscription", label: "Gói đăng ký", icon: Gem },
   { href: "/account/profile", label: "Tài khoản", icon: User },
 ];
