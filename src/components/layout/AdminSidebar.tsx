@@ -24,7 +24,8 @@ import {
   CreditCard,
   DollarSign,
   Trophy,
-  FileText
+  FileText,
+  Tv
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/contexts/AuthContext";
@@ -65,6 +66,7 @@ const navGroups: NavGroupConfig[] = [
       { id: "notification", label: "Quản lý thông báo", href: "/admin/notification-management", icon: Bell },
       { id: "community-content", label: "Blog & Đánh giá", href: "/admin/community-content", icon: FileText },
       { id: "gamification", label: "Gamification", href: "/admin/gamification", icon: Trophy },
+      { id: "watch-party", label: "Giám sát Watch Party", href: "/admin/watch-party", icon: Tv },
     ]
   },
   {
