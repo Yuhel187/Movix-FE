@@ -69,6 +69,11 @@ interface SubscriptionPlan {
   isActive: boolean;
   color?: string;
   recommended?: boolean;
+  
+  // --- Watch Party Config ---
+  can_create_watch_party: boolean;
+  max_watch_party_participants: number;
+  can_kick_mute_members: boolean;
 }
 
 // --- INITIAL DATA ---
@@ -142,6 +147,10 @@ const INITIAL_PLANS: SubscriptionPlan[] = [
     ],
     isActive: true,
     color: "bg-slate-500",
+    
+    can_create_watch_party: false,
+    max_watch_party_participants: 0,
+    can_kick_mute_members: false,
   },
   {
     id: "2",
@@ -163,7 +172,11 @@ const INITIAL_PLANS: SubscriptionPlan[] = [
     ],
     isActive: true,
     color: "bg-blue-600",
-    recommended: true
+    recommended: true,
+
+    can_create_watch_party: true,
+    max_watch_party_participants: 5,
+    can_kick_mute_members: false,
   },
   {
     id: "3",
@@ -185,6 +198,10 @@ const INITIAL_PLANS: SubscriptionPlan[] = [
     ],
     isActive: true,
     color: "bg-amber-500",
+
+    can_create_watch_party: true,
+    max_watch_party_participants: 50,
+    can_kick_mute_members: true,
   },
 ];
 
@@ -197,7 +214,11 @@ const DEFAULT_FORM_DATA: Omit<SubscriptionPlan, "id"> = {
   features: [],
   isActive: true,
   color: "bg-slate-500",
-  recommended: false
+  recommended: false,
+  
+  can_create_watch_party: false,
+  max_watch_party_participants: 0,
+  can_kick_mute_members: false,
 };
 
 export default function SubscriptionPage() {
@@ -235,7 +256,11 @@ export default function SubscriptionPage() {
       features: [...plan.features], 
       isActive: plan.isActive,
       color: plan.color,
-      recommended: plan.recommended
+      recommended: plan.recommended,
+      
+      can_create_watch_party: plan.can_create_watch_party,
+      max_watch_party_participants: plan.max_watch_party_participants,
+      can_kick_mute_members: plan.can_kick_mute_members
     });
     setIsPlanDialogOpen(true);
   };
@@ -580,6 +605,52 @@ export default function SubscriptionPage() {
                             </div>
                         </div>
                      </div>
+                </div>
+
+                {/* Watch Party Configuration */}
+                <div className="space-y-4 pt-4 border-t border-slate-700">
+                    <h3 className="text-md font-semibold flex items-center text-primary">
+                         <span className="mr-2">🎉</span> Cấu hình Watch Party
+                    </h3>
+                    
+                    <div className="grid gap-3 p-3 bg-slate-900/50 rounded-lg border border-slate-800">
+                        <div className="flex items-center justify-between">
+                             <Label htmlFor="can_create_watch_party" className="cursor-pointer">Quyền tạo phòng</Label>
+                             <input
+                                type="checkbox"
+                                id="can_create_watch_party"
+                                checked={formData.can_create_watch_party}
+                                onChange={(e) => setFormData({ ...formData, can_create_watch_party: e.target.checked })}
+                                className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-primary"
+                             />
+                        </div>
+
+                        {formData.can_create_watch_party && (
+                            <>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="max_participants" className="text-sm">Giới hạn thành viên tối đa</Label>
+                                    <Input
+                                        id="max_participants"
+                                        type="number"
+                                        min={0}
+                                        value={formData.max_watch_party_participants}
+                                        onChange={(e) => setFormData({ ...formData, max_watch_party_participants: Number(e.target.value) })}
+                                        className="bg-[#262626] border-slate-700 h-8"
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="can_kick_mute" className="text-sm cursor-pointer">Quyền quản trị (Kick/Mute)</Label>
+                                    <input
+                                        type="checkbox"
+                                        id="can_kick_mute"
+                                        checked={formData.can_kick_mute_members}
+                                        onChange={(e) => setFormData({ ...formData, can_kick_mute_members: e.target.checked })}
+                                        className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-primary"
+                                    />
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
 
