@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Heart, List, History, Bell, User, LogOut } from "lucide-react";
+import { Heart, List, History, Bell, User, LogOut, Gem, MonitorSmartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -12,21 +12,23 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext"; 
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { href: "/account/favorites", label: "Yêu thích", icon: Heart },
   { href: "/account/playlist", label: "Danh sách", icon: List },
   { href: "/account/history", label: "Xem tiếp", icon: History },
   { href: "/account/notifications", label: "Thông báo", icon: Bell },
+  { href: "/account/device", label: "Thiết bị", icon: MonitorSmartphone },
+  { href: "/account/subscription", label: "Gói đăng ký", icon: Gem },
   { href: "/account/profile", label: "Tài khoản", icon: User },
 ];
 
 export function AccountNavigation() {
   const pathname = usePathname();
   const router = useRouter();
-  
-  const { user, logout } = useAuth(); 
+
+  const { user, logout } = useAuth();
 
   const currentItem = navItems.find((item) => item.href === pathname);
 
@@ -55,7 +57,7 @@ export function AccountNavigation() {
     <Button
       variant="ghost"
       className="w-full justify-start text-gray-400 hover:bg-zinc-800 hover:text-white"
-      onClick={logout} 
+      onClick={logout}
     >
       <LogOut className="w-4 h-4 mr-2" />
       Thoát

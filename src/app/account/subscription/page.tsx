@@ -31,13 +31,13 @@ export default function UserSubscriptionPage() {
   const [balance, setBalance] = useState(120000);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-4xl">
       
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-slate-800 pb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Quản lý Gói cước</h1>
-          <p className="text-slate-400">Xem thông tin gói hiện tại, lịch sử thanh toán và thay đổi gói cước.</p>
+          <h1 className="text-3xl font-bold text-white">Quản lý Gói cước</h1>
+          <p className="mt-1 text-slate-400">Xem thông tin gói hiện tại, lịch sử thanh toán và thay đổi gói cước.</p>
         </div>
         <div className="flex gap-3">
            <Link href="/pricing">
@@ -48,10 +48,10 @@ export default function UserSubscriptionPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
         
         {/* Left Column: Plan Status & History */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="md:col-span-2 space-y-8">
           
           {/* Current Plan Section */}
           <section>
