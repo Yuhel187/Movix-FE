@@ -28,6 +28,7 @@ import { toast } from "sonner"
 import { useState } from "react"
 import { ArrowNavigation } from "@/components/movie/ArrowNavigation"
 import { MovieSearchCard } from "@/components/movie/MovieSearchCard"
+import {PostCard} from "@/components/post/PostCard"
 
 export default function TestPage() {
   const [tags, setTags] = useState([
@@ -157,6 +158,9 @@ export default function TestPage() {
         {allMovies.map((movie, index) => (
           <MovieSearchCard key={index} {...movie} />
         ))}
+      </div>
+      <div className="w-full max-w-md flex flex-col gap-3 mt-2">
+        <PostCard />
       </div>
     </div>
   )
