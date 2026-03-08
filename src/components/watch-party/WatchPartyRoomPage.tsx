@@ -9,10 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import {
     Send, Play, Pause, Volume2, Maximize, Minimize,
     PanelRightClose, PanelRightOpen, RefreshCw, Power, MoreVertical, UserX, LogOut,
-    Smile, Flag, Star, Calendar, Globe, Crown, Ban, Lock, Check, X, AlertTriangle
+    Smile, Flag, Star, Calendar, Globe, Crown, Ban, Lock, Check, X, AlertTriangle,
+    Mic, MicOff, Volume1, VolumeX
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -151,6 +153,34 @@ export default function WatchPartyRoomPage() {
     const [userToBan, setUserToBan] = useState<string | null>(null);
     const [userToTransfer, setUserToTransfer] = useState<string | null>(null);
     const [showEndDialog, setShowEndDialog] = useState(false);
+
+    // --- VOICE CHAT STATES ---
+    const [isMicOn, setIsMicOn] = useState(true);
+    const [peerVolumes, setPeerVolumes] = useState<{ [key: string]: number }>({});
+    const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
+
+    // Mock speaking effect for demo purposes (UI Only)
+    useEffect(() => {
+        if (!members.length) return;
+        const interval = setInterval(() => {
+            const newSpeaking = new Set<string>();
+            // Randomly select 1-2 members to be "speaking"
+            const potentialSpeakers = members.filter(m => m.id !== user?.id && m.online);
+            if (potentialSpeakers.length > 0) {
+                const count = Math.floor(Math.random() * 2) + 1; // 1 or 2 speakers
+                for (let i = 0; i < count; i++) {
+                    const randomMember = potentialSpeakers[Math.floor(Math.random() * potentialSpeakers.length)];
+                    if (randomMember) newSpeaking.add(randomMember.id);
+                }
+            }
+            setSpeakingUsers(newSpeaking);
+        }, 3000);
+        return () => clearInterval(interval);
+    }, [members, user?.id]);
+
+    const handleVolumeChange = (userId: string, val: number[]) => {
+        setPeerVolumes(prev => ({ ...prev, [userId]: val[0] }));
+    };
 
 
     const [hostId, setHostId] = useState<string>("");
@@ -550,6 +580,28 @@ export default function WatchPartyRoomPage() {
                         <span className="font-bold text-sm text-slate-200">Phòng xem chung</span>
                         <Button size="icon" variant="ghost" onClick={() => setIsSidebarOpen(false)} className="h-8 w-8 text-slate-400 hover:text-white"><PanelRightClose className="w-4 h-4" /></Button>
                     </div>
+                    
+                    {/* --- VOICE CHAT CONTROLS --- */}
+                    <div className="p-3 bg-gradient-to-r from-red-900/10 via-[#1a1a1a] to-transparent border-b border-white/5 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-2">
+                            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center bg-white/5 border border-white/10", isMicOn && "border-green-500/50 bg-green-500/10")}>
+                                {isMicOn ? <Mic className="w-4 h-4 text-green-500" /> : <MicOff className="w-4 h-4 text-red-500" />}
+                            </div>
+                            <div className="leading-tight">
+                                <span className={cn("text-xs font-bold block", isMicOn ? "text-green-500" : "text-slate-400")}>Voice Chat</span>
+                                <span className="text-[10px] text-slate-500">{isMicOn ? "Đang bật mic" : "Đã tắt mic"}</span>
+                            </div>
+                        </div>
+                        <Button
+                            size="sm"
+                            variant={isMicOn ? "secondary" : "destructive"}
+                            className={cn("h-7 px-3 text-[10px] font-bold uppercase tracking-wider gap-1.5", isMicOn && "bg-white/10 hover:bg-white/20 text-slate-300")}
+                            onClick={() => setIsMicOn(!isMicOn)}
+                        >
+                            {isMicOn ? "Tắt Mic" : "Bật Mic"}
+                        </Button>
+                    </div>
+                    
                     <div className="flex bg-[#0A0A0A] border-b border-white/10 shrink-0">
                         <button onClick={() => setActiveTab('chat')} className={cn("flex-1 py-3 text-sm font-semibold transition-colors relative", activeTab === 'chat' ? "text-white" : "text-slate-500 hover:text-slate-300")}>Trò chuyện {activeTab === 'chat' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"></div>}</button>
                         <button onClick={() => setActiveTab('members')} className={cn("flex-1 py-3 text-sm font-semibold transition-colors relative", activeTab === 'members' ? "text-white" : "text-slate-500 hover:text-slate-300")}>Thành viên ({members.length}) {activeTab === 'members' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"></div>}</button>
@@ -577,24 +629,69 @@ export default function WatchPartyRoomPage() {
                             </div>
                         ) : (
                             <ScrollArea className="h-full p-2">
-                                {members.map(mem => (
-                                    <div key={mem.id} className="flex items-center justify-between p-3 hover:bg-white/5 rounded-xl transition-colors group">
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="w-9 h-9 border border-white/10"><AvatarImage src={mem.avatar} /><AvatarFallback className="bg-slate-800 text-xs">{mem.name[0]}</AvatarFallback></Avatar>
-                                            <div className="flex flex-col"><span className="text-sm font-medium text-white flex items-center gap-2">{mem.name}{mem.role === 'host' && <span className="text-[9px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded font-bold">HOST</span>}</span><span className="text-xs text-slate-500">{mem.online ? "Đang xem" : "Ngoại tuyến"}</span></div>
+                                {members.map((mem) => {
+                                    const isSpeaking = speakingUsers.has(mem.id);
+                                    const isMe = mem.id === user?.id;
+                                    const volume = peerVolumes[mem.id] ?? 100;
+                                    const isMuted = volume === 0;
+
+                                    return (
+                                        <div key={mem.id} className="flex flex-col p-3 hover:bg-white/5 rounded-xl transition-colors group animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3 relative">
+                                                    <div className="relative">
+                                                        <Avatar className={cn("w-10 h-10 border-2 transition-all duration-300", isSpeaking ? "border-green-500 ring-2 ring-green-500/30 scale-105" : "border-white/10")}>
+                                                            <AvatarImage src={mem.avatar} />
+                                                            <AvatarFallback className="bg-slate-800 text-xs text-slate-400">{mem.name[0]}</AvatarFallback>
+                                                        </Avatar>
+                                                        {isSpeaking && <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-0.5 border-2 border-[#121212]"><Mic className="w-2.5 h-2.5 text-black fill-current" /></div>}
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-bold text-slate-200 flex items-center gap-2">
+                                                            {mem.name}
+                                                            {mem.role === 'host' && <span className="text-[9px] bg-yellow-500/20 text-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.2)] px-1.5 py-0.5 rounded font-bold tracking-wider">HOST</span>}
+                                                            {isMe && <span className="text-[9px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-medium">BẠN</span>}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-500 font-medium tracking-wide flex items-center gap-1">
+                                                            <div className={cn("w-1.5 h-1.5 rounded-full", mem.online ? "bg-green-500" : "bg-slate-600")}></div>
+                                                            {mem.online ? "ONLINE" : "OFFLINE"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Actions Menu */}
+                                                {isHost && mem.role !== 'host' && (
+                                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-white/10 rounded-full"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-slate-800 text-slate-300 w-56 shadow-2xl p-1">
+                                                                <DropdownMenuItem className="focus:bg-white/5 cursor-pointer rounded-md py-2.5" onClick={() => setUserToTransfer(mem.id)}><Crown className="w-4 h-4 mr-2 text-yellow-500" /> Chuyển quyền Host</DropdownMenuItem>
+                                                                <DropdownMenuItem className="text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer rounded-md py-2.5" onClick={() => setUserToKick(mem.id)}><UserX className="w-4 h-4 mr-2" /> Mời ra khỏi phòng</DropdownMenuItem>
+                                                                <DropdownMenuItem className="text-red-600 focus:text-red-500 focus:bg-red-500/20 cursor-pointer rounded-md py-2.5 font-bold" onClick={() => setUserToBan(mem.id)}><Ban className="w-4 h-4 mr-2" /> Cấm vĩnh viễn (Ban)</DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* --- Volume Slider (Only for others) --- */}
+                                            {!isMe && mem.online && (
+                                                <div className="ml-[52px] mt-2 flex items-center gap-3 pr-2 transition-all duration-300">
+                                                    <button onClick={() => setPeerVolumes(prev => ({ ...prev, [mem.id]: isMuted ? 80 : 0 }))} className="text-slate-500 hover:text-white transition-colors">
+                                                        {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : (volume < 50 ? <Volume1 className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />)}
+                                                    </button>
+                                                    <Slider
+                                                        value={[volume]}
+                                                        max={100}
+                                                        step={1}
+                                                        onValueChange={(val) => handleVolumeChange(mem.id, val)}
+                                                        className="flex-1 cursor-pointer py-1"
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
-                                        {isHost && mem.role !== 'host' && (
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100 h-8 w-8 text-slate-400 bg-amber-50 transition-opacity"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="bg-[#1F1F1F] border-slate-700 text-white w-52">
-                                                    <DropdownMenuItem className="focus:bg-white/10 cursor-pointer py-2.5" onClick={() => setUserToTransfer(mem.id)}><Crown className="w-4 h-4 mr-2 text-yellow-500" /> Chuyển quyền Host</DropdownMenuItem>
-                                                    <DropdownMenuItem className="text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer py-2.5" onClick={() => setUserToKick(mem.id)}><UserX className="w-4 h-4 mr-2" /> Mời ra khỏi phòng</DropdownMenuItem>
-                                                    <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-500/20 cursor-pointer py-2.5" onClick={() => setUserToBan(mem.id)}><Ban className="w-4 h-4 mr-2" /> Cấm vĩnh viễn (Ban)</DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        )}
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </ScrollArea>
                         )}
                     </div>
