@@ -7,11 +7,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Send, Bot, Sparkles, Loader2, Bell, Users } from "lucide-react";
+import { Send, Bot, Sparkles, Loader2, Bell, Users, Calendar as CalendarIcon, Clock } from "lucide-react";
 import apiClient from "@/lib/apiClient";
 import { toast } from "sonner";
 import { UserSearchSelect } from "@/components/admin/notification-management/UserSearchSelect";
 import { NotificationHistory } from "@/components/admin/notification-management/NotificationHistory";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 export default function NotificationPage() {
   const [title, setTitle] = useState("");
@@ -20,6 +25,9 @@ export default function NotificationPage() {
   const [targetUserId, setTargetUserId] = useState("");
   const [actionUrl, setActionUrl] = useState("");
   
+  const [channels, setChannels] = useState({ inApp: true, email: false, push: false });
+  const [scheduledDate, setScheduledDate] = useState<Date | undefined>(undefined);
+
   const [isSending, setIsSending] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [refreshHistory, setRefreshHistory] = useState(0);
@@ -153,6 +161,109 @@ export default function NotificationPage() {
                             onChange={(e) => setActionUrl(e.target.value)}
                             className="bg-black/20 border-slate-700 text-sm font-mono text-blue-400"
                         />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-800">
+                        {/* Channels */}
+                        <div className="space-y-3">
+                            <Label className="text-slate-200">Kênh gửi thông báo</Label>
+                            <div className="flex flex-col gap-3 p-4 border border-slate-700 rounded-md bg-black/20">
+                                {/* In-App & Push Unified */}
+                                <div className="flex items-start space-x-2">
+                                    <Checkbox 
+                                        id="inApp" 
+                                        checked={channels.inApp}
+                                        onCheckedChange={(checked) => setChannels(prev => ({ 
+                                            ...prev, 
+                                            inApp: checked === true,
+                                            push: checked === true 
+                                        }))}
+                                        className="mt-1 border-slate-500 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                    />
+                                    <div className="grid gap-1.5 leading-none">
+                                        <label htmlFor="inApp" className="text-sm font-medium leading-none text-slate-300 cursor-pointer">
+                                            Thông báo Ứng dụng
+                                        </label>
+                                        <p className="text-xs text-slate-500">
+                                            Hiển thị trong App và gửi thông báo đẩy đến thiết bị.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Email Channel */}
+                                <div className="flex items-start space-x-2">
+                                    <Checkbox 
+                                        id="email" 
+                                        checked={channels.email}
+                                        onCheckedChange={(checked) => setChannels(prev => ({ ...prev, email: checked === true }))}
+                                        className="mt-1 border-slate-500 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                    />
+                                    <div className="grid gap-1.5 leading-none">
+                                        <label htmlFor="email" className="text-sm font-medium leading-none text-slate-300 cursor-pointer">
+                                            Gửi qua Email (Newsletter)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Scheduling */}
+                        <div className="space-y-3">
+                            <Label className="text-slate-200">Lên lịch gửi (Tùy chọn)</Label>
+                            <div className="flex flex-col gap-2">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-full justify-start text-left font-normal border-slate-700 bg-black/20 hover:bg-slate-800 hover:text-white h-12",
+                                                !scheduledDate && "text-muted-foreground"
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {scheduledDate ? format(scheduledDate, "PP HH:mm") : <span>Chọn ngày giờ gửi...</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0 bg-[#1F1F1F] border-slate-800 text-white" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={scheduledDate}
+                                            onSelect={setScheduledDate}
+                                            initialFocus
+                                            className="p-3 bg-[#1F1F1F] text-white rounded-md border-slate-800"
+                                        />
+                                        <div className="p-3 border-t border-slate-700 bg-black/20">
+                                            <Label className="text-xs mb-2 block text-slate-400">Giờ cụ thể</Label>
+                                            <div className="flex items-center gap-2">
+                                                <input 
+                                                    type="time" 
+                                                    className="w-full bg-[#262626] border border-slate-600 rounded px-2 py-1 text-white focus:outline-none focus:border-primary"
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        if (val && scheduledDate) {
+                                                            const [h, m] = val.split(':').map(Number);
+                                                            const newDate = new Date(scheduledDate);
+                                                            newDate.setHours(h);
+                                                            newDate.setMinutes(m);
+                                                            setScheduledDate(newDate);
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                                
+                                {scheduledDate ? (
+                                    <div className="flex items-center text-xs text-yellow-500 bg-yellow-500/10 p-2 rounded border border-yellow-500/20">
+                                        <Clock className="w-3 h-3 mr-2" /> 
+                                        Hệ thống sẽ gửi vào {format(scheduledDate, "HH:mm dd/MM/yyyy")}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-slate-500 italic">Để trống nếu muốn gửi ngay lập tức.</p>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     <div className="pt-4">
