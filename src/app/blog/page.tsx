@@ -5,6 +5,8 @@ import Navbar from "@/components/layout/NavBar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { PostCard, Post } from "@/components/post/PostCard";
+import { CreatePostTrigger } from "@/components/post/CreatePostTrigger";
+import Link from "next/link";
 import { Sparkles, MessageSquare, TrendingUp } from "lucide-react";
 
 // Extend Post interface for filtering
@@ -117,6 +119,11 @@ export default function BlogPage() {
                <p className="text-zinc-400 text-sm">
                  Nơi chia sẻ, thảo luận và kết nối đam mê điện ảnh.
                </p>
+               <div className="pt-3 flex flex-col sm:flex-row sm:items-center gap-3 w-full">
+                 <div className="w-full">
+                    <CreatePostTrigger />
+                 </div>
+               </div>
              </div>
 
              {/* Filter Tabs */}
