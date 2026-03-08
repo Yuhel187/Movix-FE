@@ -64,8 +64,8 @@ interface RecentUser {
 
 const baseChartConfig = {
   count: { label: "Số lượng" },
-  favorites: { label: "Lượt thích", color: "hsl(var(--chart-1))" },
-  revenue: { label: "Doanh thu", color: "hsl(var(--chart-2))" },
+  favorites: { label: "Lượt thích", color: "var(--chart-1)" },
+  revenue: { label: "Doanh thu", color: "var(--chart-2)" },
 } satisfies ChartConfig;
 
 // Mock Data for "Real-time" Revenue
@@ -190,9 +190,8 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* --- HÀNG 1.5: REAL-TIME & CONVERSION --- */}
+      {/* --- REAL-TIME & CONVERSION --- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Real-time Revenue Chart */}
         <Card className="lg:col-span-2 bg-[#262626] border-slate-800 text-white">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -252,7 +251,6 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center space-y-4">
                  <div className="relative w-40 h-40 flex items-center justify-center">
-                    {/* Circle Background */}
                     <svg className="w-full h-full" viewBox="0 0 100 100">
                         <circle
                             className="text-slate-700 stroke-current"
@@ -262,7 +260,6 @@ export default function DashboardPage() {
                             r="40"
                             fill="transparent"
                         ></circle>
-                        {/* Circle Progress */}
                         <circle
                             className="text-green-500 progress-ring__circle stroke-current"
                             strokeWidth="10"
