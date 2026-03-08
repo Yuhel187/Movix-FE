@@ -4,7 +4,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
   PieChart, Pie, Cell, Sector, ResponsiveContainer, Legend as RechartsLegend, Tooltip as RechartsTooltip,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList, Area, AreaChart
 } from "recharts";
 import {
   Card, CardHeader, CardTitle, CardContent, CardDescription,
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChartConfig, ChartContainer, ChartTooltipContent, ChartLegendContent } from "@/components/ui/chart";
-import { Users, Film, Eye, MessageSquare } from "lucide-react";
+import { Users, Film, Eye, MessageSquare, TrendingUp, DollarSign } from "lucide-react";
 import apiClient from "@/lib/apiClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -42,6 +42,17 @@ interface TopMovieData {
   fill: string;
 }
 
+interface RevenueData {
+  time: string;
+  revenue: number;
+}
+
+interface ConversionData {
+    total: number;
+    paid: number;
+    rate: number;
+}
+
 interface RecentUser {
   id: string;
   display_name: string;
@@ -54,7 +65,21 @@ interface RecentUser {
 const baseChartConfig = {
   count: { label: "Số lượng" },
   favorites: { label: "Lượt thích", color: "hsl(var(--chart-1))" },
+  revenue: { label: "Doanh thu", color: "hsl(var(--chart-2))" },
 } satisfies ChartConfig;
+
+// Mock Data for "Real-time" Revenue
+const MOCK_REVENUE: RevenueData[] = Array.from({ length: 12 }, (_, i) => ({
+  time: `${i * 2}:00`,
+  revenue: Math.floor(Math.random() * 500000) + 100000,
+}));
+
+// Mock Data for Conversion
+const MOCK_CONVERSION: ConversionData = {
+    total: 1250,
+    paid: 180,
+    rate: 14.4
+};
 
 const ActiveSectorMark = ({ cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent }: any) => {
   return (
@@ -163,6 +188,114 @@ export default function DashboardPage() {
           color="text-[var(--chart-2)]" 
           loading={loading} 
         />
+      </div>
+
+      {/* --- HÀNG 1.5: REAL-TIME & CONVERSION --- */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Real-time Revenue Chart */}
+        <Card className="lg:col-span-2 bg-[#262626] border-slate-800 text-white">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-green-500" /> Biểu đồ Doanh thu (Real-time)
+            </CardTitle>
+            <CardDescription>Doanh thu ghi nhận theo giờ trong ngày hôm nay</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            {loading ? (
+              <Skeleton className="h-full w-full bg-slate-700" />
+            ) : (
+              <ChartContainer config={baseChartConfig} className="h-full w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={MOCK_REVENUE} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                    <XAxis 
+                      dataKey="time" 
+                      tickLine={false} 
+                      axisLine={false} 
+                      tickMargin={8} 
+                      fontSize={12} 
+                      stroke="#888" 
+                    />
+                    <YAxis 
+                      tickLine={false} 
+                      axisLine={false} 
+                      tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} 
+                      fontSize={12} 
+                      stroke="#888" 
+                    />
+                    <RechartsTooltip content={<ChartTooltipContent indicator="line" />} />
+                    <Area 
+                      type="monotone" 
+                      dataKey="revenue" 
+                      stroke="var(--color-revenue)" 
+                      fillOpacity={1} 
+                      fill="url(#colorRevenue)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Conversion Rate Card */}
+        <Card className="lg:col-span-1 bg-[#262626] border-slate-800 text-white flex flex-col justify-center">
+            <CardHeader className="text-center pb-2">
+                <CardTitle>Tỷ lệ Chuyển đổi</CardTitle>
+                <CardDescription>User Miễn phí ➔ Trả phí</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center space-y-4">
+                 <div className="relative w-40 h-40 flex items-center justify-center">
+                    {/* Circle Background */}
+                    <svg className="w-full h-full" viewBox="0 0 100 100">
+                        <circle
+                            className="text-slate-700 stroke-current"
+                            strokeWidth="10"
+                            cx="50"
+                            cy="50"
+                            r="40"
+                            fill="transparent"
+                        ></circle>
+                        {/* Circle Progress */}
+                        <circle
+                            className="text-green-500 progress-ring__circle stroke-current"
+                            strokeWidth="10"
+                            strokeLinecap="round"
+                            cx="50"
+                            cy="50"
+                            r="40"
+                            fill="transparent"
+                            strokeDasharray={`${MOCK_CONVERSION.rate * 2.51} 251.2`} 
+                            strokeDashoffset="0"
+                            transform="rotate(-90 50 50)"
+                        ></circle>
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                         <span className="text-3xl font-bold text-white">{MOCK_CONVERSION.rate}%</span>
+                    </div>
+                 </div>
+                 <div className="grid grid-cols-2 gap-4 w-full text-center mt-4 border-t border-slate-700 pt-4">
+                     <div>
+                         <div className="text-sm text-slate-400">Paid Users</div>
+                         <div className="text-xl font-bold text-green-400 flex items-center justify-center gap-1">
+                             <DollarSign className="w-4 h-4" /> {MOCK_CONVERSION.paid}
+                         </div>
+                     </div>
+                     <div>
+                         <div className="text-sm text-slate-400">Total Users</div>
+                         <div className="text-xl font-bold text-white flex items-center justify-center gap-1">
+                             <Users className="w-4 h-4" /> {MOCK_CONVERSION.total}
+                         </div>
+                     </div>
+                 </div>
+            </CardContent>
+        </Card>
       </div>
 
       {/* --- HÀNG 2: BIỂU ĐỒ (Bar + Pie) --- */}
