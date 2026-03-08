@@ -59,7 +59,7 @@ const Navbar = () => {
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  const navItems = ['Phim hay', 'Thể loại', 'Phim lẻ', 'Phim bộ', 'Quốc gia', 'Diễn viên', 'Watching Party'];
+  const navItems = ['Phim hay', 'Thể loại', 'Phim lẻ', 'Phim bộ', 'Quốc gia',  'Watching Party', 'Nâng cấp'];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -134,6 +134,10 @@ const Navbar = () => {
     }
     else if (item === 'Watching Party') {
       router.push('/watch-party');
+    } else if (item === 'Blog') {
+      router.push('/blog');
+    } else if (item === 'Nâng cấp') {
+      router.push('/pricing');
     }
   };
 
@@ -193,6 +197,12 @@ const Navbar = () => {
       if (type === 'phim-bo') return 'Phim bộ';
       if (genre) return 'Thể loại';
       if (country) return 'Quốc gia';
+    }
+    if (pathname === '/blog') {
+      return 'Blog';
+    }
+    if (pathname === '/pricing' || pathname === '/account/subscription') {
+      return 'Nâng cấp';
     }
 
     return '';
