@@ -75,6 +75,8 @@ export default function RegisterPage() {
       } else {
         setError(message || "Đã xảy ra lỗi.");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
