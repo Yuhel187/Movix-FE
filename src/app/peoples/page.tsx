@@ -1,13 +1,14 @@
 import Navbar from "@/components/layout/NavBar";
 import Footer from "@/components/layout/Footer";
 import ActorList from "@/components/actor/ActorList";
+import PeopleFilter from "@/components/actor/PeopleFilter";
 import { getPeopleList } from "@/services/person.service";
 import { ServerPagination } from "@/components/common/ServerPagination"; 
 
-export default async function PeoplesPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function PeoplesPage({ searchParams }: { searchParams: Promise<{ page?: string; search?: string; role?: string }> }) {
   const resolvedSearchParams = await searchParams;
   const currentPage = Number(resolvedSearchParams.page) || 1;
-  const { people, totalPages } = await getPeopleList(currentPage);
+  const { people, totalPages } = await getPeopleList(currentPage, 20, resolvedSearchParams.search, resolvedSearchParams.role);
 
   return (
     <main className="min-h-screen bg-black text-white">
@@ -26,6 +27,8 @@ export default async function PeoplesPage({ searchParams }: { searchParams: Prom
              </p>
           </div>
         </div>
+
+        <PeopleFilter />
 
         <ActorList people={people} />
         <div className="mt-12 flex justify-center">
