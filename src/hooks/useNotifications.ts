@@ -75,6 +75,9 @@ export const useNotifications = (isAuthenticated: boolean = false, options: UseN
             reconnectionAttempts: 10,
             withCredentials: true,
             path: '/socket.io/',
+            auth: {
+                token: typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
+            }
         };
 
         const newSocket = io(SOCKET_URL, socketOptions);
