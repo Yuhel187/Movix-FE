@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import Hls from "hls.js";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -147,6 +148,7 @@ export default function WatchPartyRoomPage() {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isMuted, setIsMuted] = useState(false);
 
     // Dialog States
     const [userToKick, setUserToKick] = useState<string | null>(null);
@@ -228,8 +230,12 @@ export default function WatchPartyRoomPage() {
     // --- SOCKET CONNECTION ---
     useEffect(() => {
         if (!user || !roomId || !isAuthorized) return;
-
-        const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000", { withCredentials: true });
+        const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000", { 
+            withCredentials: true,
+            auth: {
+                token: typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
+            }
+        });
         socketRef.current = socket;
 
         socket.emit('wp:join', { roomId, userId: user.id });
@@ -248,35 +254,70 @@ export default function WatchPartyRoomPage() {
         });
         socket.on('wp:sync_player', ({ action, currentTime: remoteTime }) => {
             if (!videoRef.current) return;
-            if (action === 'seek' || Math.abs(videoRef.current.currentTime - remoteTime) > 1) {
+            const diff = Math.abs(videoRef.current.currentTime - remoteTime);
+
+            if (action === 'seek' || diff > 2) {
                 videoRef.current.currentTime = remoteTime;
-                setCurrentTime(remoteTime);
             }
+
             if (action === 'play') {
-                videoRef.current.play().catch(() => { });
+                const playPromise = videoRef.current.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch((e) => {
+                        if (e.name === 'AbortError') return; // Bỏ qua nếu bị gián đoạn do bấm Pause liên tiếp
+                        console.error("Autoplay bị chặn bởi trình duyệt:", e);
+                        if (e.name === 'NotAllowedError' && videoRef.current) { // Chỉ mute khi bị chặn autoplay
+                            videoRef.current.muted = true;
+                            setIsMuted(true);
+                            videoRef.current.play().catch(() => {});
+                            toast.info("Video bị tắt tiếng do yêu cầu tự động phát. Vui lòng bật loa lại.");
+                        }
+                    });
+                }
                 setIsPlaying(true);
             } else if (action === 'pause') {
                 videoRef.current.pause();
                 setIsPlaying(false);
             }
         });
+
+        // NHẬN YÊU CẦU ĐỒNG BỘ TỪ VIEWER MỚI VÀO (CHỈ HOST XỬ LÝ)
         socket.on('wp:get_host_time', ({ requesterId }) => {
             if (isHost && videoRef.current) {
                 socket.emit('wp:send_host_time', {
-                    roomId, requesterId,
+                    roomId, 
+                    requesterId,
                     currentTime: videoRef.current.currentTime,
                     isPlaying: !videoRef.current.paused
                 });
             }
         });
-        socket.on('wp:sync_initial', ({ targetUserId, currentTime, isPlaying: hostIsPlaying }) => {
-            if (user.id === targetUserId && videoRef.current) {
-                videoRef.current.currentTime = currentTime;
-                setCurrentTime(currentTime);
-                if (hostIsPlaying) {
-                    videoRef.current.play().catch(() => { });
-                    setIsPlaying(true);
+
+        // VIEWER NHẬN DỮ LIỆU ĐỒNG BỘ TỪ HOST KHI VỪA VÀO PHÒNG
+        socket.on('wp:sync_initial', ({ targetUserId, currentTime: remoteTime, isPlaying: remoteIsPlaying }) => {
+            if (user.id !== targetUserId || !videoRef.current) return;
+            
+            console.log(`[SYNC INIT] Syncing new viewer to ${remoteTime}s and playing: ${remoteIsPlaying}`);
+            videoRef.current.currentTime = remoteTime;
+            setCurrentTime(remoteTime);
+            
+            if (remoteIsPlaying) {
+                const playPromise = videoRef.current.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch((e) => {
+                        if (e.name === 'AbortError') return;
+                        if (e.name === 'NotAllowedError') {
+                            videoRef.current!.muted = true;
+                            setIsMuted(true);
+                            videoRef.current!.play().catch(() => {});
+                            toast.info("Video đã tắt tiếng để đồng bộ với chủ phòng.");
+                        }
+                    });
                 }
+                setIsPlaying(true);
+            } else {
+                videoRef.current.pause();
+                setIsPlaying(false);
             }
         });
         socket.on('wp:host_transferred', ({ newHostId }) => {
@@ -391,8 +432,24 @@ export default function WatchPartyRoomPage() {
         if (!videoRef.current) return;
         const video = videoRef.current;
         const action = forcePlay ? 'play' : (video.paused ? 'play' : 'pause');
-        if (action === 'play') { video.play().catch(() => { }); setIsPlaying(true); }
-        else { video.pause(); setIsPlaying(false); }
+        if (action === 'play') { 
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.catch((e) => { 
+                    if (e.name === 'AbortError') return;
+                    console.error("Autoplay bị chặn bởi trình duyệt (Host):", e);
+                    video.muted = true;
+                    setIsMuted(true);
+                    video.play().catch(() => {});
+                    toast.info("Video bị tắt tiếng do chính sách tự động phát. Vui lòng bật loa lên!");
+                });
+            }
+            setIsPlaying(true); 
+        }
+        else { 
+            video.pause(); 
+            setIsPlaying(false); 
+        }
         socketRef.current?.emit('wp:sync_action', { roomId, action, currentTime: video.currentTime });
     }, [roomId]);
 
@@ -407,7 +464,9 @@ export default function WatchPartyRoomPage() {
     const onTimeUpdate = () => { if (videoRef.current) setCurrentTime(videoRef.current.currentTime); };
     const onLoadedMetadata = () => {
         if (videoRef.current) setDuration(videoRef.current.duration);
-        if (isHost && roomData && !roomData.started_at) performPlayPause(true);
+        if (isHost && roomData && !roomData.started_at) {
+             setTimeout(() => performPlayPause(true), 300);
+        }
     };
 
     useEffect(() => {
@@ -463,8 +522,7 @@ export default function WatchPartyRoomPage() {
         if (!isHost) return;
 
         socketRef.current?.emit('wp:end_room', roomId);
-        router.push('/watch-party');
-        toast.success("Đã kết thúc phòng.");
+        // KHÔNG router.push ở đây nữa, phải đợi server báo về sự kiện wp:room_ended thì router.push() mới chạy (ở trong hàm useEffect) để đảm bảo TCP Socket gửi đi không bị ngắt giữa chừng do Component Unmount.
         setShowEndDialog(false);
     };
 
@@ -500,6 +558,8 @@ export default function WatchPartyRoomPage() {
 
     const videoUrl = roomData?.episode?.video_url || roomData?.movie?.video_url || "";
 
+    // Xóa useEffect set source thủ công. Để React Render thẻ <video src> native để đồng bộ tuyệt đối với trình duyệt.
+
     if (isPendingApproval) return (
         <div className="flex h-screen items-center justify-center bg-black text-white flex-col gap-4">
             <div className="animate-pulse bg-yellow-500/20 p-4 rounded-full"><Lock className="w-10 h-10 text-yellow-500" /></div>
@@ -520,7 +580,8 @@ export default function WatchPartyRoomPage() {
                 <div ref={playerContainerRef} className="w-full h-[85vh] bg-black relative group shrink-0 flex items-center justify-center">
                     {videoUrl ? (
                         <video
-                            ref={videoRef} className="w-full h-full object-contain" src={videoUrl} controls={false}
+                            ref={videoRef} className="w-full h-full object-contain bg-black" controls={false}
+                            muted={isMuted} playsInline preload="auto" src={videoUrl}
                             onTimeUpdate={onTimeUpdate} onLoadedMetadata={onLoadedMetadata} onClick={isHost ? handlePlayPauseClick : undefined}
                         />
                     ) : (<div className="text-slate-500 flex flex-col items-center gap-2 pt-20"><span className="text-4xl">🎬</span><span>Video không khả dụng</span></div>)}
@@ -562,7 +623,14 @@ export default function WatchPartyRoomPage() {
                                 <Button size="sm" variant="ghost" className="h-8 text-red-400 text-[10px] px-2 hover:bg-red-500/10 hover:text-red-300 gap-1.5" onClick={handleManualSync}>
                                     <RefreshCw className={cn("w-3 h-3", isHost ? "" : "animate-spin-slow-once")} /> {isHost ? "Đồng bộ tất cả" : "Đồng bộ"}
                                 </Button>
-                                <Volume2 className="w-6 h-6 text-slate-300 hover:text-white cursor-pointer hidden sm:block" />
+                                <div onClick={() => {
+                                    if(videoRef.current) {
+                                        videoRef.current.muted = !videoRef.current.muted;
+                                        setIsMuted(videoRef.current.muted);
+                                    }
+                                }} className="cursor-pointer hidden sm:block">
+                                    {isMuted ? <VolumeX className="w-6 h-6 text-slate-300 hover:text-white" /> : <Volume2 className="w-6 h-6 text-slate-300 hover:text-white" />}
+                                </div>
                             </div>
                             <button onClick={toggleFullscreen} className="text-slate-300 hover:text-white transition-transform hover:scale-110">
                                 {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
