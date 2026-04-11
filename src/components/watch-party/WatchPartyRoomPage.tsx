@@ -33,6 +33,15 @@ import apiClient from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { InvitePartyDialog } from "@/components/watch-party/InvitePartyDialog";
 import EmojiPicker from 'emoji-picker-react';
+import {
+  LiveKitRoom,
+  RoomAudioRenderer,
+  useLocalParticipant,
+  useParticipants,
+  TrackToggle,
+} from "@livekit/components-react";
+import { Track } from "livekit-client";
+import "@livekit/components-styles";
 
 // --- HELPER: Xử lý ngày tháng an toàn ---
 const getSafeYear = (dateString: string | null | undefined) => {
@@ -47,6 +56,24 @@ const getSafeDate = (dateString: string | null | undefined) => {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'N/A';
     return date.toLocaleDateString('vi-VN');
+};
+
+const LiveKitStateBridge = ({
+  setSpeakingUsers,
+}: {
+  setSpeakingUsers: (users: Set<string>) => void;
+}) => {
+  const participants = useParticipants();
+
+  useEffect(() => {
+    const speaking = new Set<string>();
+    participants.forEach((p) => {
+      if (p.isSpeaking) speaking.add(p.identity);
+    });
+    setSpeakingUsers(speaking);
+  }, [participants, setSpeakingUsers]);
+
+  return null;
 };
 
 const MovieInfoSection = ({ roomData }: { roomData: any }) => {
@@ -155,30 +182,13 @@ export default function WatchPartyRoomPage() {
     const [userToBan, setUserToBan] = useState<string | null>(null);
     const [userToTransfer, setUserToTransfer] = useState<string | null>(null);
     const [showEndDialog, setShowEndDialog] = useState(false);
+    const [voiceErrorDialog, setVoiceErrorDialog] = useState<{isOpen: boolean, message: string}>({ isOpen: false, message: "" });
 
     // --- VOICE CHAT STATES ---
-    const [isMicOn, setIsMicOn] = useState(true);
+    const [isMicOn, setIsMicOn] = useState(false);
     const [peerVolumes, setPeerVolumes] = useState<{ [key: string]: number }>({});
     const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
-
-    // Mock speaking effect for demo purposes (UI Only)
-    useEffect(() => {
-        if (!members.length) return;
-        const interval = setInterval(() => {
-            const newSpeaking = new Set<string>();
-            // Randomly select 1-2 members to be "speaking"
-            const potentialSpeakers = members.filter(m => m.id !== user?.id && m.online);
-            if (potentialSpeakers.length > 0) {
-                const count = Math.floor(Math.random() * 2) + 1; // 1 or 2 speakers
-                for (let i = 0; i < count; i++) {
-                    const randomMember = potentialSpeakers[Math.floor(Math.random() * potentialSpeakers.length)];
-                    if (randomMember) newSpeaking.add(randomMember.id);
-                }
-            }
-            setSpeakingUsers(newSpeaking);
-        }, 3000);
-        return () => clearInterval(interval);
-    }, [members, user?.id]);
+    const [liveKitToken, setLiveKitToken] = useState<string | null>(null);
 
     const handleVolumeChange = (userId: string, val: number[]) => {
         setPeerVolumes(prev => ({ ...prev, [userId]: val[0] }));
@@ -210,6 +220,7 @@ export default function WatchPartyRoomPage() {
                         (storedCode && storedCode === data.party.join_code)
                     ) {
                         setIsAuthorized(true);
+                        fetchVoiceToken();
                     } else {
                         setShowJoinCodeDialog(true);
                         setIsAuthorized(false);
@@ -217,6 +228,7 @@ export default function WatchPartyRoomPage() {
                     }
                 } else {
                     setIsAuthorized(true);
+                    fetchVoiceToken();
                 }
             } catch (error) {
                 console.error(error);
@@ -224,6 +236,22 @@ export default function WatchPartyRoomPage() {
                 router.push('/watch-party');
             }
         };
+
+        const fetchVoiceToken = async () => {
+          try {
+            const res = await apiClient.get(`/livekit/generate-liveToken`, {
+              params: { roomId, userId: user.id },
+            });
+            setLiveKitToken(res.data.token);
+            setVoiceErrorDialog({ isOpen: false, message: "" });
+          } catch (err: any) {
+            console.error("Không thể lấy LiveKit Token", err);
+            const errorMsg = err.response?.data?.message || "Lỗi kết nối Voice Chat. Hãy thử F5 tải lại trang.";
+            toast.error(errorMsg);
+            setVoiceErrorDialog({ isOpen: true, message: errorMsg });
+          }
+        };
+
         fetchRoomInfo();
     }, [roomId, user, router]);
 
@@ -558,8 +586,6 @@ export default function WatchPartyRoomPage() {
 
     const videoUrl = roomData?.episode?.video_url || roomData?.movie?.video_url || "";
 
-    // Xóa useEffect set source thủ công. Để React Render thẻ <video src> native để đồng bộ tuyệt đối với trình duyệt.
-
     if (isPendingApproval) return (
         <div className="flex h-screen items-center justify-center bg-black text-white flex-col gap-4">
             <div className="animate-pulse bg-yellow-500/20 p-4 rounded-full"><Lock className="w-10 h-10 text-yellow-500" /></div>
@@ -574,7 +600,23 @@ export default function WatchPartyRoomPage() {
     if (isLoading) return <div className="flex h-screen items-center justify-center bg-black text-white"><RefreshCw className="animate-spin mr-2" /> Đang tải...</div>;
 
     return (
-        <div className="fixed inset-0 z-50 flex bg-black text-white overflow-hidden font-sans flex-col md:flex-row">
+        <LiveKitRoom
+            video={false}
+            audio={false}
+            token={liveKitToken || undefined}
+            serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_WEBSOCKET_URL}
+            connect={!!liveKitToken}
+            options={{
+                audioCaptureDefaults: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                }
+            }}
+            className="fixed inset-0 z-50 flex bg-black text-white overflow-hidden font-sans flex-col md:flex-row"
+        >
+            <RoomAudioRenderer />
+            <LiveKitStateBridge setSpeakingUsers={setSpeakingUsers} />
 
             <div className="flex-1 flex flex-col h-full overflow-y-auto custom-scrollbar bg-[#141414]">
                 <div ref={playerContainerRef} className="w-full h-[85vh] bg-black relative group shrink-0 flex items-center justify-center">
@@ -649,7 +691,6 @@ export default function WatchPartyRoomPage() {
                         <Button size="icon" variant="ghost" onClick={() => setIsSidebarOpen(false)} className="h-8 w-8 text-slate-400 hover:text-white"><PanelRightClose className="w-4 h-4" /></Button>
                     </div>
                     
-                    {/* --- VOICE CHAT CONTROLS --- */}
                     <div className="p-3 bg-gradient-to-r from-red-900/10 via-[#1a1a1a] to-transparent border-b border-white/5 flex items-center justify-between shrink-0">
                         <div className="flex items-center gap-2">
                             <div className={cn("w-8 h-8 rounded-full flex items-center justify-center bg-white/5 border border-white/10", isMicOn && "border-green-500/50 bg-green-500/10")}>
@@ -657,17 +698,35 @@ export default function WatchPartyRoomPage() {
                             </div>
                             <div className="leading-tight">
                                 <span className={cn("text-xs font-bold block", isMicOn ? "text-green-500" : "text-slate-400")}>Voice Chat</span>
-                                <span className="text-[10px] text-slate-500">{isMicOn ? "Đang bật mic" : "Đã tắt mic"}</span>
+                                <span className="text-[10px] text-slate-500">{isMicOn ? "Đang phát âm thanh" : "Đã tắt mic"}</span>
                             </div>
                         </div>
-                        <Button
-                            size="sm"
-                            variant={isMicOn ? "secondary" : "destructive"}
-                            className={cn("h-7 px-3 text-[10px] font-bold uppercase tracking-wider gap-1.5", isMicOn && "bg-white/10 hover:bg-white/20 text-slate-300")}
-                            onClick={() => setIsMicOn(!isMicOn)}
-                        >
-                            {isMicOn ? "Tắt Mic" : "Bật Mic"}
-                        </Button>
+                        
+                        {liveKitToken ? (
+                            <TrackToggle
+                                source={Track.Source.Microphone}
+                                onChange={(enabled) => setIsMicOn(enabled)}
+                                className={cn(
+                                    "inline-flex items-center justify-center whitespace-nowrap rounded-md text-[10px] font-bold uppercase tracking-wider h-7 px-3 gap-1.5 transition-colors",
+                                    isMicOn ? "bg-white/10 hover:bg-white/20 text-slate-300" : "bg-red-600 text-white hover:bg-red-700"
+                                )}
+                            >
+                                {isMicOn ? "Tắt Mic" : "Bật Mic"}
+                            </TrackToggle>
+                        ) : voiceErrorDialog.message ? (
+                            <Button 
+                                size="sm" 
+                                variant="destructive" 
+                                className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider gap-1.5 bg-red-900 border-red-700"
+                                onClick={() => setVoiceErrorDialog(prev => ({ ...prev, isOpen: true }))}
+                            >
+                                Lỗi Voice
+                            </Button>
+                        ) : (
+                            <Button size="sm" disabled className="bg-slate-700 text-slate-400 h-7 px-3 text-[10px] font-bold uppercase tracking-wider">
+                                Đang tải...
+                            </Button>
+                        )}
                     </div>
                     
                     <div className="flex bg-[#0A0A0A] border-b border-white/10 shrink-0">
@@ -793,6 +852,22 @@ export default function WatchPartyRoomPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+
+            <Dialog open={voiceErrorDialog.isOpen} onOpenChange={(open) => setVoiceErrorDialog(prev => ({...prev, isOpen: open}))}>
+                <DialogContent className="bg-[#1a1a1a] border-red-900/50 text-white font-sans max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-red-500 flex items-center gap-2 text-xl font-bold">
+                            <MicOff className="w-5 h-5"/> Lỗi kết nối Voice Chat
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-400 mt-2">
+                            {voiceErrorDialog.message}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="mt-6">
+                        <Button variant="secondary" onClick={() => setVoiceErrorDialog(prev => ({...prev, isOpen: false}))} className="bg-white/10 hover:bg-white/20 text-white w-full sm:w-auto font-semibold">Đóng</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </LiveKitRoom>
     );
 }
