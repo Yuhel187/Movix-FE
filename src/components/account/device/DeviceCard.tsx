@@ -8,9 +8,9 @@ import {
   Smartphone, 
   Tablet, 
   Tv, 
-  MapPin, 
   Clock, 
   Globe, 
+  Fingerprint,
   LogOut 
 } from "lucide-react";
 import { DeviceSession } from "@/types/device";
@@ -19,6 +19,31 @@ interface DeviceCardProps {
   session: DeviceSession;
   onLogout: (id: string) => void;
 }
+
+const formatLastUsedAt = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.floor(diffMs / 60000);
+
+  if (diffMinutes < 1) return "Vừa xong";
+  if (diffMinutes < 60) return `${diffMinutes} phút trước`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} giờ trước`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return `${diffDays} ngày trước`;
+
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
 
 export default function DeviceCard({ session, onLogout }: DeviceCardProps) {
   const renderDeviceIcon = () => {
@@ -68,6 +93,10 @@ export default function DeviceCard({ session, onLogout }: DeviceCardProps) {
                 <Globe className="h-3.5 w-3.5" />
                 <span>{session.browser} trên {session.os}</span>
               </div>
+              <div className="text-sm text-gray-500 flex items-center gap-2">
+                <Fingerprint className="h-3.5 w-3.5" />
+                <span className="break-all">ID phiên: {session.deviceId}</span>
+              </div>
             </div>
           </div>
 
@@ -85,10 +114,11 @@ export default function DeviceCard({ session, onLogout }: DeviceCardProps) {
 
         <div className="mt-6 pt-4 border-t border-zinc-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="flex items-start gap-2 text-sm text-gray-400">
-            <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-gray-500" />
             <div>
-              <p className="text-gray-300">{session.location}</p>
-              <p className="text-xs mt-0.5">IP: {session.ipAddress}</p>
+              <p className="text-gray-300">IP: {session.ipAddress}</p>
+              <p className="text-xs mt-0.5 text-gray-500">
+                Đã tạo: {new Date(session.createdAt).toLocaleString("vi-VN")}
+              </p>
             </div>
           </div>
           
@@ -96,7 +126,7 @@ export default function DeviceCard({ session, onLogout }: DeviceCardProps) {
             <Clock className="h-4 w-4 shrink-0 mt-0.5 text-gray-500" />
             <div className="sm:text-right">
               <p className="text-gray-300">Hoạt động gần nhất</p>
-              <p className="text-xs mt-0.5 text-yellow-500">{session.lastActive}</p>
+              <p className="text-xs mt-0.5 text-yellow-500">{formatLastUsedAt(session.lastUsedAt)}</p>
             </div>
           </div>
         </div>
