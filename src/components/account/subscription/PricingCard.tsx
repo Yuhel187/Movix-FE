@@ -6,13 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Star } from "lucide-react";
 import { SubscriptionPlan } from "@/types/subscription";
 
+export interface PricingDisplayPlan extends SubscriptionPlan {
+  uiFeatures: string[];
+  badgeColorClass?: string;
+  isRecommended?: boolean;
+}
+
 interface PricingCardProps {
-  plan: SubscriptionPlan;
+  plan: PricingDisplayPlan;
   isCurrentPlan: boolean;
+  isLoading?: boolean;
   onSubscribe: (planId: string) => void;
 }
 
-export default function PricingCard({ plan, isCurrentPlan, onSubscribe }: PricingCardProps) {
+export default function PricingCard({ plan, isCurrentPlan, isLoading = false, onSubscribe }: PricingCardProps) {
   const formatCurrency = (amount: number, currency: string) => {
     return amount === 0 
       ? "Miễn phí" 
@@ -22,10 +29,10 @@ export default function PricingCard({ plan, isCurrentPlan, onSubscribe }: Pricin
   return (
     <Card 
       className={`relative flex flex-col bg-[#1e1e1e] border-slate-800 transition-all duration-300 hover:-translate-y-1 
-      ${plan.recommended ? 'border-primary shadow-[0_0_30px_-10px_rgba(59,130,246,0.3)]' : 'hover:border-slate-600'}`}
+      ${plan.isRecommended ? 'border-primary shadow-[0_0_30px_-10px_rgba(59,130,246,0.3)]' : 'hover:border-slate-600'}`}
     >
       {/* Nổi bật gói Recommend */}
-      {plan.recommended && (
+      {plan.isRecommended && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
           <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 border-none shadow-lg px-3 py-1 text-xs uppercase tracking-wider font-bold">
             <Star className="w-3 h-3 mr-1 fill-current" /> Đề xuất
@@ -34,7 +41,7 @@ export default function PricingCard({ plan, isCurrentPlan, onSubscribe }: Pricin
       )}
 
       <CardHeader className="pb-4 pt-4 px-5">
-        <div className={`w-8 h-8 rounded-lg mb-2 flex items-center justify-center ${plan.color || 'bg-slate-700'}`}>
+        <div className={`w-8 h-8 rounded-lg mb-2 flex items-center justify-center ${plan.badgeColorClass || 'bg-slate-700'}`}>
           <ShieldCheckIcon className="w-5 h-5 text-white" />
         </div>
         <CardTitle className="text-lg font-bold text-white">{plan.name}</CardTitle>
@@ -46,7 +53,7 @@ export default function PricingCard({ plan, isCurrentPlan, onSubscribe }: Pricin
           </span>
           {plan.price > 0 && (
             <span className="text-slate-400 ml-1 text-xs font-medium">
-              /{plan.billingCycle === "MONTHLY" ? "tháng" : "năm"}
+              /{plan.duration_days} ngày
             </span>
           )}
         </div>
@@ -54,7 +61,7 @@ export default function PricingCard({ plan, isCurrentPlan, onSubscribe }: Pricin
 
       <CardContent className="flex-1 flex flex-col justify-between px-5 pb-5 pt-0">
         <ul className="space-y-2 mb-4">
-          {plan.features.map((feature, idx) => (
+          {plan.uiFeatures.map((feature, idx) => (
             <li key={idx} className="flex items-start">
               <div className="mt-0.5 bg-primary/20 p-0.5 rounded-full mr-2 shrink-0">
                 <Check className="h-2.5 w-2.5 text-primary" />
@@ -66,16 +73,22 @@ export default function PricingCard({ plan, isCurrentPlan, onSubscribe }: Pricin
 
         <Button 
           onClick={() => onSubscribe(plan.id)}
-          disabled={isCurrentPlan}
+          disabled={isCurrentPlan || isLoading}
           size="sm"
           className={`w-full font-bold text-sm transition-all h-9
             ${isCurrentPlan 
               ? 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed' 
-              : plan.recommended 
+              : plan.isRecommended 
                 ? 'bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25' 
                 : 'bg-white text-black hover:bg-slate-200'}`}
         >
-          {isCurrentPlan ? "Đang sử dụng" : plan.price === 0 ? "Bắt đầu ngay" : "Nâng cấp"}
+          {isCurrentPlan
+            ? "Đang sử dụng"
+            : isLoading
+              ? "Đang xử lý..."
+              : plan.price === 0
+                ? "Bắt đầu ngay"
+                : "Mua ngay"}
         </Button>
       </CardContent>
     </Card>
