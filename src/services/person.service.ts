@@ -15,9 +15,12 @@ function getRoleDisplayName(roleType?: string) {
     return "Nghệ sĩ";
 }
 
-export async function getPeopleList(page = 1, limit = 20) {
+export async function getPeopleList(page = 1, limit = 20, search?: string, role?: string) {
   try {
-    const res = await api.get<PeopleListResponse>(`/people?page=${page}&limit=${limit}`);
+    let url = `/people?page=${page}&limit=${limit}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (role && role !== 'all') url += `&role=${encodeURIComponent(role)}`;
+    const res = await api.get<PeopleListResponse>(url);
     const rawData = res.data;
 
     const people: Person[] = rawData.data.map((item) => ({

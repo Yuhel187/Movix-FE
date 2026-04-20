@@ -10,9 +10,24 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function AIChatWidget() {
   const pathname = usePathname();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
+  
   const [isOpen, setIsOpen] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
+
+  // Restore state form sessionStorage to persist across page navigations
+  useEffect(() => {
+    const savedState = sessionStorage.getItem("movix_ai_chat_isOpen");
+    if (savedState === "true") {
+      setIsOpen(true);
+      setHasOpened(true);
+    }
+  }, []);
+
+  // Save state to keep it open across pages
+  useEffect(() => {
+    sessionStorage.setItem("movix_ai_chat_isOpen", String(isOpen));
+  }, [isOpen]);
 
   // Các trang không hiển thị Chat Widget
   const hiddenRoutes = [
@@ -51,6 +66,8 @@ export default function AIChatWidget() {
           isOpen ? "opacity-100 scale-100 translate-y-0 pointer-events-auto" : "opacity-0 scale-90 translate-y-10 pointer-events-none"
         )}>
           <AIChatBox 
+            key={user?.id || 'guest'}
+            userId={user?.id}
             onClose={handleClose}       
             onMinimize={handleMinimize} 
           />

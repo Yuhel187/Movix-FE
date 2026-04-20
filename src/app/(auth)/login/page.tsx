@@ -37,7 +37,14 @@ export default function LoginPage() {
         password,
       });
 
-      const { ...user } = res.data.data;
+      const { accessToken, refreshToken, ...user } = res.data.data;
+      
+      if (accessToken) {
+        localStorage.setItem('accessToken', accessToken);
+      }
+      if (refreshToken) {
+        localStorage.setItem('refreshToken', refreshToken);
+      }
 
       login(user);
 

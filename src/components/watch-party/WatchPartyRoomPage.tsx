@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import Hls from "hls.js";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,10 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import {
     Send, Play, Pause, Volume2, Maximize, Minimize,
     PanelRightClose, PanelRightOpen, RefreshCw, Power, MoreVertical, UserX, LogOut,
-    Smile, Flag, Star, Calendar, Globe, Crown, Ban, Lock, Check, X, AlertTriangle
+    Smile, Flag, Star, Calendar, Globe, Crown, Ban, Lock, Check, X, AlertTriangle,
+    Mic, MicOff, Volume1, VolumeX
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -30,6 +33,15 @@ import apiClient from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { InvitePartyDialog } from "@/components/watch-party/InvitePartyDialog";
 import EmojiPicker from 'emoji-picker-react';
+import {
+  LiveKitRoom,
+  RoomAudioRenderer,
+  useLocalParticipant,
+  useParticipants,
+  TrackToggle,
+} from "@livekit/components-react";
+import { Track } from "livekit-client";
+import "@livekit/components-styles";
 
 // --- HELPER: Xử lý ngày tháng an toàn ---
 const getSafeYear = (dateString: string | null | undefined) => {
@@ -44,6 +56,24 @@ const getSafeDate = (dateString: string | null | undefined) => {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'N/A';
     return date.toLocaleDateString('vi-VN');
+};
+
+const LiveKitStateBridge = ({
+  setSpeakingUsers,
+}: {
+  setSpeakingUsers: (users: Set<string>) => void;
+}) => {
+  const participants = useParticipants();
+
+  useEffect(() => {
+    const speaking = new Set<string>();
+    participants.forEach((p) => {
+      if (p.isSpeaking) speaking.add(p.identity);
+    });
+    setSpeakingUsers(speaking);
+  }, [participants, setSpeakingUsers]);
+
+  return null;
 };
 
 const MovieInfoSection = ({ roomData }: { roomData: any }) => {
@@ -145,12 +175,24 @@ export default function WatchPartyRoomPage() {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isMuted, setIsMuted] = useState(false);
 
     // Dialog States
     const [userToKick, setUserToKick] = useState<string | null>(null);
     const [userToBan, setUserToBan] = useState<string | null>(null);
     const [userToTransfer, setUserToTransfer] = useState<string | null>(null);
     const [showEndDialog, setShowEndDialog] = useState(false);
+    const [voiceErrorDialog, setVoiceErrorDialog] = useState<{isOpen: boolean, message: string}>({ isOpen: false, message: "" });
+
+    // --- VOICE CHAT STATES ---
+    const [isMicOn, setIsMicOn] = useState(false);
+    const [peerVolumes, setPeerVolumes] = useState<{ [key: string]: number }>({});
+    const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
+    const [liveKitToken, setLiveKitToken] = useState<string | null>(null);
+
+    const handleVolumeChange = (userId: string, val: number[]) => {
+        setPeerVolumes(prev => ({ ...prev, [userId]: val[0] }));
+    };
 
 
     const [hostId, setHostId] = useState<string>("");
@@ -178,6 +220,7 @@ export default function WatchPartyRoomPage() {
                         (storedCode && storedCode === data.party.join_code)
                     ) {
                         setIsAuthorized(true);
+                        fetchVoiceToken();
                     } else {
                         setShowJoinCodeDialog(true);
                         setIsAuthorized(false);
@@ -185,6 +228,7 @@ export default function WatchPartyRoomPage() {
                     }
                 } else {
                     setIsAuthorized(true);
+                    fetchVoiceToken();
                 }
             } catch (error) {
                 console.error(error);
@@ -192,14 +236,34 @@ export default function WatchPartyRoomPage() {
                 router.push('/watch-party');
             }
         };
+
+        const fetchVoiceToken = async () => {
+          try {
+            const res = await apiClient.get(`/livekit/generate-liveToken`, {
+              params: { roomId, userId: user.id },
+            });
+            setLiveKitToken(res.data.token);
+            setVoiceErrorDialog({ isOpen: false, message: "" });
+          } catch (err: any) {
+            console.error("Không thể lấy LiveKit Token", err);
+            const errorMsg = err.response?.data?.message || "Lỗi kết nối Voice Chat. Hãy thử F5 tải lại trang.";
+            toast.error(errorMsg);
+            setVoiceErrorDialog({ isOpen: true, message: errorMsg });
+          }
+        };
+
         fetchRoomInfo();
     }, [roomId, user, router]);
 
     // --- SOCKET CONNECTION ---
     useEffect(() => {
         if (!user || !roomId || !isAuthorized) return;
-
-        const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000", { withCredentials: true });
+        const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000", { 
+            withCredentials: true,
+            auth: {
+                token: typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
+            }
+        });
         socketRef.current = socket;
 
         socket.emit('wp:join', { roomId, userId: user.id });
@@ -218,35 +282,70 @@ export default function WatchPartyRoomPage() {
         });
         socket.on('wp:sync_player', ({ action, currentTime: remoteTime }) => {
             if (!videoRef.current) return;
-            if (action === 'seek' || Math.abs(videoRef.current.currentTime - remoteTime) > 1) {
+            const diff = Math.abs(videoRef.current.currentTime - remoteTime);
+
+            if (action === 'seek' || diff > 2) {
                 videoRef.current.currentTime = remoteTime;
-                setCurrentTime(remoteTime);
             }
+
             if (action === 'play') {
-                videoRef.current.play().catch(() => { });
+                const playPromise = videoRef.current.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch((e) => {
+                        if (e.name === 'AbortError') return; // Bỏ qua nếu bị gián đoạn do bấm Pause liên tiếp
+                        console.error("Autoplay bị chặn bởi trình duyệt:", e);
+                        if (e.name === 'NotAllowedError' && videoRef.current) { // Chỉ mute khi bị chặn autoplay
+                            videoRef.current.muted = true;
+                            setIsMuted(true);
+                            videoRef.current.play().catch(() => {});
+                            toast.info("Video bị tắt tiếng do yêu cầu tự động phát. Vui lòng bật loa lại.");
+                        }
+                    });
+                }
                 setIsPlaying(true);
             } else if (action === 'pause') {
                 videoRef.current.pause();
                 setIsPlaying(false);
             }
         });
+
+        // NHẬN YÊU CẦU ĐỒNG BỘ TỪ VIEWER MỚI VÀO (CHỈ HOST XỬ LÝ)
         socket.on('wp:get_host_time', ({ requesterId }) => {
             if (isHost && videoRef.current) {
                 socket.emit('wp:send_host_time', {
-                    roomId, requesterId,
+                    roomId, 
+                    requesterId,
                     currentTime: videoRef.current.currentTime,
                     isPlaying: !videoRef.current.paused
                 });
             }
         });
-        socket.on('wp:sync_initial', ({ targetUserId, currentTime, isPlaying: hostIsPlaying }) => {
-            if (user.id === targetUserId && videoRef.current) {
-                videoRef.current.currentTime = currentTime;
-                setCurrentTime(currentTime);
-                if (hostIsPlaying) {
-                    videoRef.current.play().catch(() => { });
-                    setIsPlaying(true);
+
+        // VIEWER NHẬN DỮ LIỆU ĐỒNG BỘ TỪ HOST KHI VỪA VÀO PHÒNG
+        socket.on('wp:sync_initial', ({ targetUserId, currentTime: remoteTime, isPlaying: remoteIsPlaying }) => {
+            if (user.id !== targetUserId || !videoRef.current) return;
+            
+            console.log(`[SYNC INIT] Syncing new viewer to ${remoteTime}s and playing: ${remoteIsPlaying}`);
+            videoRef.current.currentTime = remoteTime;
+            setCurrentTime(remoteTime);
+            
+            if (remoteIsPlaying) {
+                const playPromise = videoRef.current.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch((e) => {
+                        if (e.name === 'AbortError') return;
+                        if (e.name === 'NotAllowedError') {
+                            videoRef.current!.muted = true;
+                            setIsMuted(true);
+                            videoRef.current!.play().catch(() => {});
+                            toast.info("Video đã tắt tiếng để đồng bộ với chủ phòng.");
+                        }
+                    });
                 }
+                setIsPlaying(true);
+            } else {
+                videoRef.current.pause();
+                setIsPlaying(false);
             }
         });
         socket.on('wp:host_transferred', ({ newHostId }) => {
@@ -361,8 +460,24 @@ export default function WatchPartyRoomPage() {
         if (!videoRef.current) return;
         const video = videoRef.current;
         const action = forcePlay ? 'play' : (video.paused ? 'play' : 'pause');
-        if (action === 'play') { video.play().catch(() => { }); setIsPlaying(true); }
-        else { video.pause(); setIsPlaying(false); }
+        if (action === 'play') { 
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.catch((e) => { 
+                    if (e.name === 'AbortError') return;
+                    console.error("Autoplay bị chặn bởi trình duyệt (Host):", e);
+                    video.muted = true;
+                    setIsMuted(true);
+                    video.play().catch(() => {});
+                    toast.info("Video bị tắt tiếng do chính sách tự động phát. Vui lòng bật loa lên!");
+                });
+            }
+            setIsPlaying(true); 
+        }
+        else { 
+            video.pause(); 
+            setIsPlaying(false); 
+        }
         socketRef.current?.emit('wp:sync_action', { roomId, action, currentTime: video.currentTime });
     }, [roomId]);
 
@@ -377,7 +492,9 @@ export default function WatchPartyRoomPage() {
     const onTimeUpdate = () => { if (videoRef.current) setCurrentTime(videoRef.current.currentTime); };
     const onLoadedMetadata = () => {
         if (videoRef.current) setDuration(videoRef.current.duration);
-        if (isHost && roomData && !roomData.started_at) performPlayPause(true);
+        if (isHost && roomData && !roomData.started_at) {
+             setTimeout(() => performPlayPause(true), 300);
+        }
     };
 
     useEffect(() => {
@@ -433,8 +550,7 @@ export default function WatchPartyRoomPage() {
         if (!isHost) return;
 
         socketRef.current?.emit('wp:end_room', roomId);
-        router.push('/watch-party');
-        toast.success("Đã kết thúc phòng.");
+        // KHÔNG router.push ở đây nữa, phải đợi server báo về sự kiện wp:room_ended thì router.push() mới chạy (ở trong hàm useEffect) để đảm bảo TCP Socket gửi đi không bị ngắt giữa chừng do Component Unmount.
         setShowEndDialog(false);
     };
 
@@ -484,13 +600,30 @@ export default function WatchPartyRoomPage() {
     if (isLoading) return <div className="flex h-screen items-center justify-center bg-black text-white"><RefreshCw className="animate-spin mr-2" /> Đang tải...</div>;
 
     return (
-        <div className="fixed inset-0 z-50 flex bg-black text-white overflow-hidden font-sans flex-col md:flex-row">
+        <LiveKitRoom
+            video={false}
+            audio={false}
+            token={liveKitToken || undefined}
+            serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_WEBSOCKET_URL}
+            connect={!!liveKitToken}
+            options={{
+                audioCaptureDefaults: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                }
+            }}
+            className="fixed inset-0 z-50 flex bg-black text-white overflow-hidden font-sans flex-col md:flex-row"
+        >
+            <RoomAudioRenderer />
+            <LiveKitStateBridge setSpeakingUsers={setSpeakingUsers} />
 
             <div className="flex-1 flex flex-col h-full overflow-y-auto custom-scrollbar bg-[#141414]">
                 <div ref={playerContainerRef} className="w-full h-[85vh] bg-black relative group shrink-0 flex items-center justify-center">
                     {videoUrl ? (
                         <video
-                            ref={videoRef} className="w-full h-full object-contain" src={videoUrl} controls={false}
+                            ref={videoRef} className="w-full h-full object-contain bg-black" controls={false}
+                            muted={isMuted} playsInline preload="auto" src={videoUrl}
                             onTimeUpdate={onTimeUpdate} onLoadedMetadata={onLoadedMetadata} onClick={isHost ? handlePlayPauseClick : undefined}
                         />
                     ) : (<div className="text-slate-500 flex flex-col items-center gap-2 pt-20"><span className="text-4xl">🎬</span><span>Video không khả dụng</span></div>)}
@@ -532,7 +665,14 @@ export default function WatchPartyRoomPage() {
                                 <Button size="sm" variant="ghost" className="h-8 text-red-400 text-[10px] px-2 hover:bg-red-500/10 hover:text-red-300 gap-1.5" onClick={handleManualSync}>
                                     <RefreshCw className={cn("w-3 h-3", isHost ? "" : "animate-spin-slow-once")} /> {isHost ? "Đồng bộ tất cả" : "Đồng bộ"}
                                 </Button>
-                                <Volume2 className="w-6 h-6 text-slate-300 hover:text-white cursor-pointer hidden sm:block" />
+                                <div onClick={() => {
+                                    if(videoRef.current) {
+                                        videoRef.current.muted = !videoRef.current.muted;
+                                        setIsMuted(videoRef.current.muted);
+                                    }
+                                }} className="cursor-pointer hidden sm:block">
+                                    {isMuted ? <VolumeX className="w-6 h-6 text-slate-300 hover:text-white" /> : <Volume2 className="w-6 h-6 text-slate-300 hover:text-white" />}
+                                </div>
                             </div>
                             <button onClick={toggleFullscreen} className="text-slate-300 hover:text-white transition-transform hover:scale-110">
                                 {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
@@ -550,6 +690,45 @@ export default function WatchPartyRoomPage() {
                         <span className="font-bold text-sm text-slate-200">Phòng xem chung</span>
                         <Button size="icon" variant="ghost" onClick={() => setIsSidebarOpen(false)} className="h-8 w-8 text-slate-400 hover:text-white"><PanelRightClose className="w-4 h-4" /></Button>
                     </div>
+                    
+                    <div className="p-3 bg-gradient-to-r from-red-900/10 via-[#1a1a1a] to-transparent border-b border-white/5 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-2">
+                            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center bg-white/5 border border-white/10", isMicOn && "border-green-500/50 bg-green-500/10")}>
+                                {isMicOn ? <Mic className="w-4 h-4 text-green-500" /> : <MicOff className="w-4 h-4 text-red-500" />}
+                            </div>
+                            <div className="leading-tight">
+                                <span className={cn("text-xs font-bold block", isMicOn ? "text-green-500" : "text-slate-400")}>Voice Chat</span>
+                                <span className="text-[10px] text-slate-500">{isMicOn ? "Đang phát âm thanh" : "Đã tắt mic"}</span>
+                            </div>
+                        </div>
+                        
+                        {liveKitToken ? (
+                            <TrackToggle
+                                source={Track.Source.Microphone}
+                                onChange={(enabled) => setIsMicOn(enabled)}
+                                className={cn(
+                                    "inline-flex items-center justify-center whitespace-nowrap rounded-md text-[10px] font-bold uppercase tracking-wider h-7 px-3 gap-1.5 transition-colors",
+                                    isMicOn ? "bg-white/10 hover:bg-white/20 text-slate-300" : "bg-red-600 text-white hover:bg-red-700"
+                                )}
+                            >
+                                {isMicOn ? "Tắt Mic" : "Bật Mic"}
+                            </TrackToggle>
+                        ) : voiceErrorDialog.message ? (
+                            <Button 
+                                size="sm" 
+                                variant="destructive" 
+                                className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider gap-1.5 bg-red-900 border-red-700"
+                                onClick={() => setVoiceErrorDialog(prev => ({ ...prev, isOpen: true }))}
+                            >
+                                Lỗi Voice
+                            </Button>
+                        ) : (
+                            <Button size="sm" disabled className="bg-slate-700 text-slate-400 h-7 px-3 text-[10px] font-bold uppercase tracking-wider">
+                                Đang tải...
+                            </Button>
+                        )}
+                    </div>
+                    
                     <div className="flex bg-[#0A0A0A] border-b border-white/10 shrink-0">
                         <button onClick={() => setActiveTab('chat')} className={cn("flex-1 py-3 text-sm font-semibold transition-colors relative", activeTab === 'chat' ? "text-white" : "text-slate-500 hover:text-slate-300")}>Trò chuyện {activeTab === 'chat' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"></div>}</button>
                         <button onClick={() => setActiveTab('members')} className={cn("flex-1 py-3 text-sm font-semibold transition-colors relative", activeTab === 'members' ? "text-white" : "text-slate-500 hover:text-slate-300")}>Thành viên ({members.length}) {activeTab === 'members' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"></div>}</button>
@@ -577,24 +756,69 @@ export default function WatchPartyRoomPage() {
                             </div>
                         ) : (
                             <ScrollArea className="h-full p-2">
-                                {members.map(mem => (
-                                    <div key={mem.id} className="flex items-center justify-between p-3 hover:bg-white/5 rounded-xl transition-colors group">
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="w-9 h-9 border border-white/10"><AvatarImage src={mem.avatar} /><AvatarFallback className="bg-slate-800 text-xs">{mem.name[0]}</AvatarFallback></Avatar>
-                                            <div className="flex flex-col"><span className="text-sm font-medium text-white flex items-center gap-2">{mem.name}{mem.role === 'host' && <span className="text-[9px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded font-bold">HOST</span>}</span><span className="text-xs text-slate-500">{mem.online ? "Đang xem" : "Ngoại tuyến"}</span></div>
+                                {members.map((mem) => {
+                                    const isSpeaking = speakingUsers.has(mem.id);
+                                    const isMe = mem.id === user?.id;
+                                    const volume = peerVolumes[mem.id] ?? 100;
+                                    const isMuted = volume === 0;
+
+                                    return (
+                                        <div key={mem.id} className="flex flex-col p-3 hover:bg-white/5 rounded-xl transition-colors group animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3 relative">
+                                                    <div className="relative">
+                                                        <Avatar className={cn("w-10 h-10 border-2 transition-all duration-300", isSpeaking ? "border-green-500 ring-2 ring-green-500/30 scale-105" : "border-white/10")}>
+                                                            <AvatarImage src={mem.avatar} />
+                                                            <AvatarFallback className="bg-slate-800 text-xs text-slate-400">{mem.name[0]}</AvatarFallback>
+                                                        </Avatar>
+                                                        {isSpeaking && <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-0.5 border-2 border-[#121212]"><Mic className="w-2.5 h-2.5 text-black fill-current" /></div>}
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-bold text-slate-200 flex items-center gap-2">
+                                                            {mem.name}
+                                                            {mem.role === 'host' && <span className="text-[9px] bg-yellow-500/20 text-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.2)] px-1.5 py-0.5 rounded font-bold tracking-wider">HOST</span>}
+                                                            {isMe && <span className="text-[9px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-medium">BẠN</span>}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-500 font-medium tracking-wide flex items-center gap-1">
+                                                            <div className={cn("w-1.5 h-1.5 rounded-full", mem.online ? "bg-green-500" : "bg-slate-600")}></div>
+                                                            {mem.online ? "ONLINE" : "OFFLINE"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Actions Menu */}
+                                                {isHost && mem.role !== 'host' && (
+                                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-white/10 rounded-full"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-slate-800 text-slate-300 w-56 shadow-2xl p-1">
+                                                                <DropdownMenuItem className="focus:bg-white/5 cursor-pointer rounded-md py-2.5" onClick={() => setUserToTransfer(mem.id)}><Crown className="w-4 h-4 mr-2 text-yellow-500" /> Chuyển quyền Host</DropdownMenuItem>
+                                                                <DropdownMenuItem className="text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer rounded-md py-2.5" onClick={() => setUserToKick(mem.id)}><UserX className="w-4 h-4 mr-2" /> Mời ra khỏi phòng</DropdownMenuItem>
+                                                                <DropdownMenuItem className="text-red-600 focus:text-red-500 focus:bg-red-500/20 cursor-pointer rounded-md py-2.5 font-bold" onClick={() => setUserToBan(mem.id)}><Ban className="w-4 h-4 mr-2" /> Cấm vĩnh viễn (Ban)</DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* --- Volume Slider (Only for others) --- */}
+                                            {!isMe && mem.online && (
+                                                <div className="ml-[52px] mt-2 flex items-center gap-3 pr-2 transition-all duration-300">
+                                                    <button onClick={() => setPeerVolumes(prev => ({ ...prev, [mem.id]: isMuted ? 80 : 0 }))} className="text-slate-500 hover:text-white transition-colors">
+                                                        {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : (volume < 50 ? <Volume1 className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />)}
+                                                    </button>
+                                                    <Slider
+                                                        value={[volume]}
+                                                        max={100}
+                                                        step={1}
+                                                        onValueChange={(val) => handleVolumeChange(mem.id, val)}
+                                                        className="flex-1 cursor-pointer py-1"
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
-                                        {isHost && mem.role !== 'host' && (
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100 h-8 w-8 text-slate-400 bg-amber-50 transition-opacity"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="bg-[#1F1F1F] border-slate-700 text-white w-52">
-                                                    <DropdownMenuItem className="focus:bg-white/10 cursor-pointer py-2.5" onClick={() => setUserToTransfer(mem.id)}><Crown className="w-4 h-4 mr-2 text-yellow-500" /> Chuyển quyền Host</DropdownMenuItem>
-                                                    <DropdownMenuItem className="text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer py-2.5" onClick={() => setUserToKick(mem.id)}><UserX className="w-4 h-4 mr-2" /> Mời ra khỏi phòng</DropdownMenuItem>
-                                                    <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-500/20 cursor-pointer py-2.5" onClick={() => setUserToBan(mem.id)}><Ban className="w-4 h-4 mr-2" /> Cấm vĩnh viễn (Ban)</DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        )}
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </ScrollArea>
                         )}
                     </div>
@@ -628,6 +852,22 @@ export default function WatchPartyRoomPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+
+            <Dialog open={voiceErrorDialog.isOpen} onOpenChange={(open) => setVoiceErrorDialog(prev => ({...prev, isOpen: open}))}>
+                <DialogContent className="bg-[#1a1a1a] border-red-900/50 text-white font-sans max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-red-500 flex items-center gap-2 text-xl font-bold">
+                            <MicOff className="w-5 h-5"/> Lỗi kết nối Voice Chat
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-400 mt-2">
+                            {voiceErrorDialog.message}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="mt-6">
+                        <Button variant="secondary" onClick={() => setVoiceErrorDialog(prev => ({...prev, isOpen: false}))} className="bg-white/10 hover:bg-white/20 text-white w-full sm:w-auto font-semibold">Đóng</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </LiveKitRoom>
     );
 }

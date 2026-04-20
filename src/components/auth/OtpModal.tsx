@@ -7,7 +7,25 @@ import { Input } from "@/components/ui/input";
 
 export default function OtpModal({ open, onClose, onVerify, onResend }: any) {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [countdown, setCountdown] = useState(60); // 60s cooldown
   const refs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (open && countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [open, countdown]);
+
+  useEffect(() => {
+    if (open) {
+      setCountdown(60);
+      setOtp(["", "", "", "", "", ""]);
+    }
+  }, [open]);
 
   if (!open) return null;
 
@@ -39,9 +57,11 @@ export default function OtpModal({ open, onClose, onVerify, onResend }: any) {
   };
 
   const handleResend = () => {
-    setOtp(["", "", "", "", "", ""]);      
-    refs.current[0]?.focus();              
-    onResend && onResend();                
+    if (countdown > 0) return;
+    setOtp(["", "", "", "", "", ""]);
+    setCountdown(60);
+    refs.current[0]?.focus();
+    onResend && onResend();
   };
 
   return (
@@ -70,23 +90,31 @@ export default function OtpModal({ open, onClose, onVerify, onResend }: any) {
 
         <Button
           onClick={() => onVerify(otp.join(""))}
-          className="bg-red-600 hover:bg-red-700 w-full py-5 text-lg font-semibold rounded-lg"
+          className="bg-red-600 hover:bg-red-700 w-full py-5 text-lg font-semibold rounded-lg text-white"
         >
           Xác minh
         </Button>
 
-        <button
-          onClick={handleResend}
-          className="text-zinc-300 text-xs mt-4 hover:underline block mx-auto"
-        >
-          Gửi lại mã
-        </button>
+        <div className="text-center mt-4">
+          {countdown > 0 ? (
+            <p className="text-zinc-400 text-sm">
+              Gửi lại mã sau {countdown}s
+            </p>
+          ) : (
+            <button
+              onClick={handleResend}
+              className="text-zinc-300 text-sm hover:underline hover:text-white transition-colors"
+            >
+              Gửi lại mã
+            </button>
+          )}
+        </div>
 
         <button
           onClick={onClose}
-          className="text-zinc-400 text-xs hover:text-white mt-4 block mx-auto"
+          className="text-zinc-500 hover:text-white text-sm mt-6 block mx-auto transition-colors"
         >
-          Hủy
+          Đóng
         </button>
       </div>
     </div>

@@ -257,6 +257,44 @@ class SubscriptionService {
       return 0;
     }
   }
+
+  async getAllSubscriptions(page: number, take: number, status?: string, planId?: string) {
+    let url = `/admin/subscriptions/getAll?page=${page}&take=${take}`;
+    if (status) url += `&status=${status}`;
+    if (planId) url += `&planId=${planId}`;
+    const res = await apiClient.get(url);
+    return res.data;
+  }
+
+  async getAllPlans(): Promise<SubscriptionPlan[]> {
+    const res = await apiClient.get("/admin/subscriptions/plans");
+    return res.data;
+  }
+
+  async createPlan(data: Partial<SubscriptionPlan>): Promise<SubscriptionPlan> {
+    const res = await apiClient.post("/admin/subscriptions/create-plan", data);
+    return res.data;
+  }
+
+  async updatePlan(id: string, data: Partial<SubscriptionPlan>): Promise<SubscriptionPlan> {
+    const res = await apiClient.put(`/admin/subscriptions/update-plan/${id}`, data);
+    return res.data;
+  }
+
+  async togglePlanFlag(id: string): Promise<SubscriptionPlan> {
+    const res = await apiClient.post(`/admin/subscriptions/toggle-flag/${id}`);
+    return res.data;
+  }
+
+  async updateSubscriptionStatus(id: string, status: string) {
+    const res = await apiClient.post(`/admin/subscriptions/update-status/${id}`, { status });
+    return res.data;
+  }
+
+  async grantSubscription(userId: string, planId: string) {
+    const res = await apiClient.post(`/admin/subscriptions/grant`, { userId, planId });
+    return res.data;
+  }
 }
 
 export const subscriptionService = new SubscriptionService();

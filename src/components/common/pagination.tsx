@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -11,6 +12,22 @@ interface PaginationProps {
 }
 
 export function Pagination({ totalPages, currentPage, onPageChange }: PaginationProps) {
+  const [inputValue, setInputValue] = useState(String(currentPage));
+
+  useEffect(() => {
+    setInputValue(String(currentPage));
+  }, [currentPage]);
+
+  useEffect(() => {
+    const val = Number(inputValue);
+    if (!isNaN(val) && val >= 1 && val <= totalPages && val !== currentPage) {
+      const timer = setTimeout(() => {
+        onPageChange(val);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [inputValue, currentPage, totalPages, onPageChange]);
+
   const handlePrev = () => {
     onPageChange(Math.max(currentPage - 1, 1));
   };
@@ -20,10 +37,7 @@ export function Pagination({ totalPages, currentPage, onPageChange }: Pagination
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = Number(e.target.value);
-    if (!isNaN(val) && val >= 1 && val <= totalPages) {
-      onPageChange(val);
-    }
+    setInputValue(e.target.value);
   };
 
   return (
@@ -41,7 +55,7 @@ export function Pagination({ totalPages, currentPage, onPageChange }: Pagination
       <div className="flex items-center gap-3 bg-[#2b2d3a] px-6 py-3 rounded-full">
         <span className="text-gray-300">Trang</span>
         <Input
-          value={currentPage}
+          value={inputValue}
           onChange={handleInputChange}
           className="w-12 text-center bg-transparent border border-gray-500 text-white focus-visible:ring-0 focus-visible:border-gray-400"
         />

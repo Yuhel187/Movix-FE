@@ -149,7 +149,7 @@ export default function NotificationDropdown() {
   const displayNotifications = notifications.slice(0, 5);
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen} modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"

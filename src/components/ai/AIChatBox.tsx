@@ -11,6 +11,7 @@ interface Message {
 }
 
 interface Props {
+  userId?: string;
   onClose: () => void;
   onMinimize?: () => void;
 }
@@ -50,18 +51,39 @@ const renderMessageContent = (text: string) => {
     parts.push(cleanText.substring(lastIndex));
   }
 
-  if (parts.length === 0) return cleanText;
+  if (parts.length === 0) {
+    return <span className="whitespace-pre-wrap">{cleanText}</span>;
+  }
 
-  return parts;
+  return <span className="whitespace-pre-wrap">{parts}</span>;
 };
 
-export default function AIChatBox({ onClose , onMinimize}: Props) {
-  const [messages, setMessages] = useState<Message[]>([
-    { id: "1", text: "Xin chào! 👋 Tôi là AI của Movix. Tôi có thể giúp bạn tìm phim hoặc giải đáp thắc mắc.", sender: "bot" }
-  ]);
+export default function AIChatBox({ userId, onClose , onMinimize}: Props) {
+  const getStorageKey = () => `movix_ai_chat_history_${userId || 'guest'}`;
+
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem(getStorageKey());
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error("Lỗi parse history chatbot:", e);
+        }
+      }
+    }
+    return [
+      { id: "1", text: "Xin chào! 👋 Tôi là AI của Movix. Tôi có thể giúp bạn tìm phim hoặc giải đáp thắc mắc.", sender: "bot" }
+    ];
+  });
+  
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    sessionStorage.setItem(getStorageKey(), JSON.stringify(messages));
+  }, [messages, userId]);
 
   useEffect(() => {
     if (scrollRef.current) {

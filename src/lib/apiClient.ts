@@ -26,8 +26,21 @@ const api = axios.create({
   },
   withCredentials: true,
 });
-// api.interceptors.request.use(
-//   (config) => {
+
+api.interceptors.request.use(
+  (config) => {
+    if (!isServer) {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 //     if (typeof window !== 'undefined') {
 //       const token = localStorage.getItem('accessToken');
 //       if (token) {
@@ -65,8 +78,20 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await api.post('/auth/refresh-token');
-        processQueue(null, null);
+        const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
+        const res = await api.post('/auth/refresh-token', { refreshToken });
+        
+        const { accessToken, refreshToken: newRefreshToken } = res.data.data;
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('accessToken', accessToken);
+          localStorage.setItem('refreshToken', newRefreshToken);
+        }
+
+        api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+        originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
+
+        processQueue(null, accessToken);
         return api(originalRequest);
       } catch (refreshError: any) {
         processQueue(refreshError, null);
