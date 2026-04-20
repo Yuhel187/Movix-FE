@@ -9,7 +9,7 @@ import CurrentPlanStatus from "@/components/account/subscription/CurrentPlanStat
 import BillingHistory from "@/components/account/subscription/BillingHistory";
 import WalletBalance from "@/components/account/subscription/WalletBalance";
 import { useSubscription } from "@/hooks/useSubscription";
-import { getUserTransactionHistory } from "@/services/subscription.service";
+import { subscriptionService } from "@/services/subscription.service";
 import { Transaction, TransactionListMeta, TransactionStatus } from "@/types/subscription";
 import { toast } from "sonner";
 import {
@@ -45,7 +45,7 @@ export default function UserSubscriptionPage() {
       setIsTransactionLoading(true);
       setTransactionError(null);
       try {
-        const result = await getUserTransactionHistory({
+        const result = await subscriptionService.getUserTransactionHistory({
           page: transactionMeta.currentPage,
           limit: transactionMeta.limit,
           status: transactionStatus === "ALL" ? undefined : transactionStatus,

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePayment } from "@/hooks/usePayment";
 import { useRouter } from "next/navigation";
-import { getSubscriptionPlans, getUserSubscription } from "@/services/subscription.service";
+import { subscriptionService } from "@/services/subscription.service";
 import { UserSubscription } from "@/types/subscription";
 
 const FAQS = [
@@ -82,7 +82,7 @@ export default function PricingPage() {
     const loadPlans = async () => {
       setIsPlansLoading(true);
       try {
-        const data = await getSubscriptionPlans(true);
+        const data = await subscriptionService.getSubscriptionPlans(true);
         setPlans(data);
       } catch {
         toast.error("Không thể tải danh sách gói");
@@ -103,7 +103,7 @@ export default function PricingPage() {
       }
 
       try {
-        const data = await getUserSubscription();
+        const data = await subscriptionService.getUserSubscription();
         setSubscription(data);
       } catch {
         setSubscription(null);

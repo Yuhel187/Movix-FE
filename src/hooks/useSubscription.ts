@@ -1,8 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import {
-  getUserSubscription,
-  getSubscriptionPlans,
-} from '@/services/subscription.service';
+import { subscriptionService } from '@/services/subscription.service';
 import type {
   UserSubscription,
   SubscriptionPlan,
@@ -42,8 +39,8 @@ export function useSubscription(): UseSubscriptionReturn {
       setError(null);
 
       const [sub, plns] = await Promise.all([
-        getUserSubscription(),
-        getSubscriptionPlans(),
+        subscriptionService.getUserSubscription(),
+        subscriptionService.getSubscriptionPlans(),
       ]);
 
       const now = new Date();
