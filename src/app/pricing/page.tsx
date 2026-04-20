@@ -1,73 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import PricingCard from "@/components/account/subscription/PricingCard";
+import PricingCard, { PricingDisplayPlan } from "@/components/account/subscription/PricingCard";
 import { SubscriptionPlan } from "@/types/subscription";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { ArrowLeft, Check, HelpCircle } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-
-// --- MOCK DATA ---
-const ACTIVE_PLANS: SubscriptionPlan[] = [
-  {
-    id: "1",
-    name: "Standard",
-    description: "Gói miễn phí cơ bản dành cho người mới bắt đầu.",
-    price: 0,
-    currency: "VND",
-    billingCycle: "MONTHLY",
-    features: [
-      "Xem phim thường, phim cũ",
-      "Chất lượng SD 480p",
-      "Xem phim có quảng cáo",
-      "Xem trên 1 thiết bị",
-      "Chỉ được Tham gia phòng Watch Party",
-    ],
-    isActive: true,
-    color: "bg-slate-500",
-  },
-  {
-    id: "2",
-    name: "Movix Plus",
-    description: "Trải nghiệm nâng cao, không quảng cáo, mở khóa nhiều tính năng.",
-    price: 59000,
-    currency: "VND",
-    billingCycle: "MONTHLY",
-    features: [
-      "Xem tất cả, bao gồm 'Phim Hot'",
-      "Chất lượng HD 720p",
-      "Không quảng cáo",
-      "Xem trên 2 thiết bị cùng lúc",
-      "Được Tạo phòng (Tối đa 5 người)",
-      "Cho phép tải về Mobile App",
-    ],
-    isActive: true,
-    color: "bg-blue-600",
-    recommended: true
-  },
-  {
-    id: "3",
-    name: "Movix Ultimate",
-    description: "Quyền năng tối thượng, trải nghiệm điện ảnh 4K cho gia đình.",
-    price: 199000,
-    currency: "VND",
-    billingCycle: "MONTHLY",
-    features: [
-      "Xem sớm phim mới (Sneak Peek) trước 24h",
-      "Chất lượng Full HD 1080p & 4K",
-      "Không quảng cáo",
-      "Xem trên 4 thiết bị cùng lúc",
-      "Tạo phòng Siêu lớn (50 người)",
-      "Voice Chat HD: Âm thanh cao, lọc ồn",
-      "AI Gợi ý theo cảm xúc & ngữ cảnh",
-    ],
-    isActive: true,
-    color: "bg-amber-500",
-  },
-];
+import { useAuth } from "@/contexts/AuthContext";
+import { usePayment } from "@/hooks/usePayment";
+import { useRouter } from "next/navigation";
+import { subscriptionService } from "@/services/subscription.service";
+import { UserSubscription } from "@/types/subscription";
 
 const FAQS = [
   {
@@ -84,12 +30,143 @@ const FAQS = [
   }
 ];
 
-export default function PricingPage() {
-  const [billingCycle, setBillingCycle] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
+const levelColorClassMap: Record<number, string> = {
+  1: "bg-slate-500",
+  2: "bg-blue-600",
+  3: "bg-amber-500",
+};
 
-  const handleSubscribe = (planId: string) => {
-    toast.success("Đang chuyển đến trang thanh toán...");
-    // window.location.href = `/checkout/${planId}?cycle=${billingCycle}`;
+const formatBenefitValue = (key: string, value: unknown): string => {
+  if (typeof value === "boolean") {
+    return value ? key : "";
+  }
+
+  return `${key}: ${String(value)}`;
+};
+
+const toDisplayPlan = (plan: SubscriptionPlan): PricingDisplayPlan => {
+  const benefits = plan.benefits ?? {};
+  const featureList = Object.entries(benefits)
+    .map(([key, value]) => formatBenefitValue(key, value))
+    .filter(Boolean);
+
+  if (plan.can_create_watch_party) {
+    featureList.push(`Tạo Watch Party (tối đa ${plan.max_watch_party_participants} người)`);
+  }
+
+  if (plan.can_kick_mute_members) {
+    featureList.push("Kick/Mute thành viên trong Watch Party");
+  }
+
+  if (!featureList.length) {
+    featureList.push("Truy cập các tính năng nâng cao");
+  }
+
+  return {
+    ...plan,
+    uiFeatures: featureList,
+    badgeColorClass: levelColorClassMap[plan.level] || "bg-slate-700",
+    isRecommended: plan.level >= 2,
+  };
+};
+
+export default function PricingPage() {
+  const router = useRouter();
+  const { isLoggedIn, isLoading: isAuthLoading } = useAuth();
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [isPlansLoading, setIsPlansLoading] = useState(true);
+  const { initiateCheckout, isCheckingOut } = usePayment();
+
+  useEffect(() => {
+    const loadPlans = async () => {
+      setIsPlansLoading(true);
+      try {
+        const data = await subscriptionService.getSubscriptionPlans(true);
+        setPlans(data);
+      } catch {
+        toast.error("Không thể tải danh sách gói");
+        setPlans([]);
+      } finally {
+        setIsPlansLoading(false);
+      }
+    };
+
+    loadPlans();
+  }, []);
+
+  useEffect(() => {
+    const loadMySubscription = async () => {
+      if (!isLoggedIn) {
+        setSubscription(null);
+        return;
+      }
+
+      try {
+        const data = await subscriptionService.getUserSubscription();
+        setSubscription(data);
+      } catch {
+        setSubscription(null);
+      }
+    };
+
+    loadMySubscription();
+  }, [isLoggedIn]);
+
+  const planDisplayList = useMemo(() => {
+    return plans
+      .filter((plan) => plan.is_active)
+      .sort((a, b) => a.level - b.level)
+      .map(toDisplayPlan);
+  }, [plans]);
+
+  const isActive = !!(
+    subscription &&
+    subscription.status === "ACTIVE" &&
+    new Date(subscription.end_date) > new Date()
+  );
+
+  const currentPlanId = isActive ? subscription?.plan_id : null;
+
+  const handleSubscribe = async (planId: string) => {
+    const selectedPlan = plans.find((plan) => plan.id === planId);
+
+    if (!selectedPlan) {
+      toast.error("Không tìm thấy gói đăng ký");
+      return;
+    }
+
+    if (selectedPlan.price === 0) {
+      toast.info("Gói miễn phí không cần thanh toán");
+      return;
+    }
+
+    if (currentPlanId === planId) {
+      toast.info("Bạn đang sử dụng gói này");
+      return;
+    }
+
+    if (!isLoggedIn) {
+      sessionStorage.setItem("redirectAfterLogin", "/pricing");
+      toast.info("Vui lòng đăng nhập để mua gói");
+      router.push("/login");
+      return;
+    }
+
+    const result = await initiateCheckout(planId);
+    if (!result) {
+      toast.error("Không thể tạo phiên thanh toán");
+      return;
+    }
+
+    const paymentUrl = result.paymentData?.paymentUrl;
+    if (!paymentUrl || paymentUrl === "undefined") {
+      toast.error("Hệ thống chưa trả về URL thanh toán hợp lệ");
+      return;
+    }
+
+    toast.success("Đang chuyển đến cổng thanh toán...");
+    window.location.href = paymentUrl;
   };
 
   return (
@@ -115,32 +192,29 @@ export default function PricingPage() {
             Trải nghiệm điện ảnh không giới hạn với chất lượng cao nhất. Nâng cấp hoặc thay đổi gói bất cứ lúc nào.
           </p>
 
-          {/* Billing Toggle (Visual only for now since mock data is fixed) */}
-          <div className="mt-8 flex justify-center items-center gap-4">
-             <span className={`text-sm font-medium ${billingCycle === 'MONTHLY' ? 'text-white' : 'text-slate-500'}`}>Thanh toán tháng</span>
-             <div 
-               className="bg-slate-800 w-14 h-7 rounded-full relative cursor-pointer p-1 transition-colors hover:bg-slate-700"
-               onClick={() => setBillingCycle(prev => prev === 'MONTHLY' ? 'YEARLY' : 'MONTHLY')}
-             >
-                <div className={`w-5 h-5 bg-primary rounded-full shadow-md transition-all duration-300 ${billingCycle === 'YEARLY' ? 'translate-x-7' : 'translate-x-0'}`} />
-             </div>
-             <span className={`text-sm font-medium ${billingCycle === 'YEARLY' ? 'text-white' : 'text-slate-500'}`}>
-               Thanh toán năm <span className="text-green-500 text-xs ml-1 font-bold">-20%</span>
-             </span>
-          </div>
+          {isActive && subscription?.plan && (
+            <p className="mt-4 text-sm text-emerald-400">
+              Bạn đang sử dụng gói {subscription.plan.name}. Nâng cấp để mở khóa thêm quyền lợi.
+            </p>
+          )}
         </div>
 
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start mb-24">
-          {ACTIVE_PLANS.map((plan) => (
+          {(isPlansLoading || isAuthLoading) && (
+            <p className="text-slate-400">Đang tải danh sách gói...</p>
+          )}
+
+          {!isPlansLoading && !planDisplayList.length && (
+            <p className="text-slate-400">Hiện chưa có gói đăng ký khả dụng.</p>
+          )}
+
+          {!isPlansLoading && planDisplayList.map((plan) => (
             <div key={plan.id} className="h-full">
-              <PricingCard 
-                plan={{
-                  ...plan,
-                  price: billingCycle === 'YEARLY' && plan.price > 0 ? plan.price * 12 * 0.8 : plan.price,
-                  billingCycle: billingCycle
-                }}
-                isCurrentPlan={false} 
+              <PricingCard
+                plan={plan}
+                isCurrentPlan={currentPlanId === plan.id}
+                isLoading={isCheckingOut}
                 onSubscribe={handleSubscribe}
               />
             </div>
@@ -170,7 +244,12 @@ export default function PricingPage() {
            <p className="text-slate-300 mb-8 max-w-2xl mx-auto">
              Bắt đầu với gói Standard miễn phí của chúng tôi và khám phá kho phim khổng lồ ngay hôm nay. Không cần thẻ tín dụng.
            </p>
-           <Button className="bg-white text-black hover:bg-slate-200 px-8 py-6 text-lg font-bold">
+           <Button
+             className="bg-white text-black hover:bg-slate-200 px-8 py-6 text-lg font-bold"
+             onClick={() => {
+               router.push(isLoggedIn ? "/" : "/register");
+             }}
+           >
              Tạo tài khoản miễn phí
            </Button>
         </div>

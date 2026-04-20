@@ -50,6 +50,27 @@ export default function LoginPage() {
 
       toast.success("Đăng nhập thành công!");
 
+      const redirectAfterLogin =
+        typeof window !== "undefined"
+          ? sessionStorage.getItem("redirectAfterLogin")
+          : null;
+
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("redirectAfterLogin");
+      }
+
+      const safeRedirect =
+        redirectAfterLogin &&
+        redirectAfterLogin !== "undefined" &&
+        redirectAfterLogin.startsWith("/")
+          ? redirectAfterLogin
+          : null;
+
+      if (safeRedirect) {
+        router.push(safeRedirect);
+        return;
+      }
+
       if (user.role === "Admin") {
         router.push("/admin");
       } else {
