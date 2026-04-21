@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Hls from "hls.js";
@@ -199,6 +199,7 @@ export default function WatchPartyRoomPage() {
     useEffect(() => { if (roomData) setHostId(roomData.host_user_id); }, [roomData]);
     const isHost = hostId === user?.id;
     const roomId = params.id as string;
+    const isCurrentUserMuted = members.find(m => m.id === user?.id)?.isMuted;
 
     // --- INITIALIZE ---
     useEffect(() => {
@@ -539,6 +540,11 @@ export default function WatchPartyRoomPage() {
         toast.success("Đã cấm thành viên vĩnh viễn");
     };
 
+    const toggleMuteUser = (userId: string, currentMuted: boolean) => {
+        if (!isHost) return;
+        socketRef.current?.emit('wp:mute_user', { roomId, userIdToMute: userId, mute: !currentMuted });
+    };
+
     const confirmTransferHost = () => {
         if (!isHost || !userToTransfer) return;
         socketRef.current?.emit('wp:transfer_host', { roomId, newHostId: userToTransfer });
@@ -618,7 +624,7 @@ export default function WatchPartyRoomPage() {
             <RoomAudioRenderer />
             <LiveKitStateBridge setSpeakingUsers={setSpeakingUsers} />
 
-            <div className="flex-1 flex flex-col h-full overflow-y-auto custom-scrollbar bg-[#141414]">
+            <div className="flex-1 flex flex-col h-full custom-scrollbar bg-[#141414]">
                 <div ref={playerContainerRef} className="w-full h-[85vh] bg-black relative group shrink-0 flex items-center justify-center">
                     {videoUrl ? (
                         <video
@@ -705,13 +711,14 @@ export default function WatchPartyRoomPage() {
                         {liveKitToken ? (
                             <TrackToggle
                                 source={Track.Source.Microphone}
-                                onChange={(enabled) => setIsMicOn(enabled)}
+                                onChange={(enabled) => !isCurrentUserMuted && setIsMicOn(enabled)}
                                 className={cn(
                                     "inline-flex items-center justify-center whitespace-nowrap rounded-md text-[10px] font-bold uppercase tracking-wider h-7 px-3 gap-1.5 transition-colors",
-                                    isMicOn ? "bg-white/10 hover:bg-white/20 text-slate-300" : "bg-red-600 text-white hover:bg-red-700"
+                                    isMicOn ? "bg-white/10 hover:bg-white/20 text-slate-300" : "bg-red-600 text-white hover:bg-red-700",
+                                    isCurrentUserMuted && "opacity-50 cursor-not-allowed pointer-events-none"
                                 )}
                             >
-                                {isMicOn ? "Tắt Mic" : "Bật Mic"}
+                                {isCurrentUserMuted ? "Mic bị khoá" : (isMicOn ? "Tắt Mic" : "Bật Mic")}
                             </TrackToggle>
                         ) : voiceErrorDialog.message ? (
                             <Button 
@@ -750,8 +757,15 @@ export default function WatchPartyRoomPage() {
                                 <div className="p-3 border-t border-white/10 bg-[#0A0A0A] flex gap-2 items-center relative shrink-0">
                                     <Button size="icon" variant="ghost" className="text-slate-400 hover:text-yellow-500 shrink-0" onClick={() => setShowEmoji(!showEmoji)}><Smile className="w-5 h-5" /></Button>
                                     {showEmoji && <div className="absolute bottom-16 left-0 z-50 shadow-2xl"><EmojiPicker onEmojiClick={onEmojiClick} theme={"dark" as any} width={300} height={350} /></div>}
-                                    <Input value={msgInput} onChange={e => setMsgInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()} placeholder="Nhập tin nhắn..." className="bg-[#1F1F1F] border-transparent focus-visible:ring-1 focus-visible:ring-red-600 rounded-full h-10 text-sm text-white" />
-                                    <Button size="icon" onClick={handleSendMessage} className="bg-red-600 hover:bg-red-700 rounded-full h-10 w-10 shrink-0"><Send className="w-4 h-4 ml-0.5" /></Button>
+                                      <Input 
+                                          value={msgInput} 
+                                          onChange={e => setMsgInput(e.target.value)} 
+                                          onKeyDown={e => e.key === 'Enter' && !isCurrentUserMuted && handleSendMessage()} 
+                                          placeholder={isCurrentUserMuted ? "Bạn đã bị cấm chat." : "Nhập tin nhắn..."}
+                                          disabled={isCurrentUserMuted}
+                                          className="bg-[#1F1F1F] border-transparent focus-visible:ring-1 focus-visible:ring-red-600 rounded-full h-10 text-sm text-white" 
+                                      />
+                                      <Button size="icon" onClick={handleSendMessage} disabled={isCurrentUserMuted} className="bg-red-600 hover:bg-red-700 rounded-full h-10 w-10 shrink-0"><Send className="w-4 h-4 ml-0.5" /></Button>
                                 </div>
                             </div>
                         ) : (
@@ -793,7 +807,11 @@ export default function WatchPartyRoomPage() {
                                                             <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-white/10 rounded-full"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-slate-800 text-slate-300 w-56 shadow-2xl p-1">
                                                                 <DropdownMenuItem className="focus:bg-white/5 cursor-pointer rounded-md py-2.5" onClick={() => setUserToTransfer(mem.id)}><Crown className="w-4 h-4 mr-2 text-yellow-500" /> Chuyển quyền Host</DropdownMenuItem>
-                                                                <DropdownMenuItem className="text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer rounded-md py-2.5" onClick={() => setUserToKick(mem.id)}><UserX className="w-4 h-4 mr-2" /> Mời ra khỏi phòng</DropdownMenuItem>
+                                                                <DropdownMenuItem className="focus:bg-white/5 cursor-pointer rounded-md py-2.5" onClick={() => toggleMuteUser(mem.id, mem.isMuted)}>
+                                                                  {mem.isMuted ? <Mic className="w-4 h-4 mr-2 text-green-500" /> : <MicOff className="w-4 h-4 mr-2 text-orange-500" />}
+                                                                  {mem.isMuted ? "Bỏ cấm chat/mic" : "Cấm chat/mic (Mute)"}
+                                                              </DropdownMenuItem>
+                                                              <DropdownMenuItem className="text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer rounded-md py-2.5" onClick={() => setUserToKick(mem.id)}><UserX className="w-4 h-4 mr-2" /> Mời ra khỏi phòng</DropdownMenuItem>
                                                                 <DropdownMenuItem className="text-red-600 focus:text-red-500 focus:bg-red-500/20 cursor-pointer rounded-md py-2.5 font-bold" onClick={() => setUserToBan(mem.id)}><Ban className="w-4 h-4 mr-2" /> Cấm vĩnh viễn (Ban)</DropdownMenuItem>
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>
@@ -871,3 +889,4 @@ export default function WatchPartyRoomPage() {
         </LiveKitRoom>
     );
 }
+
