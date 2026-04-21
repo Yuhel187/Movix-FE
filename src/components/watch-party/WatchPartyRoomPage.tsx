@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Hls from "hls.js";
@@ -34,11 +34,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { InvitePartyDialog } from "@/components/watch-party/InvitePartyDialog";
 import EmojiPicker from 'emoji-picker-react';
 import {
-  LiveKitRoom,
-  RoomAudioRenderer,
-  useLocalParticipant,
-  useParticipants,
-  TrackToggle,
+    LiveKitRoom,
+    RoomAudioRenderer,
+    useLocalParticipant,
+    useParticipants,
+    TrackToggle,
+    AudioTrack,
+    useTracks,
 } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import "@livekit/components-styles";
@@ -59,21 +61,54 @@ const getSafeDate = (dateString: string | null | undefined) => {
 };
 
 const LiveKitStateBridge = ({
-  setSpeakingUsers,
+    setSpeakingUsers,
+    isCurrentUserMuted,
+    setIsMicOn
 }: {
-  setSpeakingUsers: (users: Set<string>) => void;
+    setSpeakingUsers: (users: Set<string>) => void;
+    isCurrentUserMuted: boolean;
+    setIsMicOn: (val: boolean) => void;
 }) => {
-  const participants = useParticipants();
+    const participants = useParticipants();
+    const { localParticipant } = useLocalParticipant();
 
-  useEffect(() => {
-    const speaking = new Set<string>();
-    participants.forEach((p) => {
-      if (p.isSpeaking) speaking.add(p.identity);
-    });
-    setSpeakingUsers(speaking);
-  }, [participants, setSpeakingUsers]);
+    // Force turn off and stay off if muted
+    useEffect(() => {
+        if (isCurrentUserMuted && localParticipant) {
+            if (localParticipant.isMicrophoneEnabled) {
+                localParticipant.setMicrophoneEnabled(false);
+                setIsMicOn(false);
+            }
+        }
+    }, [isCurrentUserMuted, localParticipant, localParticipant?.isMicrophoneEnabled, setIsMicOn]);
 
-  return null;
+    useEffect(() => {
+        const speaking = new Set<string>();
+        participants.forEach((p) => {
+            if (p.isSpeaking) speaking.add(p.identity);
+        });
+        setSpeakingUsers(speaking);
+    }, [participants, setSpeakingUsers]);
+
+    return null;
+};
+
+const CustomAudioRenderer = ({ peerVolumes }: { peerVolumes: { [key: string]: number } }) => {
+    const tracks = useTracks([Track.Source.Microphone]).filter((t) => t.participant.identity);
+    return (
+        <div style={{ display: 'none' }}>
+            {tracks.map((track) => {
+                const vol = peerVolumes[track.participant.identity] ?? 100;
+                return (
+                    <AudioTrack
+                        key={`${track.participant.identity}-${track.source}`}
+                        trackRef={track}
+                        volume={vol / 100}
+                    />
+                );
+            })}
+        </div>
+    );
 };
 
 const MovieInfoSection = ({ roomData }: { roomData: any }) => {
@@ -182,7 +217,7 @@ export default function WatchPartyRoomPage() {
     const [userToBan, setUserToBan] = useState<string | null>(null);
     const [userToTransfer, setUserToTransfer] = useState<string | null>(null);
     const [showEndDialog, setShowEndDialog] = useState(false);
-    const [voiceErrorDialog, setVoiceErrorDialog] = useState<{isOpen: boolean, message: string}>({ isOpen: false, message: "" });
+    const [voiceErrorDialog, setVoiceErrorDialog] = useState<{ isOpen: boolean, message: string }>({ isOpen: false, message: "" });
 
     // --- VOICE CHAT STATES ---
     const [isMicOn, setIsMicOn] = useState(false);
@@ -239,18 +274,18 @@ export default function WatchPartyRoomPage() {
         };
 
         const fetchVoiceToken = async () => {
-          try {
-            const res = await apiClient.get(`/livekit/generate-liveToken`, {
-              params: { roomId, userId: user.id },
-            });
-            setLiveKitToken(res.data.token);
-            setVoiceErrorDialog({ isOpen: false, message: "" });
-          } catch (err: any) {
-            console.error("Không thể lấy LiveKit Token", err);
-            const errorMsg = err.response?.data?.message || "Lỗi kết nối Voice Chat. Hãy thử F5 tải lại trang.";
-            toast.error(errorMsg);
-            setVoiceErrorDialog({ isOpen: true, message: errorMsg });
-          }
+            try {
+                const res = await apiClient.get(`/livekit/generate-liveToken`, {
+                    params: { roomId, userId: user.id },
+                });
+                setLiveKitToken(res.data.token);
+                setVoiceErrorDialog({ isOpen: false, message: "" });
+            } catch (err: any) {
+                console.error("Không thể lấy LiveKit Token", err);
+                const errorMsg = err.response?.data?.message || "Lỗi kết nối Voice Chat. Hãy thử F5 tải lại trang.";
+                toast.error(errorMsg);
+                setVoiceErrorDialog({ isOpen: true, message: errorMsg });
+            }
         };
 
         fetchRoomInfo();
@@ -259,7 +294,7 @@ export default function WatchPartyRoomPage() {
     // --- SOCKET CONNECTION ---
     useEffect(() => {
         if (!user || !roomId || !isAuthorized) return;
-        const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000", { 
+        const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000", {
             withCredentials: true,
             auth: {
                 token: typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
@@ -298,7 +333,7 @@ export default function WatchPartyRoomPage() {
                         if (e.name === 'NotAllowedError' && videoRef.current) { // Chỉ mute khi bị chặn autoplay
                             videoRef.current.muted = true;
                             setIsMuted(true);
-                            videoRef.current.play().catch(() => {});
+                            videoRef.current.play().catch(() => { });
                             toast.info("Video bị tắt tiếng do yêu cầu tự động phát. Vui lòng bật loa lại.");
                         }
                     });
@@ -314,7 +349,7 @@ export default function WatchPartyRoomPage() {
         socket.on('wp:get_host_time', ({ requesterId }) => {
             if (isHost && videoRef.current) {
                 socket.emit('wp:send_host_time', {
-                    roomId, 
+                    roomId,
                     requesterId,
                     currentTime: videoRef.current.currentTime,
                     isPlaying: !videoRef.current.paused
@@ -325,11 +360,11 @@ export default function WatchPartyRoomPage() {
         // VIEWER NHẬN DỮ LIỆU ĐỒNG BỘ TỪ HOST KHI VỪA VÀO PHÒNG
         socket.on('wp:sync_initial', ({ targetUserId, currentTime: remoteTime, isPlaying: remoteIsPlaying }) => {
             if (user.id !== targetUserId || !videoRef.current) return;
-            
+
             console.log(`[SYNC INIT] Syncing new viewer to ${remoteTime}s and playing: ${remoteIsPlaying}`);
             videoRef.current.currentTime = remoteTime;
             setCurrentTime(remoteTime);
-            
+
             if (remoteIsPlaying) {
                 const playPromise = videoRef.current.play();
                 if (playPromise !== undefined) {
@@ -338,7 +373,7 @@ export default function WatchPartyRoomPage() {
                         if (e.name === 'NotAllowedError') {
                             videoRef.current!.muted = true;
                             setIsMuted(true);
-                            videoRef.current!.play().catch(() => {});
+                            videoRef.current!.play().catch(() => { });
                             toast.info("Video đã tắt tiếng để đồng bộ với chủ phòng.");
                         }
                     });
@@ -420,6 +455,14 @@ export default function WatchPartyRoomPage() {
             else toast.info(text);
         });
 
+        socket.on('wp:muted_status', ({ isMuted }) => {
+            if (isMuted) {
+                toast.error("Bạn đã bị chủ phòng cấm chat và mic.");
+            } else {
+                toast.success("Bạn đã được chủ phòng bỏ cấm.");
+            }
+        });
+
         setIsLoading(false);
 
         return () => {
@@ -461,23 +504,23 @@ export default function WatchPartyRoomPage() {
         if (!videoRef.current) return;
         const video = videoRef.current;
         const action = forcePlay ? 'play' : (video.paused ? 'play' : 'pause');
-        if (action === 'play') { 
+        if (action === 'play') {
             const playPromise = video.play();
             if (playPromise !== undefined) {
-                playPromise.catch((e) => { 
+                playPromise.catch((e) => {
                     if (e.name === 'AbortError') return;
                     console.error("Autoplay bị chặn bởi trình duyệt (Host):", e);
                     video.muted = true;
                     setIsMuted(true);
-                    video.play().catch(() => {});
+                    video.play().catch(() => { });
                     toast.info("Video bị tắt tiếng do chính sách tự động phát. Vui lòng bật loa lên!");
                 });
             }
-            setIsPlaying(true); 
+            setIsPlaying(true);
         }
-        else { 
-            video.pause(); 
-            setIsPlaying(false); 
+        else {
+            video.pause();
+            setIsPlaying(false);
         }
         socketRef.current?.emit('wp:sync_action', { roomId, action, currentTime: video.currentTime });
     }, [roomId]);
@@ -494,7 +537,7 @@ export default function WatchPartyRoomPage() {
     const onLoadedMetadata = () => {
         if (videoRef.current) setDuration(videoRef.current.duration);
         if (isHost && roomData && !roomData.started_at) {
-             setTimeout(() => performPlayPause(true), 300);
+            setTimeout(() => performPlayPause(true), 300);
         }
     };
 
@@ -542,7 +585,9 @@ export default function WatchPartyRoomPage() {
 
     const toggleMuteUser = (userId: string, currentMuted: boolean) => {
         if (!isHost) return;
-        socketRef.current?.emit('wp:mute_user', { roomId, userIdToMute: userId, mute: !currentMuted });
+        const newMuteStatus = !currentMuted;
+        console.log(`[MUTE] User: ${userId}, Setting mute to: ${newMuteStatus}`);
+        socketRef.current?.emit('wp:mute_user', { roomId, userIdToMute: userId, mute: newMuteStatus });
     };
 
     const confirmTransferHost = () => {
@@ -619,231 +664,245 @@ export default function WatchPartyRoomPage() {
                     autoGainControl: true,
                 }
             }}
-            className="fixed inset-0 z-50 flex bg-black text-white overflow-hidden font-sans flex-col md:flex-row"
+            className="fixed inset-0 z-50 overflow-hidden font-sans bg-black text-white"
         >
-            <RoomAudioRenderer />
-            <LiveKitStateBridge setSpeakingUsers={setSpeakingUsers} />
+            <CustomAudioRenderer peerVolumes={peerVolumes} />
+            <LiveKitStateBridge setSpeakingUsers={setSpeakingUsers} isCurrentUserMuted={!!isCurrentUserMuted} setIsMicOn={setIsMicOn} />
 
-            <div className="flex-1 flex flex-col h-full custom-scrollbar bg-[#141414]">
-                <div ref={playerContainerRef} className="w-full h-[85vh] bg-black relative group shrink-0 flex items-center justify-center">
-                    {videoUrl ? (
-                        <video
-                            ref={videoRef} className="w-full h-full object-contain bg-black" controls={false}
-                            muted={isMuted} playsInline preload="auto" src={videoUrl}
-                            onTimeUpdate={onTimeUpdate} onLoadedMetadata={onLoadedMetadata} onClick={isHost ? handlePlayPauseClick : undefined}
-                        />
-                    ) : (<div className="text-slate-500 flex flex-col items-center gap-2 pt-20"><span className="text-4xl">🎬</span><span>Video không khả dụng</span></div>)}
+            <div className="flex flex-col md:flex-row w-full h-[100dvh] overflow-hidden bg-black relative z-10">
+                <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto custom-scrollbar bg-[#141414]">
+                    <div ref={playerContainerRef} className="w-full h-[85vh] bg-black relative group shrink-0 flex items-center justify-center">
+                        {videoUrl ? (
+                            <video
+                                ref={videoRef} className="w-full h-full object-contain bg-black" controls={false}
+                                muted={isMuted} playsInline preload="auto" src={videoUrl}
+                                onTimeUpdate={onTimeUpdate} onLoadedMetadata={onLoadedMetadata} onClick={isHost ? handlePlayPauseClick : undefined}
+                            />
+                        ) : (<div className="text-slate-500 flex flex-col items-center gap-2 pt-20"><span className="text-4xl">🎬</span><span>Video không khả dụng</span></div>)}
 
-                    <div className={cn("absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent z-20 flex justify-between pointer-events-none transition-opacity duration-300", isPlaying ? "opacity-0 group-hover:opacity-100" : "opacity-100")}>
-                        <div className="pointer-events-auto">
-                            <h1 className="text-lg font-bold text-white flex items-center gap-2 drop-shadow-md"><span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_red]"></span>{roomData?.title}</h1>
-                        </div>
-                        <div className="flex gap-2 pointer-events-auto">
-                            <InvitePartyDialog joinCode={roomData?.join_code} isPrivate={roomData?.is_private} roomId={roomData?.id} />
-                            {isHost ? (
-                                <>
-                                    <Button size="sm" variant="secondary" className="bg-white/10 hover:bg-white/20 text-white backdrop-blur-md" onClick={() => router.push('/watch-party')}>
-                                        <LogOut className="w-4 h-4 mr-2" /> Rời
-                                    </Button>
-                                    <Button size="sm" variant="destructive" className="bg-red-600 hover:bg-red-700 shadow-md" onClick={() => setShowEndDialog(true)}>
-                                        <Power className="w-4 h-4 mr-2" /> Kết thúc
-                                    </Button>
-                                </>
-                            ) : (
-                                <Button size="sm" variant="secondary" className="bg-white/10 hover:bg-white/20 text-white backdrop-blur-md" onClick={() => { localStorage.removeItem(`wp_join_code_${roomData?.id}`); router.push('/watch-party') }}><LogOut className="w-4 h-4 mr-2" /> Rời phòng</Button>
-                            )}
-                            {!isSidebarOpen && !isFullscreen && <Button size="sm" variant="ghost" onClick={() => setIsSidebarOpen(true)} className="text-white hover:bg-white/10"><PanelRightOpen className="w-5 h-5" /></Button>}
-                        </div>
-                    </div>
-
-                    <div className={cn("absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-opacity duration-300 z-20 pointer-events-auto flex flex-col gap-2", isPlaying ? "opacity-0 group-hover:opacity-100" : "opacity-100")}>
-                        <div className="relative w-full h-4 flex items-center group/seekbar cursor-pointer">
-                            <div className="absolute inset-0 h-1 bg-white/30 rounded-full my-auto group-hover/seekbar:h-1.5 transition-all"></div>
-                            <div className="absolute inset-0 h-1 bg-red-600 rounded-full my-auto group-hover/seekbar:h-1.5 transition-all" style={{ width: `${(currentTime / duration) * 100 || 0}%` }}></div>
-                            <input type="range" min={0} max={duration || 0} step={0.1} value={currentTime} onChange={handleSeek} disabled={!isHost} className={cn("absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10", !isHost && "cursor-not-allowed")} />
-                        </div>
-                        <div className="flex items-center justify-between -mt-1">
-                            <div className="flex items-center gap-4">
-                                <button onClick={handlePlayPauseClick} disabled={!isHost} className={cn("text-white transition-all transform hover:scale-110 active:scale-95 focus:outline-none", !isHost && "opacity-50 cursor-not-allowed")}>
-                                    {isPlaying ? <Pause className="w-8 h-8 fill-white" /> : <Play className="w-8 h-8 fill-white" />}
-                                </button>
-                                <div className="text-xs text-slate-300 font-medium">{Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')} / {Math.floor(duration / 60)}:{Math.floor(duration % 60).toString().padStart(2, '0')}</div>
-                                <Button size="sm" variant="ghost" className="h-8 text-red-400 text-[10px] px-2 hover:bg-red-500/10 hover:text-red-300 gap-1.5" onClick={handleManualSync}>
-                                    <RefreshCw className={cn("w-3 h-3", isHost ? "" : "animate-spin-slow-once")} /> {isHost ? "Đồng bộ tất cả" : "Đồng bộ"}
-                                </Button>
-                                <div onClick={() => {
-                                    if(videoRef.current) {
-                                        videoRef.current.muted = !videoRef.current.muted;
-                                        setIsMuted(videoRef.current.muted);
-                                    }
-                                }} className="cursor-pointer hidden sm:block">
-                                    {isMuted ? <VolumeX className="w-6 h-6 text-slate-300 hover:text-white" /> : <Volume2 className="w-6 h-6 text-slate-300 hover:text-white" />}
-                                </div>
+                        <div className={cn("absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent z-20 flex justify-between pointer-events-none transition-opacity duration-300", isPlaying ? "opacity-0 group-hover:opacity-100" : "opacity-100")}>
+                            <div className="pointer-events-auto">
+                                <h1 className="text-lg font-bold text-white flex items-center gap-2 drop-shadow-md"><span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_red]"></span>{roomData?.title}</h1>
                             </div>
-                            <button onClick={toggleFullscreen} className="text-slate-300 hover:text-white transition-transform hover:scale-110">
-                                {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
-                            </button>
+                            <div className="flex gap-2 pointer-events-auto">
+                                <InvitePartyDialog joinCode={roomData?.join_code} isPrivate={roomData?.is_private} roomId={roomData?.id} />
+                                {isHost ? (
+                                    <>
+                                        <Button size="sm" variant="secondary" className="bg-white/10 hover:bg-white/20 text-white backdrop-blur-md" onClick={() => router.push('/watch-party')}>
+                                            <LogOut className="w-4 h-4 mr-2" /> Rời
+                                        </Button>
+                                        <Button size="sm" variant="destructive" className="bg-red-600 hover:bg-red-700 shadow-md" onClick={() => setShowEndDialog(true)}>
+                                            <Power className="w-4 h-4 mr-2" /> Kết thúc
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <Button size="sm" variant="secondary" className="bg-white/10 hover:bg-white/20 text-white backdrop-blur-md" onClick={() => { localStorage.removeItem(`wp_join_code_${roomData?.id}`); router.push('/watch-party') }}><LogOut className="w-4 h-4 mr-2" /> Rời phòng</Button>
+                                )}
+                                {!isSidebarOpen && !isFullscreen && <Button size="sm" variant="ghost" onClick={() => setIsSidebarOpen(true)} className="text-white hover:bg-white/10"><PanelRightOpen className="w-5 h-5" /></Button>}
+                            </div>
+                        </div>
+
+                        <div className={cn("absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-opacity duration-300 z-20 pointer-events-auto flex flex-col gap-2", isPlaying ? "opacity-0 group-hover:opacity-100" : "opacity-100")}>
+                            <div className="relative w-full h-4 flex items-center group/seekbar cursor-pointer">
+                                <div className="absolute inset-0 h-1 bg-white/30 rounded-full my-auto group-hover/seekbar:h-1.5 transition-all"></div>
+                                <div className="absolute inset-0 h-1 bg-red-600 rounded-full my-auto group-hover/seekbar:h-1.5 transition-all" style={{ width: `${(currentTime / duration) * 100 || 0}%` }}></div>
+                                <input type="range" min={0} max={duration || 0} step={0.1} value={currentTime} onChange={handleSeek} disabled={!isHost} className={cn("absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10", !isHost && "cursor-not-allowed")} />
+                            </div>
+                            <div className="flex items-center justify-between -mt-1">
+                                <div className="flex items-center gap-4">
+                                    <button onClick={handlePlayPauseClick} disabled={!isHost} className={cn("text-white transition-all transform hover:scale-110 active:scale-95 focus:outline-none", !isHost && "opacity-50 cursor-not-allowed")}>
+                                        {isPlaying ? <Pause className="w-8 h-8 fill-white" /> : <Play className="w-8 h-8 fill-white" />}
+                                    </button>
+                                    <div className="text-xs text-slate-300 font-medium">{Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')} / {Math.floor(duration / 60)}:{Math.floor(duration % 60).toString().padStart(2, '0')}</div>
+                                    <Button size="sm" variant="ghost" className="h-8 text-red-400 text-[10px] px-2 hover:bg-red-500/10 hover:text-red-300 gap-1.5" onClick={handleManualSync}>
+                                        <RefreshCw className={cn("w-3 h-3", isHost ? "" : "animate-spin-slow-once")} /> {isHost ? "Đồng bộ tất cả" : "Đồng bộ"}
+                                    </Button>
+                                    <div onClick={() => {
+                                        if (videoRef.current) {
+                                            videoRef.current.muted = !videoRef.current.muted;
+                                            setIsMuted(videoRef.current.muted);
+                                        }
+                                    }} className="cursor-pointer hidden sm:block">
+                                        {isMuted ? <VolumeX className="w-6 h-6 text-slate-300 hover:text-white" /> : <Volume2 className="w-6 h-6 text-slate-300 hover:text-white" />}
+                                    </div>
+                                </div>
+                                <button onClick={toggleFullscreen} className="text-slate-300 hover:text-white transition-transform hover:scale-110">
+                                    {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
+                                </button>
+                            </div>
                         </div>
                     </div>
+                    <MovieInfoSection roomData={roomData} />
                 </div>
 
-                <MovieInfoSection roomData={roomData} />
-            </div>
-
-            {isSidebarOpen && (
-                <div className="w-full md:w-[360px] bg-[#121212] border-l border-white/10 flex flex-col transition-all duration-300 shadow-2xl z-30 font-sans">
-                    <div className="flex items-center justify-between p-4 bg-[#0A0A0A] border-b border-white/10 shrink-0">
-                        <span className="font-bold text-sm text-slate-200">Phòng xem chung</span>
-                        <Button size="icon" variant="ghost" onClick={() => setIsSidebarOpen(false)} className="h-8 w-8 text-slate-400 hover:text-white"><PanelRightClose className="w-4 h-4" /></Button>
-                    </div>
-                    
-                    <div className="p-3 bg-gradient-to-r from-red-900/10 via-[#1a1a1a] to-transparent border-b border-white/5 flex items-center justify-between shrink-0">
-                        <div className="flex items-center gap-2">
-                            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center bg-white/5 border border-white/10", isMicOn && "border-green-500/50 bg-green-500/10")}>
-                                {isMicOn ? <Mic className="w-4 h-4 text-green-500" /> : <MicOff className="w-4 h-4 text-red-500" />}
-                            </div>
-                            <div className="leading-tight">
-                                <span className={cn("text-xs font-bold block", isMicOn ? "text-green-500" : "text-slate-400")}>Voice Chat</span>
-                                <span className="text-[10px] text-slate-500">{isMicOn ? "Đang phát âm thanh" : "Đã tắt mic"}</span>
-                            </div>
+                {isSidebarOpen && (
+                    <div className="w-full md:w-[360px] h-full min-h-0 bg-[#121212] border-l border-white/10 flex flex-col transition-all duration-300 shadow-2xl z-30 font-sans">
+                        <div className="flex items-center justify-between p-4 bg-[#0A0A0A] border-b border-white/10 shrink-0">
+                            <span className="font-bold text-sm text-slate-200">Phòng xem chung</span>
+                            <Button size="icon" variant="ghost" onClick={() => setIsSidebarOpen(false)} className="h-8 w-8 text-slate-400 hover:text-white"><PanelRightClose className="w-4 h-4" /></Button>
                         </div>
-                        
-                        {liveKitToken ? (
-                            <TrackToggle
-                                source={Track.Source.Microphone}
-                                onChange={(enabled) => !isCurrentUserMuted && setIsMicOn(enabled)}
-                                className={cn(
-                                    "inline-flex items-center justify-center whitespace-nowrap rounded-md text-[10px] font-bold uppercase tracking-wider h-7 px-3 gap-1.5 transition-colors",
-                                    isMicOn ? "bg-white/10 hover:bg-white/20 text-slate-300" : "bg-red-600 text-white hover:bg-red-700",
-                                    isCurrentUserMuted && "opacity-50 cursor-not-allowed pointer-events-none"
-                                )}
-                            >
-                                {isCurrentUserMuted ? "Mic bị khoá" : (isMicOn ? "Tắt Mic" : "Bật Mic")}
-                            </TrackToggle>
-                        ) : voiceErrorDialog.message ? (
-                            <Button 
-                                size="sm" 
-                                variant="destructive" 
-                                className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider gap-1.5 bg-red-900 border-red-700"
-                                onClick={() => setVoiceErrorDialog(prev => ({ ...prev, isOpen: true }))}
-                            >
-                                Lỗi Voice
-                            </Button>
-                        ) : (
-                            <Button size="sm" disabled className="bg-slate-700 text-slate-400 h-7 px-3 text-[10px] font-bold uppercase tracking-wider">
-                                Đang tải...
-                            </Button>
-                        )}
-                    </div>
-                    
-                    <div className="flex bg-[#0A0A0A] border-b border-white/10 shrink-0">
-                        <button onClick={() => setActiveTab('chat')} className={cn("flex-1 py-3 text-sm font-semibold transition-colors relative", activeTab === 'chat' ? "text-white" : "text-slate-500 hover:text-slate-300")}>Trò chuyện {activeTab === 'chat' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"></div>}</button>
-                        <button onClick={() => setActiveTab('members')} className={cn("flex-1 py-3 text-sm font-semibold transition-colors relative", activeTab === 'members' ? "text-white" : "text-slate-500 hover:text-slate-300")}>Thành viên ({members.length}) {activeTab === 'members' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"></div>}</button>
-                    </div>
-                    <div className="flex-1 overflow-hidden relative bg-[#121212]">
-                        {activeTab === 'chat' ? (
-                            <div className="flex flex-col h-full">
-                                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar" ref={scrollRef}>
-                                    {messages.map((msg, idx) => (
-                                        <div key={idx} className="group/msg flex gap-3 animate-in fade-in slide-in-from-bottom-1 relative">
-                                            <Avatar className="w-8 h-8 shrink-0"><AvatarImage src={msg.avatar || undefined} /><AvatarFallback>{msg.user?.[0]}</AvatarFallback></Avatar>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex justify-between items-baseline mb-1"><span className={cn("text-xs font-bold truncate pr-2", msg.isHost ? "text-yellow-500" : "text-slate-300")}>{msg.user}{msg.isHost && <span className="ml-1 text-[9px] bg-yellow-500/10 text-yellow-500 px-1 rounded">HOST</span>}</span><span className="text-[9px] text-slate-600 shrink-0">{formatTimeVN(msg.time)}</span></div>
-                                                <div className="text-sm bg-[#1F1F1F] p-2.5 rounded-2xl rounded-tl-none border border-white/5 text-slate-200 break-words shadow-sm">{msg.text}</div>
-                                            </div>
-                                        </div>
-                                    ))}
+
+                        <div className="p-3 bg-gradient-to-r from-red-900/10 via-[#1a1a1a] to-transparent border-b border-white/5 flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-2">
+                                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center bg-white/5 border border-white/10", isMicOn && "border-green-500/50 bg-green-500/10")}>
+                                    {isMicOn ? <Mic className="w-4 h-4 text-green-500" /> : <MicOff className="w-4 h-4 text-red-500" />}
                                 </div>
-                                <div className="p-3 border-t border-white/10 bg-[#0A0A0A] flex gap-2 items-center relative shrink-0">
-                                    <Button size="icon" variant="ghost" className="text-slate-400 hover:text-yellow-500 shrink-0" onClick={() => setShowEmoji(!showEmoji)}><Smile className="w-5 h-5" /></Button>
-                                    {showEmoji && <div className="absolute bottom-16 left-0 z-50 shadow-2xl"><EmojiPicker onEmojiClick={onEmojiClick} theme={"dark" as any} width={300} height={350} /></div>}
-                                      <Input 
-                                          value={msgInput} 
-                                          onChange={e => setMsgInput(e.target.value)} 
-                                          onKeyDown={e => e.key === 'Enter' && !isCurrentUserMuted && handleSendMessage()} 
-                                          placeholder={isCurrentUserMuted ? "Bạn đã bị cấm chat." : "Nhập tin nhắn..."}
-                                          disabled={isCurrentUserMuted}
-                                          className="bg-[#1F1F1F] border-transparent focus-visible:ring-1 focus-visible:ring-red-600 rounded-full h-10 text-sm text-white" 
-                                      />
-                                      <Button size="icon" onClick={handleSendMessage} disabled={isCurrentUserMuted} className="bg-red-600 hover:bg-red-700 rounded-full h-10 w-10 shrink-0"><Send className="w-4 h-4 ml-0.5" /></Button>
+                                <div className="leading-tight">
+                                    <span className={cn("text-xs font-bold block", isMicOn ? "text-green-500" : "text-slate-400")}>Voice Chat</span>
+                                    <span className="text-[10px] text-slate-500">{isMicOn ? "Đang phát âm thanh" : "Đã tắt mic"}</span>
                                 </div>
                             </div>
-                        ) : (
-                            <ScrollArea className="h-full p-2">
-                                {members.map((mem) => {
-                                    const isSpeaking = speakingUsers.has(mem.id);
-                                    const isMe = mem.id === user?.id;
-                                    const volume = peerVolumes[mem.id] ?? 100;
-                                    const isMuted = volume === 0;
 
-                                    return (
-                                        <div key={mem.id} className="flex flex-col p-3 hover:bg-white/5 rounded-xl transition-colors group animate-in fade-in zoom-in-95 duration-200">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3 relative">
-                                                    <div className="relative">
-                                                        <Avatar className={cn("w-10 h-10 border-2 transition-all duration-300", isSpeaking ? "border-green-500 ring-2 ring-green-500/30 scale-105" : "border-white/10")}>
-                                                            <AvatarImage src={mem.avatar} />
-                                                            <AvatarFallback className="bg-slate-800 text-xs text-slate-400">{mem.name[0]}</AvatarFallback>
-                                                        </Avatar>
-                                                        {isSpeaking && <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-0.5 border-2 border-[#121212]"><Mic className="w-2.5 h-2.5 text-black fill-current" /></div>}
+                            {liveKitToken ? (
+                                isCurrentUserMuted ? (
+                                    <Button disabled size="sm" className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider bg-slate-800/50 text-slate-500 border border-slate-700/50 cursor-not-allowed">
+                                        Mic bị khoá
+                                    </Button>
+                                ) : (
+                                    <TrackToggle
+                                        source={Track.Source.Microphone}
+                                        onChange={(enabled) => !isCurrentUserMuted && setIsMicOn(enabled)}
+                                        className={cn(
+                                            "inline-flex items-center justify-center whitespace-nowrap rounded-md text-[10px] font-bold uppercase tracking-wider h-7 px-3 gap-1.5 transition-colors",
+                                            isMicOn ? "bg-white/10 hover:bg-white/20 text-slate-300" : "bg-red-600 text-white hover:bg-red-700",
+                                            isCurrentUserMuted && "opacity-50 cursor-not-allowed pointer-events-none"
+                                        )}
+                                    >
+                                        {isMicOn ? "Tắt Mic" : "Bật Mic"}
+                                    </TrackToggle>
+                                )
+                            ) : voiceErrorDialog.message ? (
+                                <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider gap-1.5 bg-red-900 border-red-700"
+                                    onClick={() => setVoiceErrorDialog(prev => ({ ...prev, isOpen: true }))}
+                                >
+                                    Lỗi Voice
+                                </Button>
+                            ) : (
+                                <Button size="sm" disabled className="bg-slate-700 text-slate-400 h-7 px-3 text-[10px] font-bold uppercase tracking-wider">
+                                    Đang tải...
+                                </Button>
+                            )}
+                        </div>
+
+                        <div className="flex bg-[#0A0A0A] border-b border-white/10 shrink-0">
+                            <button onClick={() => setActiveTab('chat')} className={cn("flex-1 py-3 text-sm font-semibold transition-colors relative", activeTab === 'chat' ? "text-white" : "text-slate-500 hover:text-slate-300")}>Trò chuyện {activeTab === 'chat' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"></div>}</button>
+                            <button onClick={() => setActiveTab('members')} className={cn("flex-1 py-3 text-sm font-semibold transition-colors relative", activeTab === 'members' ? "text-white" : "text-slate-500 hover:text-slate-300")}>Thành viên ({members.length}) {activeTab === 'members' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"></div>}</button>
+                        </div>
+                        <div className="flex-1 overflow-hidden flex flex-col h-full min-h-0 relative bg-[#121212]">
+                            {activeTab === 'chat' ? (
+                                <div className="flex flex-col flex-1 h-full min-h-0">
+                                    <div className="flex-1 h-full min-h-0 overflow-y-auto p-4 space-y-4 custom-scrollbar" ref={scrollRef}>
+                                        {messages.map((msg, idx) => (
+                                            <div key={idx} className="group/msg flex gap-3 animate-in fade-in slide-in-from-bottom-1 relative">
+                                                <Avatar className="w-8 h-8 shrink-0"><AvatarImage src={msg.avatar || undefined} /><AvatarFallback className="bg-slate-800 text-slate-300 uppercase">{msg.user?.[0]}</AvatarFallback></Avatar>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-baseline mb-1"><span className={cn("text-xs font-bold truncate pr-2", msg.isHost ? "text-yellow-500" : "text-slate-300")}>{msg.user}{msg.isHost && <span className="ml-1 text-[9px] bg-yellow-500/10 text-yellow-500 px-1 rounded">HOST</span>}</span><span className="text-[9px] text-slate-600 shrink-0">{formatTimeVN(msg.time)}</span></div>
+                                                    <div className="text-sm bg-[#1F1F1F] p-2.5 rounded-2xl rounded-tl-none border border-white/5 text-slate-200 break-words shadow-sm">{msg.text}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="p-3 border-t border-white/10 bg-[#0A0A0A] flex gap-2 items-center relative shrink-0">
+                                        <Button size="icon" variant="ghost" className="text-slate-400 hover:text-yellow-500 shrink-0" onClick={() => setShowEmoji(!showEmoji)}><Smile className="w-5 h-5" /></Button>
+                                        {showEmoji && <div className="absolute bottom-16 left-0 z-50 shadow-2xl"><EmojiPicker onEmojiClick={onEmojiClick} theme={"dark" as any} width={300} height={350} /></div>}
+                                        <Input
+                                            value={msgInput}
+                                            onChange={e => setMsgInput(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && !isCurrentUserMuted && handleSendMessage()}
+                                            placeholder={isCurrentUserMuted ? "Bạn đã bị cấm chat." : "Nhập tin nhắn..."}
+                                            disabled={isCurrentUserMuted}
+                                            className="bg-[#1F1F1F] border-transparent focus-visible:ring-1 focus-visible:ring-red-600 rounded-full h-10 text-sm text-white"
+                                        />
+                                        <Button size="icon" onClick={handleSendMessage} disabled={isCurrentUserMuted} className="bg-red-600 hover:bg-red-700 rounded-full h-10 w-10 shrink-0"><Send className="w-4 h-4 ml-0.5" /></Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <ScrollArea className="h-full p-2">
+                                    {members.map((mem) => {
+                                        const isSpeaking = speakingUsers.has(mem.id);
+                                        const isMe = mem.id === user?.id;
+                                        const volume = peerVolumes[mem.id] ?? 100;
+                                        const isMuted = volume === 0;
+
+                                        return (
+                                            <div key={mem.id} className="flex flex-col p-3 hover:bg-white/5 rounded-xl transition-colors group animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3 relative">
+                                                        <div className="relative">
+                                                            <Avatar className={cn("w-10 h-10 border-2 transition-all duration-300", isSpeaking ? "border-green-500 ring-2 ring-green-500/30 scale-105" : "border-white/10")}>
+                                                                <AvatarImage src={mem.avatar} />
+                                                                <AvatarFallback className="bg-slate-800 text-xs text-slate-300 uppercase">{mem.name[0]}</AvatarFallback>
+                                                            </Avatar>
+                                                            {isSpeaking && <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-0.5 border-2 border-[#121212]"><Mic className="w-2.5 h-2.5 text-black fill-current" /></div>}
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-bold text-slate-200 flex items-center gap-2">
+                                                                {mem.name}
+                                                                {mem.role === 'host' && <span className="text-[9px] bg-yellow-500/20 text-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.2)] px-1.5 py-0.5 rounded font-bold tracking-wider">HOST</span>}
+                                                                {isMe && <span className="text-[9px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-medium">BẠN</span>}
+                                                            </span>
+                                                            <span className="text-[10px] text-slate-500 font-medium tracking-wide flex items-center gap-1">
+                                                                <div className={cn("w-1.5 h-1.5 rounded-full", mem.online ? "bg-green-500" : "bg-slate-600")}></div>
+                                                                {mem.online ? "ONLINE" : "OFFLINE"}
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                                                            {mem.name}
-                                                            {mem.role === 'host' && <span className="text-[9px] bg-yellow-500/20 text-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.2)] px-1.5 py-0.5 rounded font-bold tracking-wider">HOST</span>}
-                                                            {isMe && <span className="text-[9px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-medium">BẠN</span>}
-                                                        </span>
-                                                        <span className="text-[10px] text-slate-500 font-medium tracking-wide flex items-center gap-1">
-                                                            <div className={cn("w-1.5 h-1.5 rounded-full", mem.online ? "bg-green-500" : "bg-slate-600")}></div>
-                                                            {mem.online ? "ONLINE" : "OFFLINE"}
-                                                        </span>
-                                                    </div>
+
+                                                    {isHost && mem.role !== 'host' && (
+                                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-white/10 rounded-full"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-slate-800 text-slate-300 w-56 shadow-2xl p-1">
+                                                                    <DropdownMenuItem
+                                                                        className={cn(
+                                                                            "focus:bg-white/10 focus:text-white cursor-pointer rounded-md py-2.5 transition-colors",
+                                                                            mem.isMuted && "opacity-50 cursor-not-allowed"
+                                                                        )}
+                                                                        onClick={() => !mem.isMuted && setUserToTransfer(mem.id)}
+                                                                        disabled={mem.isMuted}
+                                                                    >
+                                                                        <Crown className={cn("w-4 h-4 mr-2", mem.isMuted ? "text-slate-500" : "text-yellow-500")} />
+                                                                        Chuyển quyền Host
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem className="focus:bg-white/10 focus:text-white cursor-pointer rounded-md py-2.5 transition-colors" onClick={() => toggleMuteUser(mem.id, !!mem.isMuted)}>
+                                                                        {mem.isMuted ? <Mic className="w-4 h-4 mr-2 text-green-500" /> : <MicOff className="w-4 h-4 mr-2 text-orange-500" />}
+                                                                        {mem.isMuted ? "Bỏ cấm chat/mic (Unmute)" : "Cấm chat/mic (Mute)"}
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem className="text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer rounded-md py-2.5 transition-colors" onClick={() => setUserToKick(mem.id)}><UserX className="w-4 h-4 mr-2" /> Mời ra khỏi phòng</DropdownMenuItem>
+                                                                    <DropdownMenuItem className="text-red-600 focus:text-red-500 focus:bg-red-500/20 cursor-pointer rounded-md py-2.5 font-bold transition-colors" onClick={() => setUserToBan(mem.id)}><Ban className="w-4 h-4 mr-2" /> Cấm vĩnh viễn (Ban)</DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        </div>
+                                                    )}
                                                 </div>
 
-                                                {/* Actions Menu */}
-                                                {isHost && mem.role !== 'host' && (
-                                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-white/10 rounded-full"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-slate-800 text-slate-300 w-56 shadow-2xl p-1">
-                                                                <DropdownMenuItem className="focus:bg-white/5 cursor-pointer rounded-md py-2.5" onClick={() => setUserToTransfer(mem.id)}><Crown className="w-4 h-4 mr-2 text-yellow-500" /> Chuyển quyền Host</DropdownMenuItem>
-                                                                <DropdownMenuItem className="focus:bg-white/5 cursor-pointer rounded-md py-2.5" onClick={() => toggleMuteUser(mem.id, mem.isMuted)}>
-                                                                  {mem.isMuted ? <Mic className="w-4 h-4 mr-2 text-green-500" /> : <MicOff className="w-4 h-4 mr-2 text-orange-500" />}
-                                                                  {mem.isMuted ? "Bỏ cấm chat/mic" : "Cấm chat/mic (Mute)"}
-                                                              </DropdownMenuItem>
-                                                              <DropdownMenuItem className="text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer rounded-md py-2.5" onClick={() => setUserToKick(mem.id)}><UserX className="w-4 h-4 mr-2" /> Mời ra khỏi phòng</DropdownMenuItem>
-                                                                <DropdownMenuItem className="text-red-600 focus:text-red-500 focus:bg-red-500/20 cursor-pointer rounded-md py-2.5 font-bold" onClick={() => setUserToBan(mem.id)}><Ban className="w-4 h-4 mr-2" /> Cấm vĩnh viễn (Ban)</DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
+                                                {!isMe && mem.online && (
+                                                    <div className="ml-[52px] mt-2 flex items-center gap-3 pr-2 transition-all duration-300">
+                                                        <button onClick={() => setPeerVolumes(prev => ({ ...prev, [mem.id]: isMuted ? 80 : 0 }))} className="text-slate-500 hover:text-white transition-colors">
+                                                            {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : (volume < 50 ? <Volume1 className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />)}
+                                                        </button>
+                                                        <Slider
+                                                            value={[volume]}
+                                                            max={100}
+                                                            step={1}
+                                                            onValueChange={(val) => handleVolumeChange(mem.id, val)}
+                                                            className="flex-1 cursor-pointer py-1"
+                                                        />
                                                     </div>
                                                 )}
                                             </div>
-
-                                            {/* --- Volume Slider (Only for others) --- */}
-                                            {!isMe && mem.online && (
-                                                <div className="ml-[52px] mt-2 flex items-center gap-3 pr-2 transition-all duration-300">
-                                                    <button onClick={() => setPeerVolumes(prev => ({ ...prev, [mem.id]: isMuted ? 80 : 0 }))} className="text-slate-500 hover:text-white transition-colors">
-                                                        {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : (volume < 50 ? <Volume1 className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />)}
-                                                    </button>
-                                                    <Slider
-                                                        value={[volume]}
-                                                        max={100}
-                                                        step={1}
-                                                        onValueChange={(val) => handleVolumeChange(mem.id, val)}
-                                                        className="flex-1 cursor-pointer py-1"
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </ScrollArea>
-                        )}
+                                        );
+                                    })}
+                                </ScrollArea>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
 
-            {/* --- DIALOGS --- */}
             <AlertDialog open={showEndDialog} onOpenChange={setShowEndDialog}><AlertDialogContent className="bg-[#1F1F1F] border-slate-800 text-white"><AlertDialogHeader><AlertDialogTitle>Kết thúc phòng xem chung?</AlertDialogTitle><AlertDialogDescription className="text-slate-400">Tất cả thành viên sẽ bị ngắt kết nối. Hành động này không thể hoàn tác.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="bg-transparent border-slate-700 hover:bg-white/10 text-white">Hủy</AlertDialogCancel><AlertDialogAction onClick={confirmEndRoom} className="bg-red-600 hover:bg-red-700 text-white border-0">Kết thúc ngay</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
             <AlertDialog open={!!userToKick} onOpenChange={(open) => !open && setUserToKick(null)}><AlertDialogContent className="bg-[#1F1F1F] border-slate-800 text-white"><AlertDialogHeader><AlertDialogTitle>Mời thành viên ra khỏi phòng?</AlertDialogTitle><AlertDialogDescription className="text-slate-400">Họ sẽ bị ngắt kết nối ngay lập tức.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="bg-transparent border-slate-700 hover:bg-white/10 text-white">Hủy</AlertDialogCancel><AlertDialogAction onClick={confirmKickUser} className="bg-red-600 hover:bg-red-700 text-white border-0">Đồng ý</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
             <AlertDialog open={!!userToBan} onOpenChange={(open) => !open && setUserToBan(null)}><AlertDialogContent className="bg-[#1F1F1F] border-slate-800 text-white"><AlertDialogHeader><AlertDialogTitle>Cấm thành viên vĩnh viễn?</AlertDialogTitle><AlertDialogDescription className="text-slate-400">Thành viên này sẽ không thể tham gia lại phòng này trừ khi được gỡ cấm.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="bg-transparent border-slate-700 hover:bg-white/10 text-white">Hủy</AlertDialogCancel><AlertDialogAction onClick={confirmBanUser} className="bg-red-600 hover:bg-red-700 text-white border-0">Cấm ngay</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
@@ -871,18 +930,18 @@ export default function WatchPartyRoomPage() {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={voiceErrorDialog.isOpen} onOpenChange={(open) => setVoiceErrorDialog(prev => ({...prev, isOpen: open}))}>
+            <Dialog open={voiceErrorDialog.isOpen} onOpenChange={(open) => setVoiceErrorDialog(prev => ({ ...prev, isOpen: open }))}>
                 <DialogContent className="bg-[#1a1a1a] border-red-900/50 text-white font-sans max-w-md">
                     <DialogHeader>
                         <DialogTitle className="text-red-500 flex items-center gap-2 text-xl font-bold">
-                            <MicOff className="w-5 h-5"/> Lỗi kết nối Voice Chat
+                            <MicOff className="w-5 h-5" /> Lỗi kết nối Voice Chat
                         </DialogTitle>
                         <DialogDescription className="text-slate-400 mt-2">
                             {voiceErrorDialog.message}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="mt-6">
-                        <Button variant="secondary" onClick={() => setVoiceErrorDialog(prev => ({...prev, isOpen: false}))} className="bg-white/10 hover:bg-white/20 text-white w-full sm:w-auto font-semibold">Đóng</Button>
+                        <Button variant="secondary" onClick={() => setVoiceErrorDialog(prev => ({ ...prev, isOpen: false }))} className="bg-white/10 hover:bg-white/20 text-white w-full sm:w-auto font-semibold">Đóng</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
