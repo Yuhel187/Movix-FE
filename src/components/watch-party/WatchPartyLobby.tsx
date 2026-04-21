@@ -28,12 +28,30 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useRouter } from "next/navigation";
 
+export interface WatchPartyRoom {
+  id: string;
+  hostId: string;
+  title: string;
+  movieTitle: string;
+  originalMovieName?: string;
+  image: string;
+  host: string;
+  hostAvatar?: string;
+  viewers: number;
+  maxParticipants: number;
+  isPrivate: boolean;
+  status: 'live' | 'scheduled' | 'ended';
+  scheduledAt?: string;
+  endedAt?: string;
+  episodeInfo?: { season: number; episode: number };
+}
+
 export default function WatchPartyLobby() {
 const { user, isLoggedIn, isLoading: isAuthLoading } = useAuth();
 const router = useRouter();
   const [filter, setFilter] = useState<'live' | 'scheduled' | 'ended'>('live');
   const [searchQuery, setSearchQuery] = useState(""); 
-  const [rooms, setRooms] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<WatchPartyRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [partyToCancel, setPartyToCancel] = useState<string | null>(null);
   const [showEndedDialog, setShowEndedDialog] = useState(false);
@@ -48,15 +66,15 @@ const router = useRouter();
         return;
       }
 
-      const fetchRooms = async () => {
-          setLoading(true);
+      const fetchRooms = async (showLoading = true) => {
+          if (showLoading) setLoading(true);
           try {
               const res = await apiClient.get(`/watch-party?filter=${filter}&q=${searchQuery}`);
               setRooms(res.data);
           } catch (error) {
               console.error("Lỗi tải danh sách phòng:", error);
           } finally {
-              setLoading(false);
+              if (showLoading) setLoading(false);
           }
       };
 
@@ -64,7 +82,14 @@ const router = useRouter();
           fetchRooms();
       }, 500);
 
-      return () => clearTimeout(timer);
+      const intervalTimer = setInterval(() => {
+          fetchRooms(false);
+      }, 5000);
+
+      return () => {
+          clearTimeout(timer);
+          clearInterval(intervalTimer);
+      };
   }, [filter, searchQuery, isLoggedIn, isAuthLoading]);
 
   const handleNotify = async (e: React.MouseEvent, roomId: string) => {
@@ -250,7 +275,7 @@ const router = useRouter();
                                     {room.status === 'live' && (
                                         <Badge variant="secondary" className="bg-black/60 hover:bg-black/70 backdrop-blur-md text-white border-0 shadow-lg gap-1.5 px-2 py-1">
                                             <Users className="w-3 h-3 text-red-500" />
-                                            <span className="font-mono text-xs font-bold">{room.viewers || 0}</span>
+                                            <span className="font-mono text-xs font-bold">{room.viewers || 0} / {room.maxParticipants}</span>
                                         </Badge>
                                     )}
                                 </div>
