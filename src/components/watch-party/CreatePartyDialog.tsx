@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -11,6 +11,8 @@ import { Users, Search, Loader2, CalendarClock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import apiClient from "@/lib/apiClient";
+import { subscriptionService } from "@/services/subscription.service";
+import { SubscriptionPlan } from "@/types/subscription";
 
 export function CreatePartyDialog() {
   const [open, setOpen] = useState(false);
@@ -30,6 +32,27 @@ export function CreatePartyDialog() {
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>("");
   const [selectedEpisodeId, setSelectedEpisodeId] = useState<string>("");
+
+  const [userPlan, setUserPlan] = useState<SubscriptionPlan | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+        setLoadingPlan(true);
+        subscriptionService.getUserSubscription().then((sub) => {
+            if (sub && sub.status === "ACTIVE" && sub.plan) {
+                setUserPlan(sub.plan);
+            } else {
+                setUserPlan(null);
+            }
+        }).catch((err) => {
+            console.error("Failed to load plan", err);
+            setUserPlan(null);
+        }).finally(() => {
+            setLoadingPlan(false);
+        });
+    }
+  }, [open]);
 
   const getDefaultScheduledTime = () => {
     const tomorrow = new Date();
@@ -84,6 +107,7 @@ export function CreatePartyDialog() {
   };
 
   const handleCreate = async () => {
+    if (!userPlan?.can_create_watch_party) return toast.error("Gói cước hiện tại không hỗ trợ tạo phòng xem chung.");
     if (!title) return toast.error("Vui lòng nhập tên phòng");
     if (!selectedMovie) return toast.error("Vui lòng chọn phim");
     if (selectedMovie.media_type === 'TV' && !selectedEpisodeId) return toast.error("Vui lòng chọn tập phim");
@@ -152,8 +176,21 @@ export function CreatePartyDialog() {
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {!userPlan ? (
+             <div className="flex items-center justify-center h-40"><Loader2 className="w-8 h-8 animate-spin text-slate-500" /></div>
+          ) : !userPlan.can_create_watch_party ? (
+             <div className="flex flex-col items-center justify-center p-6 text-center gap-4 border border-slate-700 bg-slate-800/30 rounded-lg">
+                 <h3 className="font-bold text-lg text-white">Gói cước không hỗ trợ</h3>
+                 <p className="text-sm text-slate-400">Bạn cần nâng cấp gói để sử dụng tính năng tạo phòng xem chung.</p>
+                 <Button onClick={() => router.push('/pricing')} className="bg-red-600 hover:bg-red-700 text-white font-bold">Nâng cấp ngay</Button>
+             </div>
+          ) : (
+          <>
           <div className="space-y-2">
-            <Label>Tên phòng</Label>
+            <div className="flex justify-between">
+                <Label>Tên phòng</Label>
+                <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded font-bold">Tối đa: {userPlan.max_watch_party_participants} người</span>
+            </div>
             <Input 
               placeholder="Vd: Cày phim cuối tuần..." 
               className="bg-black/20 border-slate-700 focus-visible:ring-red-500"
@@ -265,6 +302,7 @@ export function CreatePartyDialog() {
           <Button className="w-full bg-red-600 hover:bg-red-700 text-white h-11 font-bold mt-2" onClick={handleCreate} disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : (isScheduled ? "Lên lịch công chiếu" : "Tạo phòng ngay")}
           </Button>
+          </>)}
         </div>
       </DialogContent>
     </Dialog>
