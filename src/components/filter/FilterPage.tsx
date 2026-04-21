@@ -112,6 +112,8 @@ export default function FilterPage({
   const [countries, setCountries] = useState<Country[]>([]);
   const [isLoadingFilterData, setIsLoadingFilterData] = useState(true);
 
+  const [remainingLimit, setRemainingLimit] = useState<number | null>(null);
+
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -162,7 +164,16 @@ export default function FilterPage({
         setIsLoadingFilterData(false);
       }
     };
+    const fetchLimit = async () => {
+      try {
+        const res = await apiClient.get('/ai/limit');
+        setRemainingLimit(res.data.remaining);
+      } catch (err) {
+        console.error("Lỗi lấy giới hạn AI:", err);
+      }
+    };
     fetchFilterData();
+    fetchLimit();
   }, []);
 
   const fetchMovies = useCallback(
@@ -263,6 +274,10 @@ export default function FilterPage({
         },
       });
 
+      if (res.data.remaining !== undefined) {
+        setRemainingLimit(res.data.remaining);
+      }
+
       const responseData = res.data;
       const moviesData = Array.isArray(responseData) ? responseData : responseData.data || [];
       const recognizedText = responseData.recognizedText 
@@ -273,9 +288,17 @@ export default function FilterPage({
       setTotalPages(1);
       setShowAISearch(false);
       setAiQuery(recognizedText);
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI Voice Search Error:", err);
-      setError("AI không nghe rõ hoặc không tìm thấy phim phù hợp.");
+      if (err.response?.status === 403) {
+        setRemainingLimit(0);
+        setError(err.response.data.message || "Bạn đã hết lượt dùng AI trong ngày.");
+        toast.error(err.response.data.message || "Bạn đã hết lượt dùng AI hôm nay.", { 
+            action: { label: "Nâng cấp", onClick: () => router.push("/account/subscription") } 
+        });
+      } else {
+        setError("AI không nghe rõ hoặc không tìm thấy phim phù hợp.");
+      }
     } finally {
       setIsAiSearching(false);
       setIsLoading(false);
@@ -291,12 +314,25 @@ export default function FilterPage({
 
     try {
       const res = await apiClient.post("/ai/search", { query: aiQuery });
-      setMovies(res.data.map(mapResponseToMovie));
+      
+      if (res.data.remaining !== undefined) {
+        setRemainingLimit(res.data.remaining);
+      }
+
+      setMovies(res.data.data.map(mapResponseToMovie));
       setTotalPages(1);
       setShowAISearch(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI Search Error:", err);
-      setError("AI không thể tìm thấy phim phù hợp lúc này.");
+      if (err.response?.status === 403) {
+        setRemainingLimit(0);
+        setError(err.response.data.message || "Bạn đã hết lượt dùng AI trong ngày.");
+        toast.error(err.response.data.message || "Bạn đã hết lượt dùng AI hôm nay.", { 
+            action: { label: "Nâng cấp", onClick: () => router.push("/account/subscription") } 
+        });
+      } else {
+        setError("AI không thể tìm thấy phim phù hợp lúc này.");
+      }
     } finally {
       setIsAiSearching(false);
       setIsLoading(false);
@@ -336,15 +372,27 @@ export default function FilterPage({
         headers: { "Content-Type": "multipart/form-data" },
       });
 
+      if (res.data.remaining !== undefined) {
+        setRemainingLimit(res.data.remaining);
+      }
+
       const results = Array.isArray(res.data) ? res.data : res.data.data || [];
 
       setMovies(results.map(mapResponseToMovie));
       setTotalPages(1);
       setShowImageSearch(false);
       setAiQuery("Kết quả tìm kiếm bằng hình ảnh");
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI Image Search Error:", err);
-      setError("Không tìm thấy phim phù hợp với hình ảnh.");
+      if (err.response?.status === 403) {
+        setRemainingLimit(0);
+        setError(err.response.data.message || "Bạn đã hết lượt dùng AI trong ngày.");
+        toast.error(err.response.data.message || "Bạn đã hết lượt dùng AI hôm nay.", { 
+            action: { label: "Nâng cấp", onClick: () => router.push("/account/subscription") } 
+        });
+      } else {
+        setError("Không tìm thấy phim phù hợp với hình ảnh.");
+      }
     } finally {
       setIsAiSearching(false);
       setIsLoading(false);
@@ -546,9 +594,16 @@ export default function FilterPage({
                   exit={{ opacity: 0, y: -20 }}
                   className="mt-4 p-6 bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-xl"
                 >
-                  <h3 className="text-purple-200 font-semibold mb-2 flex items-center gap-2">
-                    <FaMagic /> Mô tả bộ phim bạn muốn xem
-                  </h3>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-purple-200 font-semibold flex items-center gap-2">
+                      <FaMagic /> Mô tả bộ phim bạn muốn xem
+                    </h3>
+                    {remainingLimit !== null && (
+                      <span className="text-xs font-semibold px-2 py-1 bg-white/10 text-white rounded">
+                        {remainingLimit === -1 ? 'Vô hạn lượt AI' : `Còn lại: ${remainingLimit} lượt AI`}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex gap-3 flex-col sm:flex-row">
                     <Textarea
                       placeholder="Ví dụ: Một bộ phim buồn về tình yêu ở Paris, kết thúc bi thảm..."
@@ -580,10 +635,17 @@ export default function FilterPage({
                   exit={{ opacity: 0, y: -20 }}
                   className="mt-4 p-6 bg-gradient-to-r from-green-900/30 to-teal-900/30 border border-green-500/30 rounded-xl"
                 >
-                  <h3 className="text-green-200 font-semibold mb-4 flex items-center gap-2">
-                    <FaImage /> Tải lên hình ảnh phim (Poster, Cảnh phim, Diễn
-                    viên...)
-                  </h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-green-200 font-semibold flex items-center gap-2">
+                      <FaImage /> Tải lên hình ảnh phim (Poster, Cảnh phim, Diễn
+                      viên...)
+                    </h3>
+                    {remainingLimit !== null && (
+                      <span className="text-xs font-semibold px-2 py-1 bg-white/10 text-white rounded">
+                        {remainingLimit === -1 ? 'Vô hạn lượt AI' : `Còn lại: ${remainingLimit} lượt AI`}
+                      </span>
+                    )}
+                  </div>
 
                   <div className="flex flex-col items-center">
                     {!selectedImage ? (
