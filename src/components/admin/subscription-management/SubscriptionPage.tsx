@@ -25,8 +25,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  SelectGroup,
-  SelectLabel,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -55,12 +53,6 @@ import UserSubscriptionsTab from "./UserSubscriptionsTab";
 
 // --- TYPES ---
 
-interface Benefit {
-  id: string;
-  category: string;
-  content: string;
-}
-
 interface SubscriptionPlan {
   id: string;
   name: string;
@@ -70,38 +62,16 @@ interface SubscriptionPlan {
   billingCycle: "MONTHLY" | "YEARLY";
   features: string[]; // Stores content strings
   isActive: boolean;
-  color?: string;
-  recommended?: boolean;
-
-  // --- Watch Party Config ---
-  can_create_watch_party: boolean;
-  max_watch_party_participants: number;
   can_kick_mute_members: boolean;
+  chatbot_max_questions_per_day: number;
+  offline_download_supported: boolean;
+  max_devices: number;
+  gamification_xp_multiplier: number;
+  smart_search_supported: boolean;
+  mobile_remote_control_supported: boolean;
 }
 
 // --- INITIAL DATA ---
-
-const BENEFIT_CATEGORIES = [
-  {
-    category: "NỀN TẢNG & XEM PHIM",
-    items: [
-      "Xem mọi lúc mọi nơi trên đa thiết bị",
-      "Trải nghiệm không giới hạn phim",
-      "Tạo danh sách phát cá nhân",
-      "Bình luận nổi bật dán nhãn",
-      "Hỗ trợ và ưu tiên xử lý",
-    ],
-  },
-  {
-    category: "TÍNH NĂNG TƯƠNG TÁC",
-    items: [
-      "Tạo Watch Party (Tối đa 10 người)",
-      "Tạo Watch Party mở rộng (Tối đa 50 người)",
-      "Quyền quản trị phòng xem chung (Kick/Mute)",
-      "Phòng chat Voice chất lượng cao",
-    ],
-  },
-];
 
 const INITIAL_PLANS: SubscriptionPlan[] = [
   {
@@ -121,11 +91,15 @@ const INITIAL_PLANS: SubscriptionPlan[] = [
       "Tốc độ cày cấp bình thường (1x XP)",
     ],
     isActive: true,
-    color: "bg-slate-500",
-
     can_create_watch_party: false,
     max_watch_party_participants: 0,
     can_kick_mute_members: false,
+    chatbot_max_questions_per_day: 5,
+    offline_download_supported: false,
+    max_devices: 1,
+    gamification_xp_multiplier: 1,
+    smart_search_supported: false,
+    mobile_remote_control_supported: false,
   },
   {
     id: "2",
@@ -146,12 +120,15 @@ const INITIAL_PLANS: SubscriptionPlan[] = [
       "Tăng tốc 1.2x XP khi xem phim",
     ],
     isActive: true,
-    color: "bg-blue-600",
-    recommended: true,
-
     can_create_watch_party: true,
     max_watch_party_participants: 5,
     can_kick_mute_members: false,
+    chatbot_max_questions_per_day: 50,
+    offline_download_supported: true,
+    max_devices: 2,
+    gamification_xp_multiplier: 1.2,
+    smart_search_supported: true,
+    mobile_remote_control_supported: true,
   },
   {
     id: "3",
@@ -172,11 +149,15 @@ const INITIAL_PLANS: SubscriptionPlan[] = [
       "Tăng tốc 2x XP (Lên hạng cực nhanh)",
     ],
     isActive: true,
-    color: "bg-amber-500",
-
     can_create_watch_party: true,
     max_watch_party_participants: 50,
     can_kick_mute_members: true,
+    chatbot_max_questions_per_day: -1,
+    offline_download_supported: true,
+    max_devices: 4,
+    gamification_xp_multiplier: 2,
+    smart_search_supported: true,
+    mobile_remote_control_supported: true,
   },
 ];
 
@@ -188,12 +169,15 @@ const DEFAULT_FORM_DATA: Omit<SubscriptionPlan, "id"> = {
   billingCycle: "MONTHLY",
   features: [],
   isActive: true,
-  color: "bg-slate-500",
-  recommended: false,
-
   can_create_watch_party: false,
   max_watch_party_participants: 0,
   can_kick_mute_members: false,
+  chatbot_max_questions_per_day: 5,
+  offline_download_supported: false,
+  max_devices: 1,
+  gamification_xp_multiplier: 1,
+  smart_search_supported: false,
+  mobile_remote_control_supported: false,
 };
 
 export default function SubscriptionPage() {
@@ -211,7 +195,7 @@ export default function SubscriptionPage() {
   // Basic states
   const [loading, setLoading] = useState(false);
 
-  // Focus plan cho Tab Danh Sách Nguười Dùng (bấm từ thẻ Package)
+  // Focus plan cho Tab Danh Sách Người Dùng (bấm từ thẻ Package)
   const [activeTab, setActiveTab] = useState("plans");
   const [filterPlanId, setFilterPlanId] = useState<string | undefined>(
     undefined,
@@ -227,7 +211,13 @@ export default function SubscriptionPage() {
       setPlans(
         data.map((p: any) => ({
           ...p,
-          features: p.benefits || [], // Assuming it's saved in benefits
+          features: Array.isArray(p.benefits) ? p.benefits : (p.benefits?.features || []),
+            chatbot_max_questions_per_day: p.benefits?.chatbot_ai?.max_questions_per_day ?? 5,
+            offline_download_supported: p.benefits?.offline_download?.supported ?? false,
+            max_devices: p.benefits?.device_login?.max_devices ?? 1,
+            gamification_xp_multiplier: p.benefits?.gamification?.xp_multiplier ?? 1,
+            smart_search_supported: p.benefits?.smart_search?.supported ?? false,
+            mobile_remote_control_supported: p.benefits?.mobile_remote_control?.supported ?? false,
           billingCycle: "MONTHLY", // Missing from DB maybe?
           currency: "VND", // Missing from DB?
           isActive: p.is_active,
@@ -262,12 +252,16 @@ export default function SubscriptionPage() {
       billingCycle: plan.billingCycle,
       features: [...plan.features],
       isActive: plan.isActive,
-      color: plan.color,
-      recommended: plan.recommended,
 
       can_create_watch_party: plan.can_create_watch_party,
       max_watch_party_participants: plan.max_watch_party_participants,
       can_kick_mute_members: plan.can_kick_mute_members,
+      chatbot_max_questions_per_day: plan.chatbot_max_questions_per_day,
+      offline_download_supported: plan.offline_download_supported,
+      max_devices: plan.max_devices,
+      gamification_xp_multiplier: plan.gamification_xp_multiplier,
+      smart_search_supported: plan.smart_search_supported,
+      mobile_remote_control_supported: plan.mobile_remote_control_supported,
     });
     setIsPlanDialogOpen(true);
   };
@@ -280,16 +274,87 @@ export default function SubscriptionPage() {
 
     try {
       setLoading(true);
+      const generatedFeatures: string[] = [];
+
+      if (formData.can_create_watch_party) {
+        if (
+          formData.max_watch_party_participants >= 50 &&
+          formData.can_kick_mute_members
+        ) {
+          generatedFeatures.push(
+            `Tạo phòng Watch Party Siêu lớn (${formData.max_watch_party_participants} người), có quyền Kick/Mute thành viên.`,
+          );
+        } else {
+          generatedFeatures.push(
+            `Được Tạo phòng Watch Party (Tối đa ${formData.max_watch_party_participants} người).`,
+          );
+        }
+      } else {
+        generatedFeatures.push("Chỉ được Tham gia phòng người khác tạo.");
+      }
+
+      generatedFeatures.push(
+        formData.chatbot_max_questions_per_day === -1
+          ? "Chatbot AI: Không giới hạn."
+          : `Chatbot AI: Giới hạn ${formData.chatbot_max_questions_per_day} câu/ngày.`,
+      );
+
+      generatedFeatures.push(
+        formData.offline_download_supported
+          ? "Cho phép tải về Mobile App."
+          : "Không hỗ trợ tải về (Offline).",
+      );
+
+      generatedFeatures.push(
+        `${formData.max_devices} thiết bị đăng nhập cùng lúc.`,
+      );
+
+      generatedFeatures.push(
+        formData.gamification_xp_multiplier > 1
+          ? `Tăng tốc ${formData.gamification_xp_multiplier}x XP khi xem phim.`
+          : "Tốc độ cày cấp bình thường (1x XP).",
+      );
+
+      generatedFeatures.push(
+        `Tìm kiếm thông minh: ${formData.smart_search_supported ? "Có" : "Standard"}.`,
+      );
+
+      generatedFeatures.push(
+        formData.mobile_remote_control_supported
+          ? "Có Mobile Remote Control."
+          : "Không Mobile Remote Control.",
+      );
+
       const payload = {
         name: formData.name,
         description: formData.description,
         price: formData.price,
         duration_days: 30,
-        benefits: formData.features,
         can_create_watch_party: formData.can_create_watch_party,
         max_watch_party_participants: formData.max_watch_party_participants,
         can_kick_mute_members: formData.can_kick_mute_members,
         is_active: formData.isActive,
+        benefits: {
+          features: generatedFeatures,
+          chatbot_ai: {
+            max_questions_per_day: formData.chatbot_max_questions_per_day,
+          },
+          offline_download: {
+            supported: formData.offline_download_supported,
+          },
+          device_login: {
+            max_devices: formData.max_devices,
+          },
+          gamification: {
+            xp_multiplier: formData.gamification_xp_multiplier,
+          },
+          smart_search: {
+            supported: formData.smart_search_supported,
+          },
+          mobile_remote_control: {
+            supported: formData.mobile_remote_control_supported,
+          },
+        },
       };
 
       if (currentPlan) {
@@ -331,22 +396,6 @@ export default function SubscriptionPage() {
         setLoading(false);
       }
     }
-  };
-
-  // --- FEATURE MANAGEMENT IN PLAN ---
-
-  const handleAddFeatureToPlan = (content: string) => {
-    if (!content) return;
-    if (formData.features.includes(content)) {
-      toast.error("Quyền lợi này đã tồn tại trong gói");
-      return;
-    }
-    setFormData({ ...formData, features: [...formData.features, content] });
-  };
-
-  const handleRemoveFeatureFromPlan = (index: number) => {
-    const newFeatures = formData.features.filter((_, i) => i !== index);
-    setFormData({ ...formData, features: newFeatures });
   };
 
   // --- HELPERS ---
@@ -427,9 +476,6 @@ export default function SubscriptionPage() {
                 >
                   <div className="flex justify-between items-start w-full">
                     <div className="space-y-1">
-                      <div
-                        className={`w-8 h-1 ${plan.color || "bg-slate-500"} mb-2 rounded-full`}
-                      ></div>
                       <CardTitle className="text-xl font-bold text-white leading-tight">
                         {plan.name}
                       </CardTitle>
@@ -620,80 +666,8 @@ export default function SubscriptionPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="color" className="text-sm font-medium">
-                    Màu nhận diện
-                  </Label>
-                  <Select
-                    value={formData.color}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, color: value })
-                    }
-                  >
-                    <SelectTrigger className="bg-[#262626] border-slate-700 text-white h-10 w-full">
-                      <div className="flex items-center w-full overflow-hidden">
-                        {formData.color ? (
-                          <>
-                            <div
-                              className={`w-4 h-4 rounded-full mr-2 shrink-0 ${formData.color} border border-white/20`}
-                            ></div>
-                            <span className="truncate text-sm">
-                              {formData.color === "bg-slate-500"
-                                ? "Xám (Basic)"
-                                : formData.color === "bg-blue-600"
-                                  ? "Xanh dương (Plus)"
-                                  : formData.color === "bg-amber-500"
-                                    ? "Vàng (Gold)"
-                                    : formData.color === "bg-purple-600"
-                                      ? "Tím (Premium)"
-                                      : formData.color === "bg-red-600"
-                                        ? "Đỏ (Special)"
-                                        : formData.color}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-slate-400 text-sm">
-                            Chọn màu...
-                          </span>
-                        )}
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#262626] border-slate-700 text-white shadow-xl z-[9999]">
-                      <SelectItem value="bg-slate-500">
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full bg-slate-500 mr-2"></div>
-                          Xám (Basic)
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="bg-blue-600">
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full bg-blue-600 mr-2"></div>
-                          Xanh dương (Plus)
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="bg-amber-500">
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full bg-amber-500 mr-2"></div>
-                          Vàng (Gold)
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="bg-purple-600">
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full bg-purple-600 mr-2"></div>
-                          Tím (Premium)
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="bg-red-600">
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full bg-red-600 mr-2"></div>
-                          Đỏ (Special)
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
                   <Label className="text-sm font-medium">
-                    Trạng thái & Hiển thị
+                    Trạng thái hiển thị
                   </Label>
                   <div className="flex flex-col gap-3 mt-1 bg-[#262626] border border-slate-800 rounded-md p-3">
                     <div className="flex items-center space-x-3">
@@ -714,29 +688,6 @@ export default function SubscriptionPage() {
                         className="cursor-pointer font-normal text-sm select-none"
                       >
                         Đang hoạt động
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        id="recommended"
-                        checked={!!formData.recommended}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            recommended: e.target.checked,
-                          })
-                        }
-                        className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-0"
-                      />
-                      <Label
-                        htmlFor="recommended"
-                        className="cursor-pointer font-normal text-sm text-amber-500 select-none flex items-center"
-                      >
-                        Đề xuất{" "}
-                        <span className="text-[10px] ml-1 opacity-70 border border-amber-500/50 rounded px-1">
-                          (HOT)
-                        </span>
                       </Label>
                     </div>
                   </div>
@@ -821,84 +772,142 @@ export default function SubscriptionPage() {
 
             {/* Cột phải: Cấu hình Quyền lợi */}
             <div className="space-y-4 flex flex-col h-full">
-              <h3 className="text-lg font-semibold flex items-center justify-between text-primary">
-                <span className="flex items-center">
-                  <ListPlus className="mr-2 h-5 w-5" />
-                  Danh sách Quyền lợi
-                </span>
-                <Badge
-                  variant="secondary"
-                  className="bg-slate-800 text-slate-300"
-                >
-                  {formData.features.length} quyền lợi
-                </Badge>
+              <h3 className="text-lg font-semibold flex items-center text-primary">
+                <ListPlus className="mr-2 h-5 w-5" />
+                Cấu hình Quyền lợi Gói (Benefits)
               </h3>
 
-              <div className="flex gap-2">
-                <Select onValueChange={handleAddFeatureToPlan}>
-                  <SelectTrigger className="bg-[#262626] border-slate-700 text-white flex-1">
-                    <SelectValue placeholder="Chọn quyền lợi để thêm..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#262626] border-slate-700 text-white max-h-[300px]">
-                    {BENEFIT_CATEGORIES.map((categoryGroup) => (
-                      <SelectGroup key={categoryGroup.category}>
-                        <SelectLabel className="text-slate-400 pl-2 py-1.5 text-xs font-bold uppercase tracking-wider bg-slate-900/50">
-                          {categoryGroup.category}
-                        </SelectLabel>
-                        {categoryGroup.items.map((item, idx) => (
-                          <SelectItem
-                            key={`${categoryGroup.category}-${idx}`}
-                            value={item}
-                            className="cursor-pointer pl-4"
-                          >
-                            {item}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <div className="flex-1 bg-[#262626] rounded-md border border-slate-800 p-4 overflow-y-auto space-y-4 min-h-[300px]">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="chatbot_max"
+                    className="text-sm font-bold text-slate-300"
+                  >
+                    1. Giới hạn Chatbot AI / Agent
+                  </Label>
+                  <p className="text-xs text-slate-500">
+                    Số câu hỏi mỗi ngày (-1 là không giới hạn)
+                  </p>
+                  <Input
+                    id="chatbot_max"
+                    type="number"
+                    value={formData.chatbot_max_questions_per_day}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        chatbot_max_questions_per_day: Number(e.target.value),
+                      })
+                    }
+                    className="bg-[#1e1e1e] border-slate-700"
+                  />
+                </div>
 
-              <div className="flex-1 bg-[#262626] rounded-md border border-slate-800 p-2 overflow-hidden flex flex-col min-h-[300px]">
-                {formData.features.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-slate-500">
-                    <ListPlus className="h-10 w-10 mb-2 opacity-50" />
-                    <p>Chưa có quyền lợi nào</p>
-                    <p className="text-sm">
-                      Chọn từ danh sách bên trên để thêm
-                    </p>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="max_devices"
+                    className="text-sm font-bold text-slate-300"
+                  >
+                    2. Số thiết bị đăng nhập cùng lúc
+                  </Label>
+                  <Input
+                    id="max_devices"
+                    type="number"
+                    min={1}
+                    value={formData.max_devices}
+                    onChange={(e) =>
+                      setFormData({ ...formData, max_devices: Number(e.target.value) })
+                    }
+                    className="bg-[#1e1e1e] border-slate-700"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="xp_multiplier"
+                    className="text-sm font-bold text-slate-300"
+                  >
+                    3. Hệ số XP (Gamification)
+                  </Label>
+                  <Input
+                    id="xp_multiplier"
+                    type="number"
+                    min={1}
+                    step={0.1}
+                    value={formData.gamification_xp_multiplier}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        gamification_xp_multiplier: Number(e.target.value),
+                      })
+                    }
+                    className="bg-[#1e1e1e] border-slate-700"
+                  />
+                </div>
+
+                <div className="pt-2 border-t border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor="offline_download"
+                      className="text-sm font-bold text-slate-300 cursor-pointer"
+                    >
+                      4. Cho phép tải xuống (Offline)
+                    </Label>
+                    <input
+                      type="checkbox"
+                      id="offline_download"
+                      checked={formData.offline_download_supported}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          offline_download_supported: e.target.checked,
+                        })
+                      }
+                      className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-primary"
+                    />
                   </div>
-                ) : (
-                  <ScrollArea className="flex-1 h-full pr-3 relative">
-                    <div className="space-y-2 p-1">
-                      {formData.features.map((feature, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between bg-[#1e1e1e] p-3 rounded border border-slate-800 group hover:border-slate-600 transition-colors"
-                        >
-                          <div className="flex items-start gap-3 flex-1 mr-2">
-                            <div className="bg-primary/20 p-1 rounded-full mt-0.5 shrink-0">
-                              <Check className="h-3 w-3 text-primary" />
-                            </div>
-                            <span className="text-sm text-slate-200 leading-tight">
-                              {feature}
-                            </span>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveFeatureFromPlan(index)}
-                            className="h-7 w-7 shrink-0 text-slate-500 hover:text-red-500 hover:bg-red-500/10 opacity-70 group-hover:opacity-100 transition-all"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )}
+
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor="smart_search"
+                      className="text-sm font-bold text-slate-300 cursor-pointer"
+                    >
+                      5. Tìm kiếm thông minh
+                    </Label>
+                    <input
+                      type="checkbox"
+                      id="smart_search"
+                      checked={formData.smart_search_supported}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          smart_search_supported: e.target.checked,
+                        })
+                      }
+                      className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-primary"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor="mobile_remote"
+                      className="text-sm font-bold text-slate-300 cursor-pointer"
+                    >
+                      6. Mobile Remote Control
+                    </Label>
+                    <input
+                      type="checkbox"
+                      id="mobile_remote"
+                      checked={formData.mobile_remote_control_supported}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          mobile_remote_control_supported: e.target.checked,
+                        })
+                      }
+                      className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-primary"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
