@@ -55,7 +55,8 @@ interface SubscriptionPlan {
   description: string;
   price: number;
   currency: string;
-  billingCycle: "MONTHLY" | "YEARLY";
+  duration_days: number;
+  level: number;
   features: string[]; // Stores content strings
   isActive: boolean;
   can_create_watch_party: boolean;
@@ -76,7 +77,8 @@ const DEFAULT_FORM_DATA: Omit<SubscriptionPlan, "id"> = {
   description: "",
   price: 0,
   currency: "VND",
-  billingCycle: "MONTHLY",
+  duration_days: 30,
+  level: 1,
   features: [],
   isActive: true,
   can_create_watch_party: false,
@@ -127,8 +129,9 @@ export default function SubscriptionPage() {
             gamification_xp_multiplier: p.benefits?.gamification?.xp_multiplier ?? 1,
             smart_search_supported: p.benefits?.smart_search?.supported ?? false,
             mobile_remote_control_supported: p.benefits?.mobile_remote_control?.supported ?? false,
-          billingCycle: "MONTHLY", // Missing from DB maybe?
-          currency: "VND", // Missing from DB?
+          duration_days: p.duration_days ?? 30,
+          level: p.level ?? 1,
+          currency: p.currency ?? "VND",
           isActive: p.is_active,
         })),
       );
@@ -158,7 +161,8 @@ export default function SubscriptionPage() {
       description: plan.description,
       price: plan.price,
       currency: plan.currency,
-      billingCycle: plan.billingCycle,
+      duration_days: plan.duration_days,
+      level: plan.level,
       features: [...plan.features],
       isActive: plan.isActive,
 
@@ -238,7 +242,8 @@ export default function SubscriptionPage() {
         name: formData.name,
         description: formData.description,
         price: formData.price,
-        duration_days: 30,
+        duration_days: formData.duration_days,
+        level: formData.level,
         can_create_watch_party: formData.can_create_watch_party,
         max_watch_party_participants: formData.max_watch_party_participants,
         can_kick_mute_members: formData.can_kick_mute_members,
@@ -408,7 +413,7 @@ export default function SubscriptionPage() {
                       {formatCurrency(plan.price, plan.currency)}
                     </span>
                     <span className="text-slate-400 ml-1 text-sm">
-                      /{plan.billingCycle === "MONTHLY" ? "tháng" : "năm"}
+                      /{plan.duration_days} ngày
                     </span>
                   </div>
 
@@ -533,7 +538,23 @@ export default function SubscriptionPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="level" title="Số càng cao xếp thứ hạng càng cao">Thứ hạng (Level)</Label>
+                  <Input
+                    id="level"
+                    type="number"
+                    min={1}
+                    value={formData.level}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        level: Number(e.target.value),
+                      })
+                    }
+                    className="bg-[#262626] border-slate-700 focus:border-primary"
+                  />
+                </div>
                 <div className="grid gap-2">
                   <Label htmlFor="price">Giá tiền</Label>
                   <div className="relative">
@@ -555,21 +576,25 @@ export default function SubscriptionPage() {
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="cycle">Chu kỳ</Label>
-                  <Select
-                    value={formData.billingCycle}
-                    onValueChange={(value: "MONTHLY" | "YEARLY") =>
-                      setFormData({ ...formData, billingCycle: value })
-                    }
-                  >
-                    <SelectTrigger className="bg-[#262626] border-slate-700 text-white">
-                      <SelectValue placeholder="Chọn chu kỳ" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#262626] border-slate-700 text-white">
-                      <SelectItem value="MONTHLY">Tháng (Monthly)</SelectItem>
-                      <SelectItem value="YEARLY">Năm (Yearly)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="duration_days">Thời hạn (Ngày)</Label>
+                  <div className="relative">
+                    <Input
+                      id="duration_days"
+                      type="number"
+                      min={1}
+                      value={formData.duration_days}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          duration_days: Number(e.target.value),
+                        })
+                      }
+                      className="bg-[#262626] border-slate-700 focus:border-primary pr-12"
+                    />
+                    <span className="absolute right-3 top-2.5 text-slate-400 text-sm font-semibold pointer-events-none">
+                      Ngày
+                    </span>
+                  </div>
                 </div>
               </div>
 
