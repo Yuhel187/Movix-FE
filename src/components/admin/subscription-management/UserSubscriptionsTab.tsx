@@ -352,25 +352,28 @@ export default function UserSubscriptionsTab({
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
-                            variant="ghost"
-                            className="h-8 w-8 p-0 text-slate-400 hover:text-white"
+                            variant="ghost" 
+                            className="h-10 w-10 p-0 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-full"
                           >
-                            <MoreHorizontal className="h-4 w-4" />
+                            <MoreHorizontal className="h-5 w-5" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                           align="end"
-                          className="bg-slate-900 border-slate-800 text-slate-200"
+                          className="bg-[#1e1e1e] border-slate-700 text-slate-200 shadow-2xl min-w-[160px] z-[100]"
                         >
+                          <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-b border-slate-800 mb-1">
+                            Thao tác đăng ký
+                          </div>
                           {sub.status !== "ACTIVE" && (
                             <DropdownMenuItem
                               onClick={() =>
                                 handleUpdateStatus(sub.id, "ACTIVE")
                               }
-                              className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer"
+                              className="hover:bg-green-500/10 hover:text-green-400 cursor-pointer py-2"
                             >
                               <CheckCircle className="mr-2 h-4 w-4 text-green-500" />{" "}
-                              Kích hoạt lại
+                              Khôi phục / Kích hoạt
                             </DropdownMenuItem>
                           )}
                           {sub.status === "ACTIVE" && (
@@ -378,9 +381,9 @@ export default function UserSubscriptionsTab({
                               onClick={() =>
                                 handleUpdateStatus(sub.id, "CANCELLED")
                               }
-                              className="hover:bg-slate-800 focus:bg-slate-800 cursor-pointer text-red-400"
+                              className="hover:bg-red-500/10 hover:text-red-400 cursor-pointer py-2"
                             >
-                              <Ban className="mr-2 h-4 w-4" /> Hủy gói
+                              <Ban className="mr-2 h-4 w-4 text-red-500" /> Hủy gói cước
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>

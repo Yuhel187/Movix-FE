@@ -79,6 +79,7 @@ export default function AIChatBox({ userId, onClose , onMinimize}: Props) {
   
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [remaining, setRemaining] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -90,6 +91,16 @@ export default function AIChatBox({ userId, onClose , onMinimize}: Props) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (userId) {
+      apiClient.get('/ai/limit')
+        .then(res => {
+          setRemaining(res.data.remaining);
+        })
+        .catch(err => console.error("Lỗi lấy giới hạn AI:", err));
+    }
+  }, [userId]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -107,8 +118,23 @@ export default function AIChatBox({ userId, onClose , onMinimize}: Props) {
         sender: "bot" 
       };
       setMessages(prev => [...prev, botMsg]);
-    } catch (error) {
-      setMessages(prev => [...prev, { id: `err-${Date.now()}`, text: "Xin lỗi, tôi đang gặp sự cố kết nối.", sender: "bot" }]);
+      if (res.data.remaining !== undefined) {
+        setRemaining(res.data.remaining);
+      }
+    } catch (error: any) {
+      if (error.response?.status === 403) {
+        setRemaining(0);
+        setMessages(prev => [
+          ...prev, 
+          { 
+            id: `err-${Date.now()}`, 
+            text: error.response.data.message || "Bạn đã hết lượt dùng AI hôm nay. [Nâng cấp ngay](/account/subscription)", 
+            sender: "bot" 
+          }
+        ]);
+      } else {
+        setMessages(prev => [...prev, { id: `err-${Date.now()}`, text: "Xin lỗi, tôi đang gặp sự cố kết nối.", sender: "bot" }]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -128,9 +154,16 @@ export default function AIChatBox({ userId, onClose , onMinimize}: Props) {
           </div>
           <div>
             <h2 className="font-bold text-white text-sm">Movix Assistant</h2>
-            <p className="text-[10px] text-green-200 font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-green-400 rounded-full block"></span> Online
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] text-green-200 font-medium flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-green-400 rounded-full block"></span> Online
+              </p>
+              {remaining !== null && (
+                <p className="text-[10px] text-white/80 ml-2 bg-white/20 px-1.5 py-0.5 rounded">
+                  {remaining === -1 ? 'Vô hạn lượt' : `Còn: ${remaining} lượt`}
+                </p>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-1">
