@@ -1,20 +1,18 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import Hls from "hls.js";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import {
     Send, Play, Pause, Volume2, Maximize, Minimize,
     PanelRightClose, PanelRightOpen, RefreshCw, Power, MoreVertical, UserX, LogOut,
-    Smile, Flag, Star, Calendar, Globe, Crown, Ban, Lock, Check, X, AlertTriangle,
+    Smile, Star, Calendar, Globe, Crown, Ban, Lock, Check, X, 
     Mic, MicOff, Volume1, VolumeX
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -35,7 +33,6 @@ import { InvitePartyDialog } from "@/components/watch-party/InvitePartyDialog";
 import EmojiPicker from 'emoji-picker-react';
 import {
     LiveKitRoom,
-    RoomAudioRenderer,
     useLocalParticipant,
     useParticipants,
     TrackToggle,
