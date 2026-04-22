@@ -14,6 +14,7 @@ import { usePayment } from "@/hooks/usePayment";
 import { useRouter } from "next/navigation";
 import { subscriptionService } from "@/services/subscription.service";
 import { UserSubscription } from "@/types/subscription";
+import Navbar from "@/components/layout/NavBar";
 
 const FAQS = [
   {
@@ -40,15 +41,25 @@ const formatBenefitValue = (key: string, value: unknown): string => {
   if (typeof value === "boolean") {
     return value ? key : "";
   }
+  if (typeof value === "object" && value !== null) {
+    return ""; // Ignore nested objects since their details are usually in `features`
+  }
 
   return `${key}: ${String(value)}`;
 };
 
 const toDisplayPlan = (plan: SubscriptionPlan): PricingDisplayPlan => {
   const benefits = plan.benefits ?? {};
-  const featureList = Object.entries(benefits)
-    .map(([key, value]) => formatBenefitValue(key, value))
-    .filter(Boolean);
+  
+  let featureList: string[] = [];
+  
+  if (Array.isArray(benefits.features)) {
+    featureList = [...benefits.features] as string[];
+  } else {
+    featureList = Object.entries(benefits)
+      .map(([key, value]) => formatBenefitValue(key, value))
+      .filter(Boolean);
+  }
 
   if (plan.can_create_watch_party) {
     featureList.push(`Tạo Watch Party (tối đa ${plan.max_watch_party_participants} người)`);
@@ -171,8 +182,9 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
+      <Navbar />
       {/* Navbar Placeholder or Back Button */}
-      <div className="p-6">
+      <div className="p-6 pt-24">
         <Link href="/" className="inline-flex items-center text-slate-400 hover:text-white transition-colors">
           <ArrowLeft className="mr-2 h-4 w-4" /> Quay lại trang chủ
         </Link>
@@ -250,7 +262,7 @@ export default function PricingPage() {
                router.push(isLoggedIn ? "/" : "/register");
              }}
            >
-             Tạo tài khoản miễn phí
+             {isLoggedIn ? "Khám phá ngay" : "Tạo tài khoản miễn phí"}
            </Button>
         </div>
 

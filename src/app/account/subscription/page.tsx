@@ -7,7 +7,7 @@ import Link from "next/link";
 import { ShieldCheck, Zap } from "lucide-react";
 import CurrentPlanStatus from "@/components/account/subscription/CurrentPlanStatus";
 import BillingHistory from "@/components/account/subscription/BillingHistory";
-import WalletBalance from "@/components/account/subscription/WalletBalance";
+// import WalletBalance from "@/components/account/subscription/WalletBalance";
 import { useSubscription } from "@/hooks/useSubscription";
 import { subscriptionService } from "@/services/subscription.service";
 import { Transaction, TransactionListMeta, TransactionStatus } from "@/types/subscription";
@@ -216,10 +216,11 @@ export default function UserSubscriptionPage() {
 
         {/* Right Column: Wallet & Help */}
         <div className="space-y-8">
-            {/* Wallet Balance for Auto-Renew */}
+            {/* Wallet Balance for Auto-Renew
             <section>
               <WalletBalance balance={balance} />
             </section>
+            */}
 
             {/* Help Block */}
             <Card className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 border-slate-800">
