@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -176,9 +176,9 @@ export function CreatePartyDialog() {
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {!userPlan ? (
+          {loadingPlan ? (
              <div className="flex items-center justify-center h-40"><Loader2 className="w-8 h-8 animate-spin text-slate-500" /></div>
-          ) : !userPlan.can_create_watch_party ? (
+          ) : (!userPlan || !userPlan.can_create_watch_party) ? (
              <div className="flex flex-col items-center justify-center p-6 text-center gap-4 border border-slate-700 bg-slate-800/30 rounded-lg">
                  <h3 className="font-bold text-lg text-white">Gói cước không hỗ trợ</h3>
                  <p className="text-sm text-slate-400">Bạn cần nâng cấp gói để sử dụng tính năng tạo phòng xem chung.</p>
