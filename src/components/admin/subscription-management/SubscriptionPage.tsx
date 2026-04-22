@@ -15,7 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,8 +30,6 @@ import { Badge } from "@/components/ui/badge";
 import { PlusCircle, Pencil, Trash2 } from "lucide-react";
 import {
   Check,
-  X,
-  CreditCard,
   MoreVertical,
   Settings,
   ListPlus,
@@ -51,7 +48,6 @@ import { useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserSubscriptionsTab from "./UserSubscriptionsTab";
 
-// --- TYPES ---
 
 interface SubscriptionPlan {
   id: string;
@@ -62,6 +58,8 @@ interface SubscriptionPlan {
   billingCycle: "MONTHLY" | "YEARLY";
   features: string[]; // Stores content strings
   isActive: boolean;
+  can_create_watch_party: boolean;
+  max_watch_party_participants: number;
   can_kick_mute_members: boolean;
   chatbot_max_questions_per_day: number;
   offline_download_supported: boolean;
@@ -69,97 +67,9 @@ interface SubscriptionPlan {
   gamification_xp_multiplier: number;
   smart_search_supported: boolean;
   mobile_remote_control_supported: boolean;
+  recommended?: boolean;
 }
 
-// --- INITIAL DATA ---
-
-const INITIAL_PLANS: SubscriptionPlan[] = [
-  {
-    id: "1",
-    name: "Standard",
-    description: "Gói miễn phí cơ bản",
-    price: 0,
-    currency: "VND",
-    billingCycle: "MONTHLY",
-    features: [
-      "Xem phim thường, phim cũ",
-      "Chất lượng SD 480p",
-      "Xem phim có quảng cáo",
-      "Xem trên 1 thiết bị",
-      "Chỉ được Tham gia phòng người khác tạo",
-      "Chatbot: Giới hạn 5 câu/ngày",
-      "Tốc độ cày cấp bình thường (1x XP)",
-    ],
-    isActive: true,
-    can_create_watch_party: false,
-    max_watch_party_participants: 0,
-    can_kick_mute_members: false,
-    chatbot_max_questions_per_day: 5,
-    offline_download_supported: false,
-    max_devices: 1,
-    gamification_xp_multiplier: 1,
-    smart_search_supported: false,
-    mobile_remote_control_supported: false,
-  },
-  {
-    id: "2",
-    name: "Movix Plus",
-    description: "Trải nghiệm nâng cao",
-    price: 59000,
-    currency: "VND",
-    billingCycle: "MONTHLY",
-    features: [
-      "Xem tất cả, bao gồm 'Phim Hot'",
-      "Chất lượng HD 720p",
-      "Không quảng cáo",
-      "Xem trên 2 thiết bị cùng lúc",
-      "Được Tạo phòng (Tối đa 5 người)",
-      "Mở khóa Voice Chat (Chất lượng thường)",
-      "Chatbot: Giới hạn 50 câu/ngày",
-      "Cho phép tải về Mobile App",
-      "Tăng tốc 1.2x XP khi xem phim",
-    ],
-    isActive: true,
-    can_create_watch_party: true,
-    max_watch_party_participants: 5,
-    can_kick_mute_members: false,
-    chatbot_max_questions_per_day: 50,
-    offline_download_supported: true,
-    max_devices: 2,
-    gamification_xp_multiplier: 1.2,
-    smart_search_supported: true,
-    mobile_remote_control_supported: true,
-  },
-  {
-    id: "3",
-    name: "Movix Ultimate",
-    description: "Quyền năng tối thượng",
-    price: 199000,
-    currency: "VND",
-    billingCycle: "MONTHLY",
-    features: [
-      "Quyền ưu tiên: Xem sớm phim mới (Sneak Peek) trước 24h",
-      "Chất lượng Full HD 1080p & 4K",
-      "Không quảng cáo",
-      "Xem trên 4 thiết bị cùng lúc (Gói gia đình)",
-      "Tạo phòng Siêu lớn (50 người), có quyền Kick/Mute thành viên",
-      "Voice Chat HD: Âm thanh cao, lọc ồn",
-      "Chatbot: Không giới hạn & Deep Analysis",
-      "Deep Learning: Gợi ý theo cảm xúc & ngữ cảnh",
-      "Tăng tốc 2x XP (Lên hạng cực nhanh)",
-    ],
-    isActive: true,
-    can_create_watch_party: true,
-    max_watch_party_participants: 50,
-    can_kick_mute_members: true,
-    chatbot_max_questions_per_day: -1,
-    offline_download_supported: true,
-    max_devices: 4,
-    gamification_xp_multiplier: 2,
-    smart_search_supported: true,
-    mobile_remote_control_supported: true,
-  },
-];
 
 const DEFAULT_FORM_DATA: Omit<SubscriptionPlan, "id"> = {
   name: "",
@@ -181,7 +91,7 @@ const DEFAULT_FORM_DATA: Omit<SubscriptionPlan, "id"> = {
 };
 
 export default function SubscriptionPage() {
-  const [plans, setPlans] = useState<SubscriptionPlan[]>(INITIAL_PLANS);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
 
   // Dialog states
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
@@ -206,8 +116,7 @@ export default function SubscriptionPage() {
     try {
       setLoading(true);
       const data = await subscriptionService.getAllPlans();
-      // the endpoint returned from Prisma might have some missing optional keys or mismatched "features"
-      // Wait, is 'features' saved as a JSON string or what? Let's check Prisma schema. Wait, if it's 'benefits' array...
+
       setPlans(
         data.map((p: any) => ({
           ...p,
@@ -938,7 +847,7 @@ export default function SubscriptionPage() {
             <CardDescription className="text-slate-400">
               Bạn có chắc chắn muốn thay đổi trạng thái gói dịch vụ{" "}
               <span className="font-bold text-white">
-                "{currentPlan?.name}"
+                &quot;{currentPlan?.name}&quot;
               </span>{" "}
               không? Nếu ngừng hoạt động, người dùng mới sẽ không thấy gói này.
             </CardDescription>
