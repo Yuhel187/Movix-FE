@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,14 +40,16 @@ import {
   Download,
   MoreVertical,
   CheckCircle,
-  XCircle,
   RefreshCcw,
-  CreditCard,
   DollarSign,
-  Calendar as CalendarIcon,
-  ArrowUpRight,
   ArrowDownLeft,
-  FileText
+  FileText,
+  Eye,
+  User as UserIcon,
+  CreditCard as PaymentIcon,
+  ChevronLeft,
+  ChevronRight,
+  Printer
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -59,136 +60,99 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
+import apiClient from "@/lib/apiClient";
 
 // --- TYPES ---
-type TransactionStatus = "SUCCESS" | "PENDING" | "FAILED" | "REFUNDED";
-type PaymentMethod = "MOMO" | "ZALOPAY" | "CREDIT_CARD" | "BANK_TRANSFER" | "PAYPAL";
+type TransactionStatus = "COMPLETED" | "PENDING" | "FAILED" | "REFUNDED";
 
 interface Transaction {
   id: string;
   user: {
-    name: string;
+    id: string;
+    display_name: string;
     email: string;
-    avatar?: string;
+    username: string;
+    avatar_url?: string;
   };
-  plan: string;
+  plan: {
+    id: string;
+    name: string;
+    price: number;
+    duration_days: number;
+  };
   amount: number;
   currency: string;
-  method: PaymentMethod;
+  payment_method: string;
+  transaction_ref: string;
   status: TransactionStatus;
-  date: string; // ISO string
-  transactionCode: string;
+  created_at: string;
+  metadata?: any;
 }
 
-// --- MOCK DATA ---
-const MOCK_TRANSACTIONS: Transaction[] = [
-  {
-    id: "TRX-001",
-    user: { name: "Nguyễn Văn A", email: "nguyenvana@gmail.com", avatar: "https://github.com/shadcn.png" },
-    plan: "Movix Ultimate (1 Năm)",
-    amount: 1990000,
-    currency: "VND",
-    method: "MOMO",
-    status: "SUCCESS",
-    date: "2025-12-15T10:30:00",
-    transactionCode: "MOMO123456789"
-  },
-  {
-    id: "TRX-002",
-    user: { name: "Trần Thị B", email: "tranthib@gmail.com" },
-    plan: "Movix Plus (1 Tháng)",
-    amount: 59000,
-    currency: "VND",
-    method: "ZALOPAY",
-    status: "PENDING",
-    date: "2025-12-15T11:15:00",
-    transactionCode: "ZALO987654321"
-  },
-  {
-    id: "TRX-003",
-    user: { name: "Lê Văn C", email: "levanc@gmail.com" },
-    plan: "Movix Plus (1 Tháng)",
-    amount: 59000,
-    currency: "VND",
-    method: "CREDIT_CARD",
-    status: "FAILED",
-    date: "2025-12-14T09:00:00",
-    transactionCode: "VISA456123789"
-  },
-  {
-    id: "TRX-004",
-    user: { name: "Phạm Văn D", email: "phamvand@gmail.com" },
-    plan: "Movix Ultimate (1 Tháng)",
-    amount: 199000,
-    currency: "VND",
-    method: "BANK_TRANSFER",
-    status: "REFUNDED",
-    date: "2025-12-13T14:20:00",
-    transactionCode: "BIDV789456123"
-  },
-  {
-    id: "TRX-005",
-    user: { name: "Hoàng Thị F", email: "hoangthif@gmail.com" },
-    plan: "Movix Plus (1 Năm)",
-    amount: 590000,
-    currency: "VND",
-    method: "PAYPAL",
-    status: "SUCCESS",
-    date: "2025-12-16T08:45:00",
-    transactionCode: "PAYPAL55667788"
-  },
-    {
-    id: "TRX-006",
-    user: { name: "Đặng Văn G", email: "dangvang@gmail.com" },
-    plan: "Movix Ultimate (1 Tháng)",
-    amount: 199000,
-    currency: "VND",
-    method: "MOMO",
-    status: "PENDING",
-    date: "2025-12-16T09:10:00",
-    transactionCode: "MOMO99887766"
-  },
-];
+interface DashboardStats {
+  revenue: number;
+  pending: number;
+  refunded: number;
+}
 
 export default function BillingPage() {
-  const [data, setData] = useState<Transaction[]>(MOCK_TRANSACTIONS);
+  const [data, setData] = useState<Transaction[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({ revenue: 0, pending: 0, refunded: 0 });
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 15;
 
-  // Refund Dialog State
-  const [isRefundDialogOpen, setIsRefundDialogOpen] = useState(false);
+  // Detail Modal State
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const [refundReason, setRefundReason] = useState("");
 
   // Approve Dialog State
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
 
+  // --- FETCH DATA ---
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [trxRes, statsRes] = await Promise.all([
+        apiClient.get(`/admin/transactions/get-all?page=${currentPage}&take=${itemsPerPage}&q=${searchTerm}&status=${statusFilter}`),
+        apiClient.get("/admin/transactions/get-stats")
+      ]);
+      
+      setData(trxRes.data.data || []);
+      setTotalPages(trxRes.data.meta?.lastPages || 1);
+      setStats(statsRes.data || { revenue: 0, pending: 0, refunded: 0 });
+    } catch (error) {
+      console.error("Fetch error:", error);
+      toast.error("Không thể tải dữ liệu giao dịch");
+    } finally {
+      setLoading(false);
+    }
+  }, [searchTerm, statusFilter, currentPage]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        fetchData();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [fetchData]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
   // --- ACTIONS ---
 
-  const handleOpenRefundDialog = (trx: Transaction) => {
+  const handleOpenDetail = (trx: Transaction) => {
+    console.log(">>> [Frontend] Opening Detail for Transaction:", trx);
     setSelectedTransaction(trx);
-    setRefundReason("");
-    setIsRefundDialogOpen(true);
-  };
-
-  const handleRefund = () => {
-    if (selectedTransaction) {
-      if (!refundReason) {
-        toast.error("Vui lòng nhập lý do hoàn tiền");
-        return;
-      }
-      
-      const updatedData = data.map((t) =>
-        t.id === selectedTransaction.id ? { ...t, status: "REFUNDED" as TransactionStatus } : t
-      );
-      setData(updatedData);
-      toast.success(`Đã hoàn tiền cho giao dịch ${selectedTransaction.id}`);
-      setIsRefundDialogOpen(false);
-      setSelectedTransaction(null);
-    }
+    setIsDetailOpen(true);
   };
 
   const handleOpenApproveDialog = (trx: Transaction) => {
@@ -196,17 +160,225 @@ export default function BillingPage() {
     setIsApproveDialogOpen(true);
   }
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
      if (selectedTransaction) {
-      const updatedData = data.map((t) =>
-        t.id === selectedTransaction.id ? { ...t, status: "SUCCESS" as TransactionStatus } : t
-      );
-      setData(updatedData);
-      toast.success(`Đã duyệt giao dịch ${selectedTransaction.id} thủ công`);
-      setIsApproveDialogOpen(false);
-      setSelectedTransaction(null);
+       try {
+         await apiClient.patch(`/admin/transactions/update-status/${selectedTransaction.id}`, {
+            status: "COMPLETED"
+         });
+         toast.success(`Đã duyệt giao dịch ${selectedTransaction.transaction_ref} thành công`);
+         setIsApproveDialogOpen(false);
+         fetchData();
+       } catch (error) {
+         toast.error("Lỗi khi duyệt giao dịch");
+       }
     }
   }
+
+  // --- ISOLATED PRINT HANDLER ---
+  const handleExportPDF = async () => {
+    const toastId = toast.loading("Đang tải dữ liệu toàn bộ báo cáo...");
+    try {
+        // Gọi API lấy toàn bộ dữ liệu khớp với bộ lọc hiện tại (Search & Status)
+        // Set take=2000 (hoặc số lớn hơn) để lấy hết
+        const response = await apiClient.get(`/admin/transactions/get-all?page=1&take=2000&q=${searchTerm}&status=${statusFilter}`);
+        const allData: Transaction[] = response.data.data || [];
+
+        if (allData.length === 0) {
+            toast.error("Không có dữ liệu để xuất báo cáo", { id: toastId });
+            return;
+        }
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            toast.error("Vui lòng cho phép mở cửa sổ mới để in báo cáo", { id: toastId });
+            return;
+        }
+
+        toast.success("Đang chuẩn bị bản in...", { id: toastId });
+
+        const getStatusText = (status: TransactionStatus) => {
+            switch (status) {
+                case 'COMPLETED': return 'THÀNH CÔNG';
+                case 'PENDING': return 'CHỜ XỬ LÝ';
+                case 'FAILED': return 'THẤT BẠI';
+                case 'REFUNDED': return 'ĐÃ HOÀN TIỀN';
+                default: return status;
+            }
+        };
+
+        const rows = allData.map(trx => `
+            <tr>
+                <td style="border: 1px solid black; padding: 8px; font-family: monospace; font-size: 10px;">${trx.transaction_ref}</td>
+                <td style="border: 1px solid black; padding: 8px;">
+                    <div style="font-weight: bold;">${trx.user.display_name}</div>
+                    <small style="color: #666;">${trx.user.email}</small>
+                </td>
+                <td style="border: 1px solid black; padding: 8px;">${trx.plan?.name}</td>
+                <td style="border: 1px solid black; padding: 8px; text-align: right; font-weight: bold;">${formatCurrency(trx.amount)}</td>
+                <td style="border: 1px solid black; padding: 8px; text-align: center;">${format(new Date(trx.created_at), "dd/MM/yyyy")}</td>
+                <td style="border: 1px solid black; padding: 8px; text-align: center; font-weight: bold;">${getStatusText(trx.status)}</td>
+            </tr>
+        `).join('');
+
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Báo cáo giao dịch Movix</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 20px; }
+                        .header { text-align: center; border-bottom: 2px solid black; padding-bottom: 20px; margin-bottom: 30px; }
+                        .stats { display: flex; justify-content: space-around; margin-bottom: 40px; }
+                        .stat-box { border: 1px solid black; padding: 15px; text-align: center; border-radius: 8px; width: 30%; }
+                        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+                        th { background: #f0f0f0; }
+                        .footer { margin-top: 50px; display: flex; justify-content: space-between; padding: 0 50px; }
+                        @media print { .no-print { display: none; } }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1 style="text-transform: uppercase; margin: 0;">Báo cáo doanh thu giao dịch Movix</h1>
+                        <p>Ngày xuất: ${format(new Date(), "dd/MM/yyyy HH:mm")}</p>
+                        <p style="font-size: 12px;">Bộ lọc: ${statusFilter === 'ALL' ? 'Tất cả trạng thái' : getStatusText(statusFilter as any)} | Tìm kiếm: "${searchTerm || 'Không'}"</p>
+                    </div>
+                    <div class="stats">
+                        <div class="stat-box">
+                            <p style="font-size: 9px; font-weight: bold; color: #666; margin: 0;">TỔNG DOANH THU</p>
+                            <h2 style="color: green; margin: 5px 0;">${formatCurrency(stats.revenue)}</h2>
+                        </div>
+                        <div class="stat-box">
+                            <p style="font-size: 9px; font-weight: bold; color: #666; margin: 0;">CHỜ DUYỆT</p>
+                            <h2 style="margin: 5px 0;">${stats.pending}</h2>
+                        </div>
+                        <div class="stat-box">
+                            <p style="font-size: 9px; font-weight: bold; color: #666; margin: 0;">ĐÃ HOÀN TIỀN</p>
+                            <h2 style="color: red; margin: 5px 0;">${stats.refunded}</h2>
+                        </div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="border: 1px solid black; padding: 10px;">Mã Tham Chiếu</th>
+                                <th style="border: 1px solid black; padding: 10px;">Khách hàng</th>
+                                <th style="border: 1px solid black; padding: 10px;">Gói dịch vụ</th>
+                                <th style="border: 1px solid black; padding: 10px;">Số tiền</th>
+                                <th style="border: 1px solid black; padding: 10px;">Ngày</th>
+                                <th style="border: 1px solid black; padding: 10px;">Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                    <div class="footer">
+                        <div style="text-align: center;"><p><strong>Người lập báo cáo</strong></p><br/><br/><p>(Ký tên)</p></div>
+                        <div style="text-align: center;"><p><strong>Quản trị viên</strong></p><br/><br/><p>(Ký và đóng dấu)</p></div>
+                    </div>
+                    <script>
+                        window.onload = function() { window.print(); window.close(); }
+                    </script>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+    } catch (error) {
+        console.error("Export error:", error);
+        toast.error("Lỗi khi tải dữ liệu xuất báo cáo", { id: toastId });
+    }
+  };
+
+  const handlePrintReceipt = (trx: Transaction) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        toast.error("Vui lòng cho phép mở cửa sổ mới để in biên lai");
+        return;
+    }
+
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Biên lai giao dịch - ${trx.transaction_ref}</title>
+                <style>
+                    body { font-family: sans-serif; padding: 30px; color: #333; }
+                    .container { border: 2px solid #000; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto; }
+                    .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 20px; }
+                    .row { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px dashed #ddd; padding-bottom: 8px; }
+                    .label { color: #666; font-size: 13px; font-weight: bold; }
+                    .value { font-weight: bold; text-align: right; }
+                    .amount { font-size: 24px; color: #000; }
+                    .footer { margin-top: 40px; text-align: center; font-style: italic; font-size: 12px; color: #888; }
+                    h1 { margin: 0; font-size: 22px; text-transform: uppercase; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>Biên lai thanh toán Movix</h1>
+                        <p style="margin: 5px 0; font-size: 12px;">Mã hệ thống: ${trx.id}</p>
+                    </div>
+                    <div class="row">
+                        <span class="label">Mã tham chiếu:</span>
+                        <span class="value" style="font-family: monospace;">${trx.transaction_ref || 'N/A'}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Khách hàng:</span>
+                        <span class="value">${trx.user.display_name}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Email:</span>
+                        <span class="value">${trx.user.email}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Gói dịch vụ:</span>
+                        <span class="value">${trx.plan?.name}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Số tiền thanh toán:</span>
+                        <span class="value amount">${formatCurrency(trx.amount)}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Phương thức:</span>
+                        <span class="value">${trx.payment_method.toUpperCase()}</span>
+                    </div>
+                    
+                    ${trx.metadata?.reference ? `
+                    <div class="row">
+                        <span class="label">Mã tham chiếu Bank:</span>
+                        <span class="value" style="font-family: monospace; color: #003580;">${trx.metadata.reference}</span>
+                    </div>
+                    ` : ''}
+
+                    ${trx.metadata?.counterAccountNumber ? `
+                    <div class="row">
+                        <span class="label">Tài khoản thanh toán:</span>
+                        <span class="value">${trx.metadata.counterAccountName || ''} (${trx.metadata.counterAccountNumber})</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Ngân hàng khách:</span>
+                        <span class="value">${trx.metadata.counterAccountBankName || 'N/A'}</span>
+                    </div>
+                    ` : ''}
+
+                    <div class="row">
+                        <span class="label">Thời gian:</span>
+                        <span class="value">${format(new Date(trx.created_at), "dd/MM/yyyy HH:mm:ss")}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Trạng thái:</span>
+                        <span class="value" style="color: green;">${getStatusText(trx.status)}</span>
+                    </div>
+                    <div class="footer">
+                        <p>Cảm ơn bạn đã sử dụng dịch vụ xem phim tại Movix!</p>
+                        <p>Biên lai này có giá trị xác nhận giao dịch thành công trên hệ thống.</p>
+                    </div>
+                </div>
+                <script>
+                    window.onload = function() { window.print(); window.close(); }
+                </script>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+  };
 
   // --- HELPERS ---
 
@@ -217,108 +389,104 @@ export default function BillingPage() {
     }).format(amount);
   };
 
-  const getStatusBadge = (status: TransactionStatus) => {
+  const getStatusText = (status: TransactionStatus) => {
     switch (status) {
-      case "SUCCESS":
-        return <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 border-green-500/20">Thành công</Badge>;
-      case "PENDING":
-        return <Badge className="bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 border-yellow-500/20">Chờ xử lý</Badge>;
-      case "FAILED":
-        return <Badge className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20">Thất bại</Badge>;
-      case "REFUNDED":
-        return <Badge className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border-blue-500/20">Đã hoàn tiền</Badge>;
-      default:
-        return <Badge variant="outline">Không xác định</Badge>;
+        case 'COMPLETED': return 'THÀNH CÔNG';
+        case 'PENDING': return 'CHỜ XỬ LÝ';
+        case 'FAILED': return 'THẤT BẠI';
+        case 'REFUNDED': return 'ĐÃ HOÀN TIỀN';
+        default: return status;
     }
   };
 
-  const getMethodIcon = (method: PaymentMethod) => {
-      switch (method) {
-          case "MOMO": return <div className="font-bold text-[#A50064]">MoMo</div>
-          case "ZALOPAY": return <div className="font-bold text-[#0068FF]">ZaloPay</div>
-          case "CREDIT_CARD": return <div className="flex items-center gap-1"><CreditCard className="w-3 h-3"/> Thẻ</div>
-          case "BANK_TRANSFER": return <div className="text-xs">Chuyển khoản</div>
-          default: return method;
-      }
+  const getStatusBadge = (status: TransactionStatus) => {
+    switch (status) {
+      case "COMPLETED":
+        return <Badge className="bg-green-500 text-black border-none font-bold">Thành công</Badge>;
+      case "PENDING":
+        return <Badge className="bg-yellow-400 text-black border-none font-bold">Chờ xử lý</Badge>;
+      case "FAILED":
+        return <Badge className="bg-red-500 text-white border-none">Thất bại</Badge>;
+      case "REFUNDED":
+        return <Badge className="bg-blue-500 text-white border-none">Đã hoàn</Badge>;
+      default:
+        return <Badge variant="outline">N/A</Badge>;
+    }
+  };
+
+  const getMethodBadge = (method: string) => {
+      const lowerMethod = method.toLowerCase();
+      if (lowerMethod.includes("momo")) return <Badge className="bg-[#A50064] text-white border-none px-2 text-[10px]">MoMo</Badge>
+      if (lowerMethod.includes("zalo")) return <Badge className="bg-[#0068FF] text-white border-none px-2 text-[10px]">ZaloPay</Badge>
+      if (lowerMethod.includes("payos")) return <Badge className="bg-[#003580] text-white border-none px-2 font-bold text-[10px]">PayOS</Badge>
+      return <Badge variant="outline" className="text-slate-400 text-[10px]">{method}</Badge>;
   }
-
-  // Stats
-  const totalRevenue = data
-    .filter(t => t.status === "SUCCESS")
-    .reduce((acc, curr) => acc + curr.amount, 0);
-
-  const pendingCount = data.filter(t => t.status === "PENDING").length;
-  const refundCount = data.filter(t => t.status === "REFUNDED").length;
-
-  // Filtered data
-  const filteredData = data.filter((item) => {
-    const matchesSearch = 
-        item.transactionCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.user.name.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === "ALL" || item.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
-  });
 
   return (
     <div className="space-y-6 pt-6 pb-12">
+      
+      {/* --- UI CONTENT --- */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
+          <h1 className="text-3xl font-bold tracking-tight text-white mb-2 font-outfit">
             Quản lý Giao Dịch
           </h1>
           <p className="text-slate-400">
-            Theo dõi doanh thu, lịch sử thanh toán và xử lý hoàn tiền.
+            Theo dõi doanh thu, lịch sử thanh toán và quản lý gói dịch vụ của người dùng.
           </p>
         </div>
-        <Button className="bg-primary hover:bg-primary/90">
+        <Button onClick={handleExportPDF} className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20">
             <Download className="mr-2 h-4 w-4" />
-            Xuất Báo Cáo
+            Xuất Báo Cáo PDF
         </Button>
       </div>
 
       {/* --- STATS CARDS --- */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-[#1e1e1e] border-slate-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-200">Tổng doanh thu</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-500" />
+        <Card className="bg-[#1e1e1e] border-slate-800 shadow-xl overflow-hidden relative group">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+            <CardTitle className="text-sm font-medium text-slate-400">Tổng doanh thu</CardTitle>
+            <div className="bg-green-500/20 p-2 rounded-lg">
+                <DollarSign className="h-4 w-4 text-green-500" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{formatCurrency(totalRevenue)}</div>
-            <p className="text-xs text-slate-500 flex items-center mt-1">
-                <ArrowUpRight className="h-3 w-3 mr-1 text-green-500" /> +20.1% so với tháng trước
+            <div className="text-3xl font-bold text-white font-outfit tracking-tight">{formatCurrency(stats.revenue)}</div>
+            <p className="text-xs text-slate-500 flex items-center mt-2">
+                Doanh thu thực tế đã nhận
             </p>
           </CardContent>
         </Card>
         
-        <Card className="bg-[#1e1e1e] border-slate-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-200">Giao dịch chờ duyệt</CardTitle>
-            <RefreshCcw className="h-4 w-4 text-yellow-500" />
+        <Card className="bg-[#1e1e1e] border-slate-800 shadow-xl overflow-hidden relative group">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+            <CardTitle className="text-sm font-medium text-slate-400">Giao dịch chờ duyệt</CardTitle>
+            <div className="bg-yellow-500/20 p-2 rounded-lg">
+                <RefreshCcw className="h-4 w-4 text-yellow-500" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{pendingCount}</div>
-            <p className="text-xs text-slate-500 mt-1">Yêu cầu xử lý thủ công</p>
+            <div className="text-3xl font-bold text-white font-outfit tracking-tight">{stats.pending}</div>
+            <p className="text-xs text-slate-500 mt-2">Cần xác nhận thủ công</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-[#1e1e1e] border-slate-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-slate-200">Đã hoàn tiền</CardTitle>
-            <ArrowDownLeft className="h-4 w-4 text-red-500" />
+        <Card className="bg-[#1e1e1e] border-slate-800 shadow-xl overflow-hidden relative group">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+            <CardTitle className="text-sm font-medium text-slate-400">Đã hoàn tiền</CardTitle>
+            <div className="bg-red-500/20 p-2 rounded-lg">
+                <ArrowDownLeft className="h-4 w-4 text-red-500" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{refundCount}</div>
-            <p className="text-xs text-slate-500 mt-1">Trong tháng này</p>
+            <div className="text-3xl font-bold text-white font-outfit tracking-tight">{stats.refunded}</div>
+            <p className="text-xs text-slate-500 mt-2">Yêu cầu đã xử lý hoàn</p>
           </CardContent>
         </Card>
       </div>
 
       {/* --- FILTERS & TABLE --- */}
-      <Card className="bg-[#1e1e1e] border-slate-800">
+      <Card className="bg-[#1e1e1e] border-slate-800 shadow-sm">
         <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <CardTitle className="text-xl">Lịch sử giao dịch</CardTitle>
@@ -327,7 +495,7 @@ export default function BillingPage() {
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
                         <Input
                             placeholder="Tìm theo Mã GD, Email, Tên..."
-                            className="pl-9 bg-[#262626] border-slate-700"
+                            className="pl-9 bg-[#262626] border-slate-700 focus:border-primary focus:ring-primary/20 transition-all text-white"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -341,7 +509,7 @@ export default function BillingPage() {
                          </SelectTrigger>
                          <SelectContent className="bg-[#262626] border-slate-700 text-white">
                              <SelectItem value="ALL">Tất cả</SelectItem>
-                             <SelectItem value="SUCCESS">Thành công</SelectItem>
+                             <SelectItem value="COMPLETED">Thành công</SelectItem>
                              <SelectItem value="PENDING">Chờ xử lý</SelectItem>
                              <SelectItem value="FAILED">Thất bại</SelectItem>
                              <SelectItem value="REFUNDED">Đã hoàn tiền</SelectItem>
@@ -350,82 +518,86 @@ export default function BillingPage() {
                 </div>
             </div>
         </CardHeader>
-        <CardContent>
-             <div className="rounded-md border border-slate-700 overflow-hidden">
+        <CardContent className="space-y-4">
+             <div className="rounded-lg border border-slate-800 overflow-hidden bg-slate-900/20">
                 <Table>
-                    <TableHeader className="bg-slate-900">
-                        <TableRow className="border-slate-800 hover:bg-slate-900">
-                            <TableHead className="text-slate-400">Mã Giao Dịch</TableHead>
-                            <TableHead className="text-slate-400">Người dùng</TableHead>
-                            <TableHead className="text-slate-400">Gói Dịch Vụ</TableHead>
-                            <TableHead className="text-slate-400">Số tiền</TableHead>
-                            <TableHead className="text-slate-400">Thanh toán qua</TableHead>
-                            <TableHead className="text-slate-400">Ngày giờ</TableHead>
-                            <TableHead className="text-slate-400">Trạng thái</TableHead>
-                            <TableHead className="text-right text-slate-400">Hành động</TableHead>
+                    <TableHeader className="bg-slate-900/50">
+                        <TableRow className="border-slate-800 hover:bg-transparent">
+                            <TableHead className="text-slate-400 h-12">Mã Giao Dịch</TableHead>
+                            <TableHead className="text-slate-400 h-12">Người dùng</TableHead>
+                            <TableHead className="text-slate-400 h-12">Gói Dịch Vụ</TableHead>
+                            <TableHead className="text-slate-400 h-12">Số tiền</TableHead>
+                            <TableHead className="text-slate-400 h-12">Ngày giờ</TableHead>
+                            <TableHead className="text-slate-400 h-12">Trạng thái</TableHead>
+                            <TableHead className="text-right text-slate-400 h-12 pr-6">Thao tác</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredData.length > 0 ? (
-                            filteredData.map((trx) => (
-                                <TableRow key={trx.id} className="border-slate-800 hover:bg-slate-800/50">
-                                    <TableCell className="font-medium text-slate-300">
-                                        <div className="flex items-center gap-1">
-                                            <FileText className="w-3 h-3 text-slate-500" />
-                                            {trx.transactionCode}
+                        {loading ? (
+                             Array.from({ length: 8 }).map((_, i) => (
+                                <TableRow key={i} className="border-slate-800 animate-pulse">
+                                    <TableCell colSpan={7} className="h-16 bg-slate-800/10" />
+                                </TableRow>
+                             ))
+                        ) : data.length > 0 ? (
+                            data.map((trx) => (
+                                <TableRow key={trx.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                                    <TableCell className="font-mono text-[10px] text-slate-400 pl-4">
+                                        <div className="flex items-center gap-1.5">
+                                            <FileText className="w-3.5 h-3.5 text-slate-500" />
+                                            {trx.transaction_ref || "N/A"}
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="h-8 w-8">
-                                                <AvatarImage src={trx.user.avatar} />
-                                                <AvatarFallback className="bg-slate-700 text-xs">
-                                                    {trx.user.name.slice(0, 2).toUpperCase()}
+                                        <div className="flex items-center gap-3 py-1">
+                                            <Avatar className="h-9 w-9 border border-slate-700 shadow-sm">
+                                                <AvatarImage src={trx.user.avatar_url} />
+                                                <AvatarFallback className="bg-slate-800 text-xs text-white">
+                                                    {(trx.user.display_name || trx.user.username || "??").slice(0, 2).toUpperCase()}
                                                 </AvatarFallback>
                                             </Avatar>
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-medium text-white">{trx.user.name}</span>
-                                                <span className="text-xs text-slate-400">{trx.user.email}</span>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="text-sm font-semibold text-slate-200 truncate">{trx.user.display_name || trx.user.username}</span>
+                                                <span className="text-[10px] text-slate-500 truncate">{trx.user.email}</span>
                                             </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-slate-300 text-sm">{trx.plan}</TableCell>
-                                    <TableCell className="font-semibold text-white">{formatCurrency(trx.amount)}</TableCell>
-                                    <TableCell className="text-slate-300 text-sm">{getMethodIcon(trx.method)}</TableCell>
-                                    <TableCell className="text-slate-400 text-sm">
-                                        {format(new Date(trx.date), "dd/MM/yyyy HH:mm", { locale: vi })}
+                                    <TableCell className="text-slate-300 text-sm font-medium">{trx.plan?.name || "Gói cũ"}</TableCell>
+                                    <TableCell className="font-bold text-white text-sm">{formatCurrency(trx.amount)}</TableCell>
+                                    <TableCell className="text-slate-400 text-[11px]">
+                                        {format(new Date(trx.created_at), "dd/MM/yy HH:mm", { locale: vi })}
                                     </TableCell>
                                     <TableCell>{getStatusBadge(trx.status)}</TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-right pr-6">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-white">
-                                                    <span className="sr-only">Open menu</span>
+                                                <Button variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full">
                                                     <MoreVertical className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="bg-[#1e1e1e] border-slate-700 text-white">
-                                                <DropdownMenuLabel>Thao tác</DropdownMenuLabel>
-                                                <DropdownMenuItem className="cursor-pointer hover:bg-slate-800">
-                                                    Xem chi tiết
+                                            <DropdownMenuContent align="end" className="bg-[#1e1e1e] border-slate-700 text-white shadow-2xl">
+                                                <DropdownMenuLabel className="text-xs text-slate-500">Hành động</DropdownMenuLabel>
+                                                <DropdownMenuItem 
+                                                    className="cursor-pointer hover:bg-slate-800 py-2"
+                                                    onClick={() => handleOpenDetail(trx)}
+                                                >
+                                                    <Eye className="mr-2 h-4 w-4 text-primary" /> Xem chi tiết
                                                 </DropdownMenuItem>
-                                                <DropdownMenuSeparator className="bg-slate-700" />
+                                                <DropdownMenuSeparator className="bg-slate-800" />
                                                 {trx.status === "PENDING" && (
                                                     <DropdownMenuItem 
-                                                        className="text-green-500 hover:text-green-400 hover:bg-green-500/10 cursor-pointer"
+                                                        className="text-green-500 hover:text-green-400 hover:bg-green-500/10 cursor-pointer py-2"
                                                         onClick={() => handleOpenApproveDialog(trx)}
                                                     >
-                                                        <CheckCircle className="mr-2 h-4 w-4" /> Duyệt thủ công
+                                                        <CheckCircle className="mr-2 h-4 w-4" /> Duyệt giao dịch
                                                     </DropdownMenuItem>
                                                 )}
-                                                {trx.status === "SUCCESS" && (
-                                                    <DropdownMenuItem 
-                                                        className="text-red-500 hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
-                                                        onClick={() => handleOpenRefundDialog(trx)}
-                                                    >
-                                                        <RefreshCcw className="mr-2 h-4 w-4" /> Hoàn tiền (Refund)
-                                                    </DropdownMenuItem>
-                                                )}
+                                                <DropdownMenuItem 
+                                                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer py-2"
+                                                    disabled
+                                                >
+                                                    <RefreshCcw className="mr-2 h-4 w-4" /> Hoàn tiền
+                                                </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -433,98 +605,231 @@ export default function BillingPage() {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={8} className="h-24 text-center text-slate-500">
-                                    Không tìm thấy giao dịch nào.
+                                <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                                    Không có dữ liệu giao dịch nào.
                                 </TableCell>
                             </TableRow>
                         )}
                     </TableBody>
                 </Table>
              </div>
+
+             {/* --- PAGINATION CONTROLS --- */}
+             <div className="flex items-center justify-between py-2">
+                <div className="text-xs text-slate-500">
+                    Trang {currentPage} / {totalPages}
+                </div>
+                <div className="flex gap-2">
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-slate-900 border-slate-800 text-slate-300 h-8 px-3 hover:bg-slate-800"
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                    >
+                        <ChevronLeft className="w-4 h-4 mr-1" /> Trước
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-slate-900 border-slate-800 text-slate-300 h-8 px-3 hover:bg-slate-800"
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                    >
+                        Sau <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                </div>
+             </div>
         </CardContent>
       </Card>
 
-      {/* --- REFUND DIALOG --- */}
-      <Dialog open={isRefundDialogOpen} onOpenChange={setIsRefundDialogOpen}>
-        <DialogContent className="bg-[#1e1e1e] border-slate-800 text-white">
-            <DialogHeader>
-                <DialogTitle>Xác nhận hoàn tiền</DialogTitle>
-                <DialogDescription className="text-slate-400">
-                    Bạn đang thực hiện hoàn tiền cho giao dịch <span className="text-white font-mono font-bold">{selectedTransaction?.transactionCode}</span>.
-                    Hành động này sẽ hoàn trả <span className="text-green-500 font-bold">{selectedTransaction && formatCurrency(selectedTransaction.amount)}</span> về phương thức thanh toán gốc.
-                </DialogDescription>
-            </DialogHeader>
+      {/* --- DETAIL MODAL --- */}
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent id="transaction-detail" className="bg-[#1e1e1e] border-slate-800 text-white max-w-[95vw] md:max-w-[1000px] overflow-hidden flex flex-col max-h-[90vh] shadow-2xl p-0">
+            <div className="p-6 overflow-y-auto custom-scrollbar">
+                <DialogHeader className="mb-6">
+                    <div className="flex justify-between items-start">
+                        <DialogTitle className="flex items-center gap-3 text-2xl font-bold font-outfit">
+                            <div className="bg-primary/20 p-2 rounded-lg">
+                                <FileText className="w-6 h-6 text-primary" />
+                            </div>
+                            <span>Chi tiết giao dịch</span>
+                        </DialogTitle>
+                        {(selectedTransaction?.status === 'COMPLETED' || selectedTransaction?.status === 'REFUNDED') && (
+                            <Button variant="outline" size="sm" onClick={() => selectedTransaction && handlePrintReceipt(selectedTransaction)} className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-xs h-8 text-white">
+                                <Printer className="w-3.5 h-3.5 mr-1.5" /> In biên lai
+                            </Button>
+                        )}
+                    </div>
+                    <DialogDescription className="text-slate-400 mt-2">
+                        Mã hệ thống: <span className="font-mono text-slate-200 select-all">{selectedTransaction?.id}</span>
+                    </DialogDescription>
+                </DialogHeader>
 
-             <div className="grid gap-4 py-4">
-                 <div className="space-y-2">
-                     <div className="text-sm font-medium">Chi tiết hoàn tiền</div>
-                     <div className="rounded-md bg-slate-900 p-3 space-y-1 text-sm border border-slate-800">
-                         <div className="flex justify-between">
-                             <span className="text-slate-400">Khách hàng:</span>
-                             <span>{selectedTransaction?.user.name}</span>
-                         </div>
-                         <div className="flex justify-between">
-                             <span className="text-slate-400">Số tiền:</span>
-                             <span>{selectedTransaction && formatCurrency(selectedTransaction.amount)}</span>
-                         </div>
-                         <div className="flex justify-between">
-                             <span className="text-slate-400">Phương thức:</span>
-                             <span>{selectedTransaction?.method}</span>
-                         </div>
-                     </div>
-                 </div>
-                 <div className="space-y-2">
-                     <div className="text-sm font-medium after:content-['*'] after:ml-0.5 after:text-red-500">Lý do hoàn tiền</div>
-                     <Textarea 
-                        placeholder="Nhập lý do hoàn tiền (VD: Khách hàng yêu cầu, Lỗi hệ thống...)"
-                        className="bg-[#262626] border-slate-700 resize-none h-24"
-                        value={refundReason}
-                        onChange={(e) => setRefundReason(e.target.value)}
-                     />
-                 </div>
-             </div>
+                {selectedTransaction && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-2">
+                        {/* Thông tin khách hàng */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-wider">
+                                <UserIcon className="w-4 h-4" /> Thông tin khách hàng
+                            </div>
+                            <div className="rounded-xl bg-slate-900/40 p-5 border border-slate-800/60 shadow-inner space-y-4">
+                                <div className="flex items-center gap-4">
+                                    <Avatar className="w-14 h-14 border-2 border-slate-700 shadow-md">
+                                        <AvatarImage src={selectedTransaction.user.avatar_url} />
+                                        <AvatarFallback className="bg-slate-800 text-lg">{(selectedTransaction.user.display_name || "??").slice(0, 2).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="min-w-0">
+                                        <p className="text-lg font-bold text-white truncate">{selectedTransaction.user.display_name}</p>
+                                        <p className="text-sm text-slate-500 truncate">@{selectedTransaction.user.username}</p>
+                                    </div>
+                                </div>
+                                <div className="pt-4 border-t border-slate-800 space-y-3">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-500 font-bold">Email:</span>
+                                        <span className="text-slate-200 font-medium">{selectedTransaction.user.email}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-500 font-bold">Mã User:</span>
+                                        <span className="text-slate-400 font-mono text-xs">{selectedTransaction.user.id}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-            <DialogFooter>
-                <Button variant="ghost" onClick={() => setIsRefundDialogOpen(false)} className="hover:bg-slate-800 text-slate-300">
-                    Hủy bỏ
+                        {/* Thông tin thanh toán */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-wider">
+                                <PaymentIcon className="w-4 h-4" /> Chi tiết thanh toán
+                            </div>
+                            <div className="rounded-xl bg-slate-900/40 p-5 border border-slate-800/60 shadow-inner space-y-4">
+                                <div className="grid grid-cols-2 gap-y-4">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] text-slate-500 uppercase font-bold">Mã tham chiếu</p>
+                                        <p className="font-mono text-white bg-slate-800 px-2 py-0.5 rounded inline-block text-xs">{selectedTransaction.transaction_ref || "N/A"}</p>
+                                    </div>
+                                    <div className="space-y-1 text-right">
+                                        <p className="text-[10px] text-slate-500 uppercase font-bold">Gói đăng ký</p>
+                                        <p className="font-bold text-primary">{selectedTransaction.plan?.name}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] text-slate-500 uppercase font-bold">Số tiền</p>
+                                        <p className="font-bold text-green-400 text-xl">{formatCurrency(selectedTransaction.amount)}</p>
+                                    </div>
+                                    <div className="space-y-1 text-right">
+                                        <p className="text-[10px] text-slate-500 uppercase font-bold">Phương thức</p>
+                                        <div className="flex justify-end font-bold uppercase">{selectedTransaction.payment_method}</div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] text-slate-500 uppercase font-bold">Trạng thái</p>
+                                        <div>{getStatusBadge(selectedTransaction.status)}</div>
+                                    </div>
+                                    <div className="space-y-1 text-right">
+                                        <p className="text-[10px] text-slate-500 uppercase font-bold">Ngày tạo</p>
+                                        <p className="text-xs text-slate-300">{format(new Date(selectedTransaction.created_at), "dd/MM/yyyy HH:mm:ss")}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Metadata Section */}
+                        <div className="md:col-span-2 space-y-3">
+                            <div className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                               <FileText className="w-4 h-4" /> Dữ liệu mở rộng (Metadata)
+                            </div>
+                            <div className="bg-slate-950 rounded-xl p-5 border border-slate-800 font-mono text-[11px] overflow-auto max-h-60 shadow-inner">
+                                {selectedTransaction.metadata ? (
+                                    <pre className="text-blue-400 leading-relaxed">
+                                        {JSON.stringify(selectedTransaction.metadata, null, 2)}
+                                    </pre>
+                                ) : (
+                                    <div className="text-center py-8 italic text-slate-600 flex flex-col items-center gap-2">
+                                        <FileText className="w-8 h-8 opacity-20" />
+                                        Không có dữ liệu mở rộng cho giao dịch này.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <DialogFooter className="bg-slate-900/60 p-5 border-t border-slate-800 flex flex-col sm:flex-row gap-3 sm:justify-between items-center">
+                <Button 
+                    variant="default" 
+                    onClick={() => setIsDetailOpen(false)} 
+                    className="bg-white hover:bg-slate-200 text-black font-bold transition-all order-2 sm:order-1 min-w-[120px] shadow-lg"
+                >
+                    Đóng cửa sổ
                 </Button>
-                <Button variant="destructive" onClick={handleRefund} className="bg-red-600 hover:bg-red-700">
-                    <RefreshCcw className="mr-2 h-4 w-4" /> Xác nhận Hoàn tiền
-                </Button>
+                <div className="flex gap-3 order-1 sm:order-2 w-full sm:w-auto">
+                    {selectedTransaction?.status === "PENDING" && (
+                        <Button 
+                            className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 shadow-lg shadow-green-900/20 w-full sm:w-auto"
+                            onClick={() => {
+                                setIsDetailOpen(false);
+                                handleOpenApproveDialog(selectedTransaction);
+                            }}
+                        >
+                            <CheckCircle className="mr-2 h-4 w-4" /> Duyệt Giao Dịch
+                        </Button>
+                    )}
+                </div>
             </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* --- APPROVE DIALOG --- */}
+      {/* --- APPROVE CONFIRMATION DIALOG --- */}
       <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
-        <DialogContent className="bg-[#1e1e1e] border-slate-800 text-white">
+        <DialogContent className="bg-[#1e1e1e] border-slate-800 text-white shadow-2xl">
              <DialogHeader>
-                <DialogTitle>Duyệt giao dịch thủ công</DialogTitle>
-                <DialogDescription className="text-slate-400">
-                    Xác nhận rằng bạn đã kiểm tra và nhận được khoản thanh toán cho giao dịch <span className="text-white font-mono font-bold">{selectedTransaction?.transactionCode}</span>.
+                <DialogTitle className="flex items-center gap-3 text-xl font-bold text-white">
+                    <CheckCircle className="w-6 h-6 text-green-500" />
+                    Xác nhận duyệt giao dịch
+                </DialogTitle>
+                <DialogDescription className="text-slate-400 mt-2">
+                    Xác nhận đã nhận thanh toán cho mã <span className="text-white font-mono font-bold bg-slate-800 px-1 rounded">{selectedTransaction?.transaction_ref}</span>.
                 </DialogDescription>
             </DialogHeader>
-            <div className="py-2">
-                <div className="rounded-md bg-slate-900 p-4 border border-slate-800 flex items-center gap-4">
-                     <div className="bg-yellow-500/10 p-2 rounded-full">
-                         <RefreshCcw className="h-6 w-6 text-yellow-500" />
+            <div className="py-6">
+                <div className="rounded-xl bg-yellow-500/5 p-5 border border-yellow-500/20 flex items-start gap-4 shadow-inner">
+                     <div className="bg-yellow-500/10 p-2.5 rounded-full mt-0.5 shadow-sm">
+                         <RefreshCcw className="h-5 w-5 text-yellow-500" />
                      </div>
-                     <div>
-                         <p className="font-semibold text-white">Cảnh báo tác vụ</p>
-                         <p className="text-xs text-slate-400 mt-1">Hành động này sẽ kích hoạt gói dịch vụ cho người dùng ngay lập tức.</p>
+                     <div className="space-y-1.5">
+                         <p className="font-bold text-sm text-yellow-500 uppercase tracking-tight">Cảnh báo hệ thống</p>
+                         <p className="text-xs text-slate-400 leading-relaxed">
+                            Việc duyệt sẽ kích hoạt ngay gói <span className="text-white font-bold">{selectedTransaction?.plan?.name}</span> cho <span className="text-white">{selectedTransaction?.user.display_name}</span>. Hành động này sẽ cập nhật trực tiếp vào bản ghi Subscription của người dùng.
+                         </p>
                      </div>
                 </div>
             </div>
-            <DialogFooter>
-                <Button variant="ghost" onClick={() => setIsApproveDialogOpen(false)} className="hover:bg-slate-800 text-slate-300">
+            <DialogFooter className="gap-3">
+                <Button variant="ghost" onClick={() => setIsApproveDialogOpen(false)} className="text-slate-400 hover:bg-slate-800 hover:text-white">
                     Hủy bỏ
                 </Button>
-                <Button onClick={handleApprove} className="bg-green-600 hover:bg-green-700 text-white">
-                    <CheckCircle className="mr-2 h-4 w-4" /> Duyệt Giao Dịch
+                <Button onClick={handleApprove} className="bg-green-600 hover:bg-green-700 text-white font-bold px-8">
+                    Xác nhận
                 </Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #334155;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #475569;
+        }
+      `}</style>
     </div>
   );
 }
