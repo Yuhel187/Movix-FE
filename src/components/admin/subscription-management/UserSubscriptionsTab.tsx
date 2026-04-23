@@ -50,9 +50,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import {
-  MoreHorizontal,
+  MoreVertical,
   Search,
   Ban,
   CheckCircle,
@@ -284,7 +285,7 @@ export default function UserSubscriptionsTab({
                 <TableHead className="text-slate-300">Trạng thái</TableHead>
                 <TableHead className="text-slate-300">Ngày bắt đầu</TableHead>
                 <TableHead className="text-slate-300">Ngày kết thúc</TableHead>
-                <TableHead className="text-right text-slate-300">
+                <TableHead className="text-center text-slate-300 w-[100px]">
                   Thao tác
                 </TableHead>
               </TableRow>
@@ -348,46 +349,51 @@ export default function UserSubscriptionsTab({
                     <TableCell className="text-slate-300">
                       {formatDate(sub.end_date)}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
+                    <TableCell>
+                      <div className="flex justify-center">
+                        <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost" 
-                            className="h-10 w-10 p-0 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-full"
+                            className="h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-full flex items-center justify-center transition-colors"
                           >
-                            <MoreHorizontal className="h-5 w-5" />
+                            <MoreVertical className="h-5 w-5" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="bg-[#1e1e1e] border-slate-700 text-slate-200 shadow-2xl min-w-[160px] z-[100]"
-                        >
-                          <div className="px-2 py-1.5 text-xs font-semibold text-slate-500 border-b border-slate-800 mb-1">
-                            Thao tác đăng ký
-                          </div>
-                          {sub.status !== "ACTIVE" && (
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleUpdateStatus(sub.id, "ACTIVE")
-                              }
-                              className="hover:bg-green-500/10 hover:text-green-400 cursor-pointer py-2"
-                            >
-                              <CheckCircle className="mr-2 h-4 w-4 text-green-500" />{" "}
-                              Khôi phục / Kích hoạt
-                            </DropdownMenuItem>
-                          )}
-                          {sub.status === "ACTIVE" && (
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleUpdateStatus(sub.id, "CANCELLED")
-                              }
-                              className="hover:bg-red-500/10 hover:text-red-400 cursor-pointer py-2"
-                            >
-                              <Ban className="mr-2 h-4 w-4 text-red-500" /> Hủy gói cước
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
+                        <DropdownMenuPortal>
+                          <DropdownMenuContent
+                            align="end"
+                            sideOffset={5}
+                            className="bg-[#1e1e1e] border-slate-700 text-slate-200 shadow-2xl min-w-[180px] z-[9999] animate-in fade-in-0 zoom-in-95"
+                          >
+                            <div className="px-3 py-2 text-xs font-bold text-slate-500 border-b border-slate-800 mb-1 uppercase tracking-wider">
+                              Thao tác đăng ký
+                            </div>
+                            {sub.status !== "ACTIVE" && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleUpdateStatus(sub.id, "ACTIVE")
+                                }
+                                className="hover:bg-green-500/10 hover:text-green-400 cursor-pointer py-2.5 px-3 focus:bg-green-500/10 focus:text-green-400"
+                              >
+                                <CheckCircle className="mr-2 h-4 w-4 text-green-500" />{" "}
+                                Khôi phục / Kích hoạt
+                              </DropdownMenuItem>
+                            )}
+                            {sub.status === "ACTIVE" && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleUpdateStatus(sub.id, "CANCELLED")
+                                }
+                                className="hover:bg-red-500/10 hover:text-red-400 cursor-pointer py-2.5 px-3 focus:bg-red-500/10 focus:text-red-400"
+                              >
+                                <Ban className="mr-2 h-4 w-4 text-red-500" /> Hủy gói cước
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenuPortal>
                       </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

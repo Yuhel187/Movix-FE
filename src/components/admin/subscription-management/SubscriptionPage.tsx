@@ -63,6 +63,7 @@ interface SubscriptionPlan {
   max_watch_party_participants: number;
   can_kick_mute_members: boolean;
   chatbot_max_questions_per_day: number;
+  search_ai_max_requests_per_day: number;
   offline_download_supported: boolean;
   max_devices: number;
   gamification_xp_multiplier: number;
@@ -85,6 +86,7 @@ const DEFAULT_FORM_DATA: Omit<SubscriptionPlan, "id"> = {
   max_watch_party_participants: 0,
   can_kick_mute_members: false,
   chatbot_max_questions_per_day: 5,
+  search_ai_max_requests_per_day: 5,
   offline_download_supported: false,
   max_devices: 1,
   gamification_xp_multiplier: 1,
@@ -123,12 +125,15 @@ export default function SubscriptionPage() {
         data.map((p: any) => ({
           ...p,
           features: Array.isArray(p.benefits) ? p.benefits : (p.benefits?.features || []),
-            chatbot_max_questions_per_day: p.benefits?.chatbot_ai?.max_questions_per_day ?? 5,
-            offline_download_supported: p.benefits?.offline_download?.supported ?? false,
-            max_devices: p.benefits?.device_login?.max_devices ?? 1,
-            gamification_xp_multiplier: p.benefits?.gamification?.xp_multiplier ?? 1,
-            smart_search_supported: p.benefits?.smart_search?.supported ?? false,
-            mobile_remote_control_supported: p.benefits?.mobile_remote_control?.supported ?? false,
+          chatbot_max_questions_per_day: p.benefits?.chatbot_ai?.max_questions_per_day ?? 5,
+          search_ai_max_requests_per_day:
+            p.benefits?.search_ai?.max_requests_per_day ??
+            (p.benefits?.smart_search?.supported ? 5 : 0),
+          offline_download_supported: p.benefits?.offline_download?.supported ?? false,
+          max_devices: p.benefits?.device_login?.max_devices ?? 1,
+          gamification_xp_multiplier: p.benefits?.gamification?.xp_multiplier ?? 1,
+          smart_search_supported: p.benefits?.smart_search?.supported ?? false,
+          mobile_remote_control_supported: p.benefits?.mobile_remote_control?.supported ?? false,
           duration_days: p.duration_days ?? 30,
           level: p.level ?? 1,
           currency: p.currency ?? "VND",
@@ -170,6 +175,7 @@ export default function SubscriptionPage() {
       max_watch_party_participants: plan.max_watch_party_participants,
       can_kick_mute_members: plan.can_kick_mute_members,
       chatbot_max_questions_per_day: plan.chatbot_max_questions_per_day,
+      search_ai_max_requests_per_day: plan.search_ai_max_requests_per_day,
       offline_download_supported: plan.offline_download_supported,
       max_devices: plan.max_devices,
       gamification_xp_multiplier: plan.gamification_xp_multiplier,
@@ -213,6 +219,14 @@ export default function SubscriptionPage() {
       );
 
       generatedFeatures.push(
+        formData.smart_search_supported
+          ? formData.search_ai_max_requests_per_day === -1
+            ? "Tìm kiếm thông minh AI: Không giới hạn lượt/ngày."
+            : `Tìm kiếm thông minh AI: Giới hạn ${formData.search_ai_max_requests_per_day} lượt/ngày.`
+          : "Tìm kiếm thông minh AI: Không hỗ trợ.",
+      );
+
+      generatedFeatures.push(
         formData.offline_download_supported
           ? "Cho phép tải về Mobile App."
           : "Không hỗ trợ tải về (Offline).",
@@ -229,7 +243,7 @@ export default function SubscriptionPage() {
       );
 
       generatedFeatures.push(
-        `Tìm kiếm thông minh: ${formData.smart_search_supported ? "Có" : "Standard"}.`,
+        `Tìm kiếm thông minh: ${formData.smart_search_supported ? "Có" : "Không"}.`,
       );
 
       generatedFeatures.push(
@@ -252,6 +266,11 @@ export default function SubscriptionPage() {
           features: generatedFeatures,
           chatbot_ai: {
             max_questions_per_day: formData.chatbot_max_questions_per_day,
+          },
+          search_ai: {
+            max_requests_per_day: formData.smart_search_supported
+              ? formData.search_ai_max_requests_per_day
+              : 0,
           },
           offline_download: {
             supported: formData.offline_download_supported,
@@ -738,10 +757,36 @@ export default function SubscriptionPage() {
 
                 <div className="space-y-2">
                   <Label
+                    htmlFor="search_ai_max"
+                    className="text-sm font-bold text-slate-300"
+                  >
+                    2. Giới hạn Tìm kiếm thông minh AI
+                  </Label>
+                  <p className="text-xs text-slate-500">
+                    Số lượt tìm kiếm mỗi ngày (-1 là không giới hạn, 0 là tắt)
+                  </p>
+                  <Input
+                    id="search_ai_max"
+                    type="number"
+                    value={formData.search_ai_max_requests_per_day}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setFormData({
+                        ...formData,
+                        search_ai_max_requests_per_day: val,
+                        smart_search_supported: val !== 0
+                      });
+                    }}
+                    className="bg-[#1e1e1e] border-slate-700"
+                  />
+                </div>
+
+                <div className="space-y-2 pt-4 border-t border-slate-800">
+                  <Label
                     htmlFor="max_devices"
                     className="text-sm font-bold text-slate-300"
                   >
-                    2. Số thiết bị đăng nhập cùng lúc
+                    3. Số thiết bị đăng nhập cùng lúc
                   </Label>
                   <Input
                     id="max_devices"
@@ -760,7 +805,7 @@ export default function SubscriptionPage() {
                     htmlFor="xp_multiplier"
                     className="text-sm font-bold text-slate-300"
                   >
-                    3. Hệ số XP (Gamification)
+                    4. Hệ số XP (Gamification)
                   </Label>
                   <Input
                     id="xp_multiplier"
@@ -784,7 +829,7 @@ export default function SubscriptionPage() {
                       htmlFor="offline_download"
                       className="text-sm font-bold text-slate-300 cursor-pointer"
                     >
-                      4. Cho phép tải xuống (Offline)
+                      5. Cho phép tải xuống (Offline)
                     </Label>
                     <input
                       type="checkbox"
@@ -794,27 +839,6 @@ export default function SubscriptionPage() {
                         setFormData({
                           ...formData,
                           offline_download_supported: e.target.checked,
-                        })
-                      }
-                      className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-primary"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <Label
-                      htmlFor="smart_search"
-                      className="text-sm font-bold text-slate-300 cursor-pointer"
-                    >
-                      5. Tìm kiếm thông minh
-                    </Label>
-                    <input
-                      type="checkbox"
-                      id="smart_search"
-                      checked={formData.smart_search_supported}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          smart_search_supported: e.target.checked,
                         })
                       }
                       className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-primary"

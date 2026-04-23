@@ -112,7 +112,7 @@ export default function FilterPage({
   const [countries, setCountries] = useState<Country[]>([]);
   const [isLoadingFilterData, setIsLoadingFilterData] = useState(true);
 
-  const [remainingLimit, setRemainingLimit] = useState<number | null>(null);
+  const [searchRemainingLimit, setSearchRemainingLimit] = useState<number | null>(null);
 
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -166,8 +166,8 @@ export default function FilterPage({
     };
     const fetchLimit = async () => {
       try {
-        const res = await apiClient.get('/ai/limit');
-        setRemainingLimit(res.data.remaining);
+        const res = await apiClient.get('/ai/limit?type=SEARCH');
+        setSearchRemainingLimit(res.data.remaining);
       } catch (err) {
         console.error("Lỗi lấy giới hạn AI:", err);
       }
@@ -275,7 +275,7 @@ export default function FilterPage({
       });
 
       if (res.data.remaining !== undefined) {
-        setRemainingLimit(res.data.remaining);
+        setSearchRemainingLimit(res.data.remaining);
       }
 
       const responseData = res.data;
@@ -291,7 +291,7 @@ export default function FilterPage({
     } catch (err: any) {
       console.error("AI Voice Search Error:", err);
       if (err.response?.status === 403) {
-        setRemainingLimit(0);
+        setSearchRemainingLimit(0);
         setError(err.response.data.message || "Bạn đã hết lượt dùng AI trong ngày.");
         toast.error(err.response.data.message || "Bạn đã hết lượt dùng AI hôm nay.", { 
             action: { label: "Nâng cấp", onClick: () => router.push("/account/subscription") } 
@@ -316,7 +316,7 @@ export default function FilterPage({
       const res = await apiClient.post("/ai/search", { query: aiQuery });
       
       if (res.data.remaining !== undefined) {
-        setRemainingLimit(res.data.remaining);
+        setSearchRemainingLimit(res.data.remaining);
       }
 
       setMovies(res.data.data.map(mapResponseToMovie));
@@ -325,7 +325,7 @@ export default function FilterPage({
     } catch (err: any) {
       console.error("AI Search Error:", err);
       if (err.response?.status === 403) {
-        setRemainingLimit(0);
+        setSearchRemainingLimit(0);
         setError(err.response.data.message || "Bạn đã hết lượt dùng AI trong ngày.");
         toast.error(err.response.data.message || "Bạn đã hết lượt dùng AI hôm nay.", { 
             action: { label: "Nâng cấp", onClick: () => router.push("/account/subscription") } 
@@ -373,7 +373,7 @@ export default function FilterPage({
       });
 
       if (res.data.remaining !== undefined) {
-        setRemainingLimit(res.data.remaining);
+        setSearchRemainingLimit(res.data.remaining);
       }
 
       const results = Array.isArray(res.data) ? res.data : res.data.data || [];
@@ -385,7 +385,7 @@ export default function FilterPage({
     } catch (err: any) {
       console.error("AI Image Search Error:", err);
       if (err.response?.status === 403) {
-        setRemainingLimit(0);
+        setSearchRemainingLimit(0);
         setError(err.response.data.message || "Bạn đã hết lượt dùng AI trong ngày.");
         toast.error(err.response.data.message || "Bạn đã hết lượt dùng AI hôm nay.", { 
             action: { label: "Nâng cấp", onClick: () => router.push("/account/subscription") } 
@@ -598,9 +598,11 @@ export default function FilterPage({
                     <h3 className="text-purple-200 font-semibold flex items-center gap-2">
                       <FaMagic /> Mô tả bộ phim bạn muốn xem
                     </h3>
-                    {remainingLimit !== null && (
+                    {searchRemainingLimit !== null && (
                       <span className="text-xs font-semibold px-2 py-1 bg-white/10 text-white rounded">
-                        {remainingLimit === -1 ? 'Vô hạn lượt AI' : `Còn lại: ${remainingLimit} lượt AI`}
+                        {searchRemainingLimit === -1
+                          ? 'Vô hạn lượt tìm kiếm thông minh'
+                          : `Còn lại: ${searchRemainingLimit} lượt tìm kiếm thông minh`}
                       </span>
                     )}
                   </div>
@@ -640,9 +642,11 @@ export default function FilterPage({
                       <FaImage /> Tải lên hình ảnh phim (Poster, Cảnh phim, Diễn
                       viên...)
                     </h3>
-                    {remainingLimit !== null && (
+                    {searchRemainingLimit !== null && (
                       <span className="text-xs font-semibold px-2 py-1 bg-white/10 text-white rounded">
-                        {remainingLimit === -1 ? 'Vô hạn lượt AI' : `Còn lại: ${remainingLimit} lượt AI`}
+                        {searchRemainingLimit === -1
+                          ? 'Vô hạn lượt tìm kiếm thông minh'
+                          : `Còn lại: ${searchRemainingLimit} lượt tìm kiếm thông minh`}
                       </span>
                     )}
                   </div>

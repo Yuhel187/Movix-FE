@@ -94,7 +94,7 @@ export default function AIChatBox({ userId, onClose , onMinimize}: Props) {
 
   useEffect(() => {
     if (userId) {
-      apiClient.get('/ai/limit')
+      apiClient.get('/ai/limit?type=CHAT')
         .then(res => {
           setRemaining(res.data.remaining);
         })
