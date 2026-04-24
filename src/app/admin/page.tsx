@@ -108,6 +108,8 @@ export default function DashboardPage() {
   const [genreData, setGenreData] = useState<GenreData[]>([]);
   const [topMovies, setTopMovies] = useState<TopMovieData[]>([]);
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
+  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+  const [conversionData, setConversionData] = useState<ConversionData>({ total: 0, paid: 0, rate: 0 });
   const [hoveredMovie, setHoveredMovie] = useState<string | null>(null);
 
   const dynamicChartConfig = useMemo(() => {
@@ -129,17 +131,21 @@ export default function DashboardPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [statsRes, genreRes, topMoviesRes, usersRes] = await Promise.all([
+        const [statsRes, genreRes, topMoviesRes, usersRes, revenueRes, conversionRes] = await Promise.all([
           apiClient.get('/dashboard/stats'),
           apiClient.get('/dashboard/genres'),
           apiClient.get('/dashboard/top-movies'),
           apiClient.get('/dashboard/recent-users'),
+          apiClient.get('/dashboard/revenue-today'),
+          apiClient.get('/dashboard/conversion'),
         ]);
 
         setKpiData(statsRes.data);
         setGenreData(genreRes.data);
         setTopMovies(topMoviesRes.data);
         setRecentUsers(usersRes.data);
+        setRevenueData(revenueRes.data);
+        setConversionData(conversionRes.data);
       } catch (error) {
         console.error("Lỗi tải dashboard:", error);
         toast.error("Không thể tải dữ liệu thống kê.");
@@ -205,7 +211,7 @@ export default function DashboardPage() {
             ) : (
               <ChartContainer config={baseChartConfig} className="h-full w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={MOCK_REVENUE} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={0.8}/>
@@ -268,26 +274,26 @@ export default function DashboardPage() {
                             cy="50"
                             r="40"
                             fill="transparent"
-                            strokeDasharray={`${MOCK_CONVERSION.rate * 2.51} 251.2`} 
+                            strokeDasharray={`${conversionData.rate * 2.51} 251.2`} 
                             strokeDashoffset="0"
                             transform="rotate(-90 50 50)"
                         ></circle>
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                         <span className="text-3xl font-bold text-white">{MOCK_CONVERSION.rate}%</span>
+                         <span className="text-3xl font-bold text-white">{conversionData.rate}%</span>
                     </div>
                  </div>
                  <div className="grid grid-cols-2 gap-4 w-full text-center mt-4 border-t border-slate-700 pt-4">
                      <div>
                          <div className="text-sm text-slate-400">Paid Users</div>
                          <div className="text-xl font-bold text-green-400 flex items-center justify-center gap-1">
-                             <DollarSign className="w-4 h-4" /> {MOCK_CONVERSION.paid}
+                             <DollarSign className="w-4 h-4" /> {conversionData.paid}
                          </div>
                      </div>
                      <div>
                          <div className="text-sm text-slate-400">Total Users</div>
                          <div className="text-xl font-bold text-white flex items-center justify-center gap-1">
-                             <Users className="w-4 h-4" /> {MOCK_CONVERSION.total}
+                             <Users className="w-4 h-4" /> {conversionData.total}
                          </div>
                      </div>
                  </div>
