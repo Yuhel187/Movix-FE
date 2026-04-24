@@ -295,6 +295,32 @@ class SubscriptionService {
     const res = await apiClient.post(`/admin/subscriptions/grant`, { userId, planId });
     return res.data;
   }
+
+  async requestRefund(reason?: string): Promise<{ message: string; refundRequest: any }> {
+    try {
+      const response = await apiClient.post('/profile/me/subscription/refund-request', {
+        reason,
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      throw error;
+    }
+  }
+
+  async getRefundRequests(): Promise<{ message: string; data: any[] }> {
+    try {
+      const response = await apiClient.get('/profile/me/refund-requests');
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      throw error;
+    }
+  }
 }
 
 export const subscriptionService = new SubscriptionService();

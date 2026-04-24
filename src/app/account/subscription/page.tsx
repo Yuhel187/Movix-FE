@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ShieldCheck, Zap } from "lucide-react";
 import CurrentPlanStatus from "@/components/account/subscription/CurrentPlanStatus";
 import BillingHistory from "@/components/account/subscription/BillingHistory";
+import RefundHistory from "@/components/account/subscription/RefundHistory";
 // import WalletBalance from "@/components/account/subscription/WalletBalance";
 import { useSubscription } from "@/hooks/useSubscription";
 import { subscriptionService } from "@/services/subscription.service";
@@ -212,6 +213,13 @@ export default function UserSubscriptionPage() {
              </div>
           </section>
 
+          {/* Refund History Section */}
+          <section className="mt-8">
+            <h2 className="text-xl font-semibold text-white mb-4">
+              Lịch sử hoàn tiền
+            </h2>
+            <RefundHistory />
+          </section>
         </div>
 
         {/* Right Column: Wallet & Help */}

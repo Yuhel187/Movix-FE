@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { CreditCard, CalendarDays, ShieldCheck } from "lucide-react";
 import { UserSubscription } from "@/types/subscription";
 import Link from "next/link";
+import { RefundRequestModal } from "./RefundRequestModal";
 
 interface CurrentPlanStatusProps {
   subscription: UserSubscription;
@@ -24,6 +25,9 @@ const formatBenefit = (key: string, value: unknown) => {
   if (typeof value === "boolean") {
     return value ? key : "";
   }
+  if (typeof value === "object" && value !== null) {
+    return ""; // Ignore nested objects since their details are usually in `features`
+  }
 
   return `${key}: ${String(value)}`;
 };
@@ -33,17 +37,25 @@ export default function CurrentPlanStatus({ subscription, expiryDate, remainingD
   const plan = subscription.plan;
   const status = getStatusLabel(subscription.status);
 
-  const benefits = Object.entries(plan?.benefits || {})
-    .map(([key, value]) => formatBenefit(key, value))
-    .filter(Boolean)
-    .slice(0, 4);
+  const rawBenefits = plan?.benefits || {};
+  let benefitsList: string[] = [];
+  
+  if (Array.isArray(rawBenefits.features)) {
+    benefitsList = [...rawBenefits.features] as string[];
+  } else {
+    benefitsList = Object.entries(rawBenefits)
+      .map(([key, value]) => formatBenefit(key, value))
+      .filter(Boolean);
+  }
+  
+  const displayBenefits = benefitsList.slice(0, 4);
 
   if (plan?.can_create_watch_party) {
-    benefits.push(`Watch Party: tối đa ${plan.max_watch_party_participants} người`);
+    displayBenefits.push(`Watch Party: tối đa ${plan.max_watch_party_participants} người`);
   }
 
   if (plan?.can_kick_mute_members) {
-    benefits.push("Có quyền kick/mute thành viên");
+    displayBenefits.push("Có quyền kick/mute thành viên");
   }
 
   return (
@@ -67,9 +79,9 @@ export default function CurrentPlanStatus({ subscription, expiryDate, remainingD
             <p className="text-slate-400 text-xs mt-1">
               Còn lại: <span className="text-white font-medium">{Math.max(0, remainingDays)} ngày</span>
             </p>
-            {benefits.length > 0 && (
+            {displayBenefits.length > 0 && (
               <ul className="mt-2 text-xs text-slate-300 space-y-1">
-                {benefits.map((benefit, index) => (
+                {displayBenefits.map((benefit, index) => (
                   <li key={`${benefit}-${index}`}>• {benefit}</li>
                 ))}
               </ul>
@@ -78,6 +90,7 @@ export default function CurrentPlanStatus({ subscription, expiryDate, remainingD
         </div>
         
         <div className="flex gap-2 w-full sm:w-auto mt-0">
+          <RefundRequestModal />
           <Button size="sm" variant="outline" className="h-8 text-xs bg-transparent border-slate-700 text-slate-200 hover:bg-slate-800 w-full sm:w-auto px-3" asChild>
             <Link href="/pricing">
             <CreditCard className="mr-1.5 h-3 w-3" />
