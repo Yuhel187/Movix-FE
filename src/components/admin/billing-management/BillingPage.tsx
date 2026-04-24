@@ -49,7 +49,10 @@ import {
   CreditCard as PaymentIcon,
   ChevronLeft,
   ChevronRight,
-  Printer
+  Printer,
+  Database,
+  Copy,
+  FileQuestion
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -735,17 +738,48 @@ export default function BillingPage() {
                         {/* Metadata Section */}
                         <div className="md:col-span-2 space-y-3">
                             <div className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                               <FileText className="w-4 h-4" /> Dữ liệu mở rộng (Metadata)
+                               <Database className="w-4 h-4 text-primary" /> Thông tin đối soát hệ thống (Metadata)
                             </div>
-                            <div className="bg-slate-950 rounded-xl p-5 border border-slate-800 font-mono text-[11px] overflow-auto max-h-60 shadow-inner">
+                            <div className="bg-slate-900/40 rounded-xl p-5 border border-slate-800 shadow-inner">
                                 {selectedTransaction.metadata ? (
-                                    <pre className="text-blue-400 leading-relaxed">
-                                        {JSON.stringify(selectedTransaction.metadata, null, 2)}
-                                    </pre>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                                        <MetadataItem 
+                                            label="Mã tham chiếu Bank" 
+                                            value={selectedTransaction.metadata.reference} 
+                                            isCopyable 
+                                        />
+                                        <MetadataItem 
+                                            label="Số tài khoản nhận" 
+                                            value={selectedTransaction.metadata.accountNumber} 
+                                        />
+                                        <MetadataItem 
+                                            label="Tên tài khoản khách" 
+                                            value={selectedTransaction.metadata.counterAccountName} 
+                                        />
+                                        <MetadataItem 
+                                            label="Số tài khoản khách" 
+                                            value={selectedTransaction.metadata.counterAccountNumber} 
+                                        />
+                                        <MetadataItem 
+                                            label="Ngân hàng khách" 
+                                            value={selectedTransaction.metadata.counterAccountBankName} 
+                                        />
+                                        <MetadataItem 
+                                            label="Thời gian giao dịch" 
+                                            value={selectedTransaction.metadata.transactionDateTime} 
+                                        />
+                                        <div className="sm:col-span-2 md:col-span-3 pt-2">
+                                            <MetadataItem 
+                                                label="Mã Link thanh toán (PayOS)" 
+                                                value={selectedTransaction.metadata.paymentLinkId} 
+                                                className="font-mono text-[10px]"
+                                            />
+                                        </div>
+                                    </div>
                                 ) : (
-                                    <div className="text-center py-8 italic text-slate-600 flex flex-col items-center gap-2">
-                                        <FileText className="w-8 h-8 opacity-20" />
-                                        Không có dữ liệu mở rộng cho giao dịch này.
+                                    <div className="text-center py-10 italic text-slate-600 flex flex-col items-center gap-2">
+                                        <FileQuestion className="w-8 h-8 opacity-20" />
+                                        Không có dữ liệu đối soát cho giao dịch này.
                                     </div>
                                 )}
                             </div>
@@ -832,4 +866,27 @@ export default function BillingPage() {
       `}</style>
     </div>
   );
+}
+function MetadataItem({ label, value, isCopyable, className = '' }: { label: string, value: any, isCopyable?: boolean, className?: string }) {
+    const displayValue = value === null || value === undefined || value === '' ? '---' : String(value);
+    return (
+        <div className='flex flex-col gap-1.5'>
+            <span className='text-[10px] text-slate-500 uppercase font-bold tracking-wider'>{label}</span>
+            <div className='flex items-center gap-2 group'>
+                <span className={'text-sm text-slate-200 font-medium break-all '}>
+                    {displayValue}
+                </span>
+                {isCopyable && value && (
+                    <button 
+                        onClick={() => {
+                            navigator.clipboard.writeText(displayValue);
+                        }}
+                        className='p-1 hover:bg-slate-700 rounded transition-all text-slate-600 hover:text-primary opacity-0 group-hover:opacity-100'
+                    >
+                        <Copy className='w-3 h-3' />
+                    </button>
+                )}
+            </div>
+        </div>
+    );
 }
