@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -31,19 +32,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  Users, 
-  Tv, 
-  Clock, 
-  PowerOff, 
-  AlertTriangle, 
-  Search,
-  Lock,
-  Unlock,
-  Eye,
-  MoreHorizontal
-} from "lucide-react";
-import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,10 +40,31 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import apiClient from "@/lib/apiClient";
+import {
+  Users,
+  Tv,
+  Clock,
+  PowerOff,
+  AlertTriangle,
+  Search,
+  Lock,
+  Unlock,
+  Eye,
+  MoreHorizontal,
+  ShieldAlert,
+  Trash2,
+  CheckCircle2,
+  MessageSquare,
+  VolumeX,
+  Volume2,
+  UserX
+} from "lucide-react";
 
 interface User {
   id: string;
   username: string;
+  display_name?: string;
   avatar_url?: string;
   email: string;
 }
@@ -83,16 +92,36 @@ interface WatchPartyMember {
 interface WatchParty {
   id: string;
   title: string;
-  join_code: string;
+  join_code: string | null;
   is_private: boolean;
   is_active: boolean;
-  started_at: string;
+  started_at: string | null;
+  scheduled_at: string | null;
   host_user: User;
   movie?: Movie;
-  episode?: Episode; // If null, watching movie directly
-  members: WatchPartyMember[];
-  viewer_count: number; // Snapshot count or derived from members.length
+  episode?: Episode;
+  members?: WatchPartyMember[];
   max_participants: number;
+  _count?: {
+    members: number;
+  };
+}
+
+interface FlaggedMessage {
+  id: string;
+  content: string;
+  created_at: string;
+  user: {
+    id: string;
+    username: string;
+    avatar_url?: string;
+  };
+}
+
+interface MonitoringStats {
+  activeRooms: number;
+  watchingUsers: number;
+  pendingReports: number;
 }
 
 // --- Mock Data Generator ---
@@ -141,44 +170,124 @@ const generateMockParties = (count: number): WatchParty[] => {
 
 export default function WatchPartyMonitoring() {
   const [parties, setParties] = useState<WatchParty[]>([]);
+  const [stats, setStats] = useState<MonitoringStats>({ activeRooms: 0, watchingUsers: 0, pendingReports: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedParty, setSelectedParty] = useState<WatchParty | null>(null); // For details dialog
+  const [selectedParty, setSelectedParty] = useState<WatchParty | null>(null);
+
+  const [isFlaggedMessagesOpen, setIsFlaggedMessagesOpen] = useState(false);
+  const [flaggedMessages, setFlaggedMessages] = useState<FlaggedMessage[]>([]);
+  const [isResolving, setIsResolving] = useState(false);
+
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     type: "close" | "disband" | null;
     partyId: string | null;
   }>({ open: false, type: null, partyId: null });
 
-  // Load Mock Data
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setParties(generateMockParties(10));
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [roomsRes, statsRes] = await Promise.all([
+        apiClient.get("/watch-party?filter=live"),
+        apiClient.get("/watch-party/stats")
+      ]);
+      setParties(roomsRes.data);
+      setStats(statsRes.data);
+    } catch (error) {
+      console.error("Fetch data error:", error);
+      toast.error("Không thể tải dữ liệu giám sát");
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 30000); // Auto refresh every 30s
+    return () => clearInterval(interval);
   }, []);
 
   // Filter Logic
-  const filteredParties = parties.filter(party => 
+  const filteredParties = parties.filter(party =>
     party.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     party.join_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
     party.host_user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Actions
-  const handleCloseRoom = (partyId: string) => { // Soft close or stop accepting new members
-    // API Call Mock
-    setParties(prev => prev.map(p => p.id === partyId ? { ...p, is_active: false } : p));
-    toast.success("Đã đóng phòng thành công");
-    setConfirmDialog({ open: false, type: null, partyId: null });
+  const handleCloseRoom = async (partyId: string) => {
+    try {
+      await apiClient.put(`/watch-party/${partyId}/end`);
+      toast.success("Đã kết thúc phòng thành công");
+      fetchData();
+      setConfirmDialog({ open: false, type: null, partyId: null });
+    } catch (error) {
+      toast.error("Lỗi khi kết thúc phòng");
+    }
   };
 
-  const handleDisbandRoom = (partyId: string) => { // Force delete/kick all
-    // API Call Mock
-    setParties(prev => prev.filter(p => p.id !== partyId)); // Remove from list
-    toast.error("Đã giải tán phòng và ngắt kết nối tất cả người dùng"); // Using toast.error for destructive action notification style
-    setConfirmDialog({ open: false, type: null, partyId: null });
+  const handleDisbandRoom = async (partyId: string) => {
+    try {
+      await apiClient.delete(`/watch-party/${partyId}`);
+      toast.success("Đã giải tán phòng thành công");
+      fetchData();
+      setConfirmDialog({ open: false, type: null, partyId: null });
+    } catch (error) {
+      toast.error("Lỗi khi giải tán phòng");
+    }
+  };
+
+  const handleFetchFlaggedMessages = async (partyId: string) => {
+    try {
+      const res = await apiClient.get(`/watch-party/flagged-messages/${partyId}`);
+      setFlaggedMessages(res.data);
+      setIsFlaggedMessagesOpen(true);
+    } catch (error) {
+      toast.error("Không thể tải danh sách tin nhắn vi phạm");
+    }
+  };
+
+  const handleResolveMessage = async (messageId: string, action: "delete" | "ignore") => {
+    setIsResolving(true);
+    try {
+      await apiClient.patch(`/watch-party/flagged-messages/resolve/${messageId}`, { action });
+      setFlaggedMessages(prev => prev.filter(m => m.id !== messageId));
+      toast.success(action === "delete" ? "Đã xóa tin nhắn." : "Đã bỏ qua báo cáo.");
+    } catch (error) {
+      toast.error("Lỗi khi xử lý tin nhắn");
+    } finally {
+      setIsResolving(false);
+    }
+  };
+
+  const handleBanUser = async (partyId: string, targetUserId: string) => {
+    try {
+      await apiClient.patch(`/watch-party/ban/${partyId}`, { targetUserId });
+      toast.success("Đã ban người dùng khỏi phòng");
+      fetchData();
+    } catch (error) {
+      toast.error("Lỗi khi ban người dùng");
+    }
+  };
+
+  const handleMuteUser = async (partyId: string, targetUserId: string, mute: boolean) => {
+    try {
+      await apiClient.patch(`/watch-party/mute/${partyId}`, { targetUserId, mute });
+      toast.success(mute ? "Đã mute người dùng" : "Đã unmute người dùng");
+      fetchData();
+    } catch (error) {
+      toast.error("Lỗi khi thay đổi trạng thái mute");
+    }
+  };
+
+  const handleOpenDetails = async (party: WatchParty) => {
+    try {
+      const res = await apiClient.get(`/watch-party/manage/${party.id}`);
+      setSelectedParty(res.data);
+    } catch (error) {
+      toast.error("Không thể tải thông tin chi tiết phòng");
+    }
   };
 
   const openConfirm = (type: "close" | "disband", partyId: string) => {
@@ -193,48 +302,49 @@ export default function WatchPartyMonitoring() {
           <p className="text-muted-foreground mt-1">Danh sách các phòng xem chung đang hoạt động real-time.</p>
         </div>
         <div className="flex items-center gap-2">
-           <Button variant="outline" onClick={() => {
-             setIsLoading(true);
-             setTimeout(() => {
-               setParties(generateMockParties(Math.floor(Math.random() * 5) + 5));
-               setIsLoading(false);
-               toast.info("Đã làm mới dữ liệu");
-             }, 500);
-           }}>
-             Làm mới
-           </Button>
+          <Button variant="outline" onClick={fetchData}>
+            Làm mới
+          </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="bg-[#1e1e1e] border-slate-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Phòng Đang Live</CardTitle>
             <Tv className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{parties.filter(p => p.is_active).length}</div>
+            <div className="text-2xl font-bold">{stats.activeRooms}</div>
             <p className="text-xs text-muted-foreground">Active rooms</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-[#1e1e1e] border-slate-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tổng Người Xem</CardTitle>
             <Users className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {parties.reduce((acc, party) => acc + party.viewer_count, 0)}
-            </div>
+            <div className="text-2xl font-bold">{stats.watchingUsers}</div>
             <p className="text-xs text-muted-foreground">Real-time participants</p>
           </CardContent>
         </Card>
+        {/* <Card className="bg-[#1e1e1e] border-slate-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Báo Cáo Chờ Xử Lý</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.pendingReports}</div>
+            <p className="text-xs text-muted-foreground">Pending AI/User flags</p>
+          </CardContent>
+        </Card> */}
       </div>
 
       <div className="flex items-center gap-2 max-w-sm">
-        <Input 
-          placeholder="Tìm kiếm phòng, mã code, host..." 
+        <Input
+          placeholder="Tìm kiếm phòng, mã code, host..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="bg-background"
@@ -270,11 +380,11 @@ export default function WatchPartyMonitoring() {
                 </TableRow>
               ))
             ) : filteredParties.length === 0 ? (
-               <TableRow>
-                 <TableCell colSpan={7} className="h-24 text-center">
-                   Không tìm thấy phòng nào đang hoạt động.
-                 </TableCell>
-               </TableRow>
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  Không tìm thấy phòng nào đang hoạt động.
+                </TableCell>
+              </TableRow>
             ) : (
               filteredParties.map((party) => (
                 <TableRow key={party.id}>
@@ -285,9 +395,9 @@ export default function WatchPartyMonitoring() {
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="outline" className="text-xs font-mono">{party.join_code}</Badge>
                         {party.is_private ? (
-                           <Lock className="h-3 w-3 text-muted-foreground" />
+                          <Lock className="h-3 w-3 text-muted-foreground" />
                         ) : (
-                           <Unlock className="h-3 w-3 text-muted-foreground" />
+                          <Unlock className="h-3 w-3 text-muted-foreground" />
                         )}
                       </div>
                     </div>
@@ -298,7 +408,7 @@ export default function WatchPartyMonitoring() {
                     <div className="text-sm">
                       <div className="font-medium">{party.movie?.title || "Unknown Movie"}</div>
                       {party.episode && (
-                         <span className="text-xs text-muted-foreground">Ep {party.episode.episode_number}</span>
+                        <span className="text-xs text-muted-foreground">Ep {party.episode?.episode_number}</span>
                       )}
                     </div>
                   </TableCell>
@@ -306,19 +416,19 @@ export default function WatchPartyMonitoring() {
                   {/* Host Info */}
                   <TableCell>
                     <div className="flex items-center gap-2">
-                       <Avatar className="h-8 w-8">
-                         <AvatarImage src={party.host_user.avatar_url} />
-                         <AvatarFallback>{party.host_user.username.substring(0,2).toUpperCase()}</AvatarFallback>
-                       </Avatar>
-                       <span className="text-sm truncate w-24">{party.host_user.username}</span>
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={party.host_user?.avatar_url} />
+                        <AvatarFallback>{(party.host_user?.username || "??").substring(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm truncate w-24">{party.host_user?.username || "Unknown"}</span>
                     </div>
                   </TableCell>
-                  
+
                   {/* Participants Info */}
                   <TableCell>
-                    <div className="flex items-center gap-2 cursor-pointer hover:underline" onClick={() => setSelectedParty(party)}>
+                    <div className="flex items-center gap-2 cursor-pointer hover:underline" onClick={() => handleOpenDetails(party)}>
                       <Users className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-bold">{party.viewer_count}</span>
+                      <span className="font-bold">{party.viewers || 0}</span>
                       <span className="text-muted-foreground text-xs">/ {party.max_participants} max</span>
                     </div>
                   </TableCell>
@@ -326,9 +436,20 @@ export default function WatchPartyMonitoring() {
                   {/* Time Info */}
                   <TableCell>
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                       <Clock className="h-3 w-3" />
-                       <span>{format(new Date(party.started_at), 'HH:mm', { locale: vi })}</span>
-                       <span className="text-xs">({Math.floor((Date.now() - new Date(party.started_at).getTime()) / 60000)}m active)</span>
+                      <Clock className="h-3 w-3" />
+                      {party.started_at ? (
+                        <>
+                          <span>{format(new Date(party.started_at), 'HH:mm', { locale: vi })}</span>
+                          <span className="text-xs">({Math.floor((Date.now() - new Date(party.started_at).getTime()) / 60000)}m active)</span>
+                        </>
+                      ) : party.scheduled_at ? (
+                        <>
+                          <span className="text-yellow-500 font-bold">Lên lịch:</span>
+                          <span>{format(new Date(party.scheduled_at), 'HH:mm dd/MM', { locale: vi })}</span>
+                        </>
+                      ) : (
+                        <span>N/A</span>
+                      )}
                     </div>
                   </TableCell>
 
@@ -352,21 +473,15 @@ export default function WatchPartyMonitoring() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Tác vụ</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => setSelectedParty(party)}>
+                        <DropdownMenuItem onClick={() => handleOpenDetails(party)}>
                           <Eye className="mr-2 h-4 w-4" /> Xem chi tiết
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          className="text-orange-500 focus:text-orange-500 focus:bg-orange-50 dark:focus:bg-orange-950"
-                          onClick={() => openConfirm("close", party.id)}
-                        >
-                          <PowerOff className="mr-2 h-4 w-4" /> Đóng phòng
+                        <DropdownMenuItem onClick={() => handleFetchFlaggedMessages(party.id)} className="text-yellow-500 hover:text-yellow-400">
+                          <ShieldAlert className="mr-2 h-4 w-4" /> Tin nhắn vi phạm
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
-                           className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                           onClick={() => openConfirm("disband", party.id)}
-                        >
-                          <AlertTriangle className="mr-2 h-4 w-4" /> Giải tán & Ban
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => openConfirm("disband", party.id)} className="text-destructive focus:text-destructive font-bold">
+                          <AlertTriangle className="mr-2 h-4 w-4" /> Giải tán & Xóa phòng
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -378,74 +493,255 @@ export default function WatchPartyMonitoring() {
         </Table>
       </Card>
 
-      {/* Participant Details Dialog */}
-      <Dialog open={!!selectedParty} onOpenChange={(open) => !open && setSelectedParty(null)}>
-        <DialogContent className="max-w-3xl">
+      {/* Flagged Messages Dialog */}
+      <Dialog open={isFlaggedMessagesOpen} onOpenChange={setIsFlaggedMessagesOpen}>
+        <DialogContent className="max-w-2xl bg-[#1e1e1e] border-slate-800 text-white">
           <DialogHeader>
-            <DialogTitle>Chi tiết phòng: {selectedParty?.title}</DialogTitle>
-            <DialogDescription>
-               Join Code: <span className="font-mono bg-muted px-1 rounded">{selectedParty?.join_code}</span> | 
-               Host: {selectedParty?.host_user.username} | 
-               Limit: {selectedParty?.max_participants}
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-yellow-500" />
+              Tin nhắn bị AI gắn cờ
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Các tin nhắn có dấu hiệu vi phạm tiêu chuẩn cộng đồng được AI nhận diện.
             </DialogDescription>
           </DialogHeader>
-
-          <div className="mt-4">
-             <h4 className="mb-2 text-sm font-medium">Danh sách thành viên ({selectedParty?.members.length})</h4>
-             <div className="border rounded-md max-h-[300px] overflow-y-auto p-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {selectedParty?.members.map(member => (
-                   <div key={member.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-accent border bg-card">
-                      <div className="relative">
-                        <Avatar className="h-8 w-8">
-                             <AvatarImage src={member.user.avatar_url} />
-                             <AvatarFallback>{member.user.username.substring(0,2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background ${member.is_online ? "bg-green-500" : "bg-gray-400"}`} />
+          <div className="space-y-4 my-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+            {flaggedMessages.length === 0 ? (
+              <div className="text-center py-10 text-slate-500 italic flex flex-col items-center gap-2">
+                <MessageSquare className="h-8 w-8 opacity-20" />
+                Không có tin nhắn nào bị báo cáo.
+              </div>
+            ) : (
+              flaggedMessages.map((msg) => (
+                <div key={msg.id} className="p-4 rounded-lg bg-slate-900/50 border border-slate-800 flex justify-between items-start gap-4">
+                  <div className="flex gap-3">
+                    <Avatar className="h-9 w-9 border border-slate-700">
+                      <AvatarImage src={msg.user?.avatar_url} />
+                      <AvatarFallback>{(msg.user?.username || "??").substring(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm">{msg.user?.username || "Unknown"}</span>
+                        <span className="text-[10px] text-slate-500 uppercase">{format(new Date(msg.created_at), "HH:mm:ss")}</span>
                       </div>
-                      <div className="overflow-hidden">
-                         <p className="text-sm font-medium truncate">{member.user.username}</p>
-                         <p className="text-xs text-muted-foreground capitalize">{member.role}</p>
-                      </div>
-                   </div>
-                ))}
-             </div>
+                      <p className="text-sm bg-red-500/10 text-red-200 p-2 rounded border border-red-500/20">{msg.message}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-slate-400 hover:text-black"
+                      onClick={() => handleResolveMessage(msg.id, "ignore")}
+                      disabled={isResolving}
+                    >
+                      Bỏ qua
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="gap-1"
+                      onClick={() => handleResolveMessage(msg.id, "delete")}
+                      disabled={isResolving}
+                    >
+                      <Trash2 className="h-4 w-4" /> Xóa
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+                      onClick={() => {
+                        if (msg.user?.id && selectedParty?.id) {
+                          handleBanUser(selectedParty.id, msg.user.id);
+                          handleResolveMessage(msg.id, "delete");
+                        }
+                      }}
+                      disabled={isResolving}
+                    >
+                      Ban User
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-          
           <DialogFooter>
-             <Button variant="outline" onClick={() => setSelectedParty(null)}>Đóng</Button>
+            <Button variant="outline" onClick={() => setIsFlaggedMessagesOpen(false)} className="bg-transparent border-slate-700">Đóng</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
-      {/* Confirmation Dialog for Emergency Actions */}
-      <Dialog 
-        open={confirmDialog.open} 
-        onOpenChange={(open) => !open && setConfirmDialog({ open: false, type: null, partyId: null })}
-      >
-        <DialogContent>
+
+      {/* Room Details & Member Management Dialog */}
+      <Dialog open={!!selectedParty} onOpenChange={(open) => !open && setSelectedParty(null)}>
+        <DialogContent className="max-w-4xl bg-[#1e1e1e] border-slate-800 text-white p-0 overflow-hidden">
+          {selectedParty && (
+            <>
+              <div className="p-6 pb-2">
+                <DialogHeader>
+                  <div className="flex justify-between items-start">
+                    <DialogTitle className="text-2xl font-bold">{selectedParty.title}</DialogTitle>
+                    <Badge className="bg-green-600">Live</Badge>
+                  </div>
+                  <DialogDescription className="text-slate-400">
+                    Quản lý thành viên và quyền hạn trong phòng.
+                  </DialogDescription>
+                </DialogHeader>
+              </div>
+
+              <div className="p-6 pt-0">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                  {/* Left: Info */}
+                  <div className="space-y-4">
+                    <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800 space-y-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Mã tham gia</label>
+                        <p className="font-mono text-white text-lg font-bold">{selectedParty.join_code || "PUBLIC"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Nội dung xem</label>
+                        <p className="font-bold text-primary">{selectedParty.movie?.title}</p>
+                        {selectedParty.episode && <p className="text-xs text-slate-400">Tập {selectedParty.episode?.episode_number}: {selectedParty.episode?.title}</p>}
+                      </div>
+                      <div className="pt-4 border-t border-slate-800">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={selectedParty.host_user?.avatar_url} />
+                            <AvatarFallback>{(selectedParty.host_user?.username || "??").substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase font-bold">Chủ phòng</p>
+                            <p className="text-sm font-bold">{selectedParty.host_user?.username || "Unknown"}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Member List */}
+                  <div className="md:col-span-2 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400">Thành viên online ({selectedParty.members?.filter(m => m.is_online).length})</h3>
+                      <Badge variant="outline" className="text-[10px] border-slate-700 text-white">Real-time update</Badge>
+                    </div>
+                    <div className="bg-slate-900/40 rounded-xl border border-slate-800 overflow-hidden max-h-[400px] overflow-y-auto custom-scrollbar">
+                      <Table>
+                        <TableHeader className="bg-slate-800/50">
+                          <TableRow className="border-slate-800">
+                            <TableHead className="text-[10px] h-10 text-white">User</TableHead>
+                            <TableHead className="text-[10px] h-10 text-white">Vai trò</TableHead>
+                            <TableHead className="text-[10px] h-10 text-right text-white">Hành động</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {selectedParty.members?.filter(m => m.is_online).map((member) => (
+                            <TableRow key={member.id} className="border-slate-800 hover:bg-slate-800/30">
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-7 w-7">
+                                    <AvatarImage src={member.user?.avatar_url} />
+                                    <AvatarFallback>{(member.user?.username || "??").substring(0, 2).toUpperCase()}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex flex-col">
+                                    <span className="text-sm font-bold">{(member.user as any)?.display_name || member.user?.username || "Unknown"}</span>
+                                    <span className="text-[10px] text-slate-500">{member.user?.email || member.user?.username}</span>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={member.role === 'host' ? "bg-primary/20 text-primary border-none" : "bg-slate-800 text-slate-400 border-none"}>
+                                  {member.role === 'host' ? 'Chủ phòng' : 'Thành viên'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {member.role !== 'host' && (
+                                  <div className="flex justify-end gap-1">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 w-7 p-0"
+                                      title="Mute"
+                                      onClick={() => handleMuteUser(selectedParty.id, member.user.id, true)}
+                                    >
+                                      <VolumeX className="h-3.5 w-3.5 text-slate-400" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 w-7 p-0"
+                                      title="Unmute"
+                                      onClick={() => handleMuteUser(selectedParty.id, member.user.id, false)}
+                                    >
+                                      <Volume2 className="h-3.5 w-3.5 text-green-500" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 w-7 p-0 hover:bg-red-500/10"
+                                      title="Ban"
+                                      onClick={() => handleBanUser(selectedParty.id, member.user.id)}
+                                    >
+                                      <UserX className="h-3.5 w-3.5 text-red-500" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter className="bg-slate-900/60 p-5 border-t border-slate-800">
+                <Button variant="outline" onClick={() => setSelectedParty(null)} className="bg-white text-black hover:bg-slate-200 border-none font-bold">Đóng</Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Action Confirm Dialog */}
+      <Dialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, type: null, partyId: null })}>
+        <DialogContent className="bg-[#1e1e1e] border-slate-800 text-white shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-               <AlertTriangle className="h-5 w-5" />
-               Xác nhận can thiệp khẩn cấp
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              Giải tán & Xóa hoàn toàn
             </DialogTitle>
-            <DialogDescription>
-              {confirmDialog.type === 'close' 
-                ? "Bạn có chắc chắn muốn đóng phòng này không? Người dùng hiện tại sẽ bị ngắt kết nối."
-                : "Hành động này sẽ giải tán phòng ngay lập tức và có thể sẽ cấm host tạo phòng trong tương lai."
-              }
+            <DialogDescription className="text-slate-400 mt-2">
+              Hành động này sẽ ngắt kết nối tất cả thành viên và xóa hoàn toàn phòng khỏi hệ thống. Thao tác này không thể hoàn tác!
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDialog({ open: false, type: null, partyId: null })}>Huỷ</Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => confirmDialog.partyId && (confirmDialog.type === 'close' ? handleCloseRoom(confirmDialog.partyId) : handleDisbandRoom(confirmDialog.partyId))}
+          <DialogFooter className="gap-2 mt-4">
+            <Button variant="ghost" onClick={() => setConfirmDialog({ open: false, type: null, partyId: null })} className="text-slate-400 hover:text-white">Hủy</Button>
+            <Button
+              variant="destructive"
+              className="font-bold px-6"
+              onClick={() => confirmDialog.partyId && (confirmDialog.type === "close" ? handleCloseRoom(confirmDialog.partyId) : handleDisbandRoom(confirmDialog.partyId))}
             >
-              Xác nhận {confirmDialog.type === 'close' ? 'Đóng' : 'Giải tán'}
+              Xác nhận thực hiện
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #334155;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #475569;
+        }
+      `}</style>
     </div>
   );
 }
