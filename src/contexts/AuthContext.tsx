@@ -103,9 +103,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      await apiClient.post("/auth/logout", {});
+      const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
+      await apiClient.post("/auth/logout", { refreshToken });
     } catch (error) {
       console.error("Lỗi khi gọi API logout, nhưng vẫn đăng xuất client", error);
+    }
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
     }
     setUser(null);
     router.push("/");

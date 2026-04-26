@@ -101,6 +101,8 @@ api.interceptors.response.use(
         // Nếu refresh token thất bại (hết hạn hoặc không hợp lệ), clear storage và redirect login
         if (typeof window !== 'undefined') {
              localStorage.removeItem('user_cache');
+             localStorage.removeItem('accessToken');
+             localStorage.removeItem('refreshToken');
              // Optional: window.location.href = '/login'; // Uncomment nếu muốn redirect cứng
         }
         return Promise.reject(refreshError);
