@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Search,
   Filter,
@@ -52,7 +54,9 @@ import {
   Printer,
   Database,
   Copy,
-  FileQuestion
+  FileQuestion,
+  Undo2,
+  XCircle
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -100,6 +104,28 @@ interface DashboardStats {
   refunded: number;
 }
 
+interface RefundRequest {
+  id: string;
+  user: {
+    id: string;
+    display_name: string;
+    email: string;
+    username?: string;
+    avatar_url?: string;
+  };
+  transaction: {
+    id: string;
+    transaction_ref: string;
+    amount: number;
+    status: TransactionStatus;
+    created_at: string;
+  };
+  reason: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  created_at: string;
+  updated_at: string;
+}
+
 export default function BillingPage() {
   const [data, setData] = useState<Transaction[]>([]);
   const [stats, setStats] = useState<DashboardStats>({ revenue: 0, pending: 0, refunded: 0 });
@@ -118,6 +144,20 @@ export default function BillingPage() {
 
   // Approve Dialog State
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
+
+  // Refund State
+  const [refundData, setRefundData] = useState<RefundRequest[]>([]);
+  const [refundLoading, setRefundLoading] = useState(true);
+  const [refundStatusFilter, setRefundStatusFilter] = useState("ALL");
+  const [refundCurrentPage, setRefundCurrentPage] = useState(1);
+  const [refundTotalPages, setRefundTotalPages] = useState(1);
+  
+  const [isCreateRefundOpen, setIsCreateRefundOpen] = useState(false);
+  const [refundReason, setRefundReason] = useState("");
+  
+  const [isProcessRefundOpen, setIsProcessRefundOpen] = useState(false);
+  const [selectedRefund, setSelectedRefund] = useState<RefundRequest | null>(null);
+  const [processAction, setProcessAction] = useState<"APPROVE" | "REJECT">("APPROVE");
 
   // --- FETCH DATA ---
   const fetchData = useCallback(async () => {
@@ -150,6 +190,32 @@ export default function BillingPage() {
     setCurrentPage(1);
   }, [searchTerm, statusFilter]);
 
+  const fetchRefunds = useCallback(async () => {
+    setRefundLoading(true);
+    try {
+      const res = await apiClient.get(`/admin/transactions/refunds?page=${refundCurrentPage}&take=${itemsPerPage}&status=${refundStatusFilter}`);
+      setRefundData(res.data.data || []);
+      setRefundTotalPages(res.data.meta?.lastPages || 1);
+    } catch (error) {
+      console.error("Fetch refunds error:", error);
+      toast.error("Không thể tải yêu cầu hoàn tiền");
+    } finally {
+      setRefundLoading(false);
+    }
+  }, [refundCurrentPage, refundStatusFilter]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        fetchRefunds();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [fetchRefunds]);
+  
+  useEffect(() => {
+    setRefundCurrentPage(1);
+  }, [refundStatusFilter]);
+
+
   // --- ACTIONS ---
 
   const handleOpenDetail = (trx: Transaction) => {
@@ -172,18 +238,59 @@ export default function BillingPage() {
          toast.success(`Đã duyệt giao dịch ${selectedTransaction.transaction_ref} thành công`);
          setIsApproveDialogOpen(false);
          fetchData();
-       } catch (error) {
-         toast.error("Lỗi khi duyệt giao dịch");
-       }
+         } catch (error) {
+           toast.error("Lỗi khi duyệt giao dịch");
+         }
+      }
     }
-  }
 
-  // --- ISOLATED PRINT HANDLER ---
+  const handleOpenCreateRefund = (trx: Transaction) => {
+    setSelectedTransaction(trx);
+    setRefundReason("");
+    setIsCreateRefundOpen(true);
+  };
+
+  const handleCreateRefund = async () => {
+    if (selectedTransaction) {
+        try {
+            await apiClient.post("/admin/transactions/refunds", {
+                transactionId: selectedTransaction.id,
+                reason: refundReason
+            });
+            toast.success("Tạo yêu cầu hoàn tiền thành công");
+            setIsCreateRefundOpen(false);
+            fetchRefunds();
+        } catch(error: any) {
+            toast.error(error.response?.data?.message || "Lỗi tạo yêu cầu hoàn tiền");
+        }
+    }
+  };
+
+  const handleOpenProcessRefund = (refund: RefundRequest, action: "APPROVE" | "REJECT") => {
+    setSelectedRefund(refund);
+    setProcessAction(action);
+    setIsProcessRefundOpen(true);
+  };
+
+  const handleProcessRefund = async () => {
+    if (selectedRefund) {
+        try {
+            await apiClient.patch(`/admin/transactions/refunds/${selectedRefund.id}/process`, {
+                action: processAction
+            });
+            toast.success(`Đã ${processAction === "APPROVE" ? "chấp nhận" : "từ chối"} yêu cầu hoàn tiền`);
+            setIsProcessRefundOpen(false);
+            fetchRefunds();
+            fetchData();
+        } catch(error: any) {
+            toast.error(error.response?.data?.message || "Lỗi xử lý yêu cầu hoàn tiền");
+        }
+    }
+  };
+
   const handleExportPDF = async () => {
     const toastId = toast.loading("Đang tải dữ liệu toàn bộ báo cáo...");
     try {
-        // Gọi API lấy toàn bộ dữ liệu khớp với bộ lọc hiện tại (Search & Status)
-        // Set take=2000 (hoặc số lớn hơn) để lấy hết
         const response = await apiClient.get(`/admin/transactions/get-all?page=1&take=2000&q=${searchTerm}&status=${statusFilter}`);
         const allData: Transaction[] = response.data.data || [];
 
@@ -488,9 +595,21 @@ export default function BillingPage() {
         </Card>
       </div>
 
-      {/* --- FILTERS & TABLE --- */}
-      <Card className="bg-[#1e1e1e] border-slate-800 shadow-sm">
-        <CardHeader>
+      {/* --- TABS --- */}
+      <Tabs defaultValue="transactions" className="w-full">
+        <TabsList className="bg-[#1e1e1e] border-slate-800 mb-6">
+          <TabsTrigger value="transactions" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400">
+            Lịch sử giao dịch
+          </TabsTrigger>
+          <TabsTrigger value="refunds" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400">
+            Yêu cầu hoàn tiền
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="transactions" className="m-0 focus-visible:outline-none">
+          {/* --- FILTERS & TABLE --- */}
+          <Card className="bg-[#1e1e1e] border-slate-800 shadow-sm">
+            <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <CardTitle className="text-xl">Lịch sử giao dịch</CardTitle>
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -595,12 +714,14 @@ export default function BillingPage() {
                                                         <CheckCircle className="mr-2 h-4 w-4" /> Duyệt giao dịch
                                                     </DropdownMenuItem>
                                                 )}
-                                                <DropdownMenuItem 
-                                                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer py-2"
-                                                    disabled
-                                                >
-                                                    <RefreshCcw className="mr-2 h-4 w-4" /> Hoàn tiền
-                                                </DropdownMenuItem>
+                                                {(trx.status === "COMPLETED") && (
+                                                    <DropdownMenuItem 
+                                                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer py-2"
+                                                        onClick={() => handleOpenCreateRefund(trx)}
+                                                    >
+                                                        <Undo2 className="mr-2 h-4 w-4" /> Yêu cầu hoàn tiền
+                                                    </DropdownMenuItem>
+                                                )}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -645,6 +766,109 @@ export default function BillingPage() {
              </div>
         </CardContent>
       </Card>
+      </TabsContent>
+
+      <TabsContent value="refunds" className="m-0 focus-visible:outline-none">
+          <Card className="bg-[#1e1e1e] border-slate-800 shadow-sm">
+            <CardHeader>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <CardTitle className="text-xl">Yêu cầu hoàn tiền</CardTitle>
+                    <div className="flex gap-3">
+                        <Select value={refundStatusFilter} onValueChange={setRefundStatusFilter}>
+                             <SelectTrigger className="w-[150px] bg-[#262626] border-slate-700 text-white">
+                                 <div className="flex items-center">
+                                     <Filter className="mr-2 h-4 w-4 text-slate-400" />
+                                     <SelectValue placeholder="Trạng thái" />
+                                 </div>
+                             </SelectTrigger>
+                             <SelectContent className="bg-[#262626] border-slate-700 text-white">
+                                 <SelectItem value="ALL">Tất cả</SelectItem>
+                                 <SelectItem value="PENDING">Đang chờ</SelectItem>
+                                 <SelectItem value="APPROVED">Đã duyệt</SelectItem>
+                                 <SelectItem value="REJECTED">Từ chối</SelectItem>
+                             </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                 <div className="rounded-lg border border-slate-800 overflow-hidden bg-slate-900/20">
+                    <Table>
+                        <TableHeader className="bg-slate-900/50">
+                            <TableRow className="border-slate-800 hover:bg-transparent">
+                                <TableHead className="text-slate-400 h-12">Mã Tham Chiếu</TableHead>
+                                <TableHead className="text-slate-400 h-12">Người dùng</TableHead>
+                                <TableHead className="text-slate-400 h-12">Lý do</TableHead>
+                                <TableHead className="text-slate-400 h-12">Số tiền</TableHead>
+                                <TableHead className="text-slate-400 h-12">Ngày yêu cầu</TableHead>
+                                <TableHead className="text-slate-400 h-12">Trạng thái</TableHead>
+                                <TableHead className="text-right text-slate-400 h-12 pr-6">Thao tác</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {refundLoading ? (
+                                 <TableRow className="border-slate-800">
+                                     <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                                         Đang tải...
+                                     </TableCell>
+                                 </TableRow>
+                            ) : refundData.length > 0 ? (
+                                refundData.map((refund) => (
+                                    <TableRow key={refund.id} className="border-slate-800 hover:bg-slate-800/50">
+                                        <TableCell className="font-mono text-xs text-slate-400 pl-4">{refund.transaction.transaction_ref}</TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-semibold text-slate-200">{refund.user.display_name}</span>
+                                                <span className="text-[10px] text-slate-500">{refund.user.email}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-slate-300 text-xs max-w-[200px] truncate" title={refund.reason || ""}>
+                                            {refund.reason || "Không có lý do"}
+                                        </TableCell>
+                                        <TableCell className="font-bold text-white text-sm">{formatCurrency(refund.transaction.amount)}</TableCell>
+                                        <TableCell className="text-slate-400 text-[11px]">
+                                            {format(new Date(refund.created_at), "dd/MM/yy HH:mm", { locale: vi })}
+                                        </TableCell>
+                                        <TableCell>
+                                            {refund.status === 'APPROVED' && <Badge className="bg-green-500 text-black border-none font-bold">Đã duyệt</Badge>}
+                                            {refund.status === 'PENDING' && <Badge className="bg-yellow-400 text-black border-none font-bold">Đang chờ</Badge>}
+                                            {refund.status === 'REJECTED' && <Badge className="bg-red-500 text-white border-none">Từ chối</Badge>}
+                                        </TableCell>
+                                        <TableCell className="text-right pr-6">
+                                            {refund.status === "PENDING" && (
+                                                <div className="flex justify-end gap-2">
+                                                    <Button size="sm" variant="outline" className="h-7 text-xs bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white border-green-500/20" onClick={() => handleOpenProcessRefund(refund, "APPROVE")}>Duyệt</Button>
+                                                    <Button size="sm" variant="outline" className="h-7 text-xs bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border-red-500/20" onClick={() => handleOpenProcessRefund(refund, "REJECT")}>Từ chối</Button>
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                                        Không có yêu cầu hoàn tiền nào.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                 </div>
+                 
+                 {/* Pagination refunds */}
+                 <div className="flex items-center justify-between py-2">
+                    <div className="text-xs text-slate-500">
+                        Trang {refundCurrentPage} / {refundTotalPages}
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="bg-slate-900 border-slate-800 text-slate-300 h-8 hover:bg-slate-800" onClick={() => setRefundCurrentPage(p => Math.max(1, p - 1))} disabled={refundCurrentPage === 1}>Trước</Button>
+                        <Button variant="outline" size="sm" className="bg-slate-900 border-slate-800 text-slate-300 h-8 hover:bg-slate-800" onClick={() => setRefundCurrentPage(p => Math.min(refundTotalPages, p + 1))} disabled={refundCurrentPage === refundTotalPages}>Sau</Button>
+                    </div>
+                 </div>
+            </CardContent>
+          </Card>
+      </TabsContent>
+      </Tabs>
 
       {/* --- DETAIL MODAL --- */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
@@ -843,6 +1067,70 @@ export default function BillingPage() {
                     Hủy bỏ
                 </Button>
                 <Button onClick={handleApprove} className="bg-green-600 hover:bg-green-700 text-white font-bold px-8">
+                    Xác nhận
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* --- CREATE REFUND DIALOG --- */}
+      <Dialog open={isCreateRefundOpen} onOpenChange={setIsCreateRefundOpen}>
+        <DialogContent className="bg-[#1e1e1e] border-slate-800 text-white">
+             <DialogHeader>
+                <DialogTitle>Yêu cầu hoàn tiền</DialogTitle>
+                <DialogDescription className="text-slate-400">
+                    Bạn đang tạo yêu cầu hoàn tiền cho giao dịch <span className="text-white font-mono">{selectedTransaction?.transaction_ref}</span>.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                    <label className="text-sm text-slate-300">Lý do hoàn tiền</label>
+                    <Textarea 
+                        placeholder="Nhập lý do hoàn tiền (tùy chọn)..."
+                        className="bg-[#262626] border-slate-700 text-white min-h-[100px]"
+                        value={refundReason}
+                        onChange={(e) => setRefundReason(e.target.value)}
+                    />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="ghost" onClick={() => setIsCreateRefundOpen(false)} className="text-slate-400 hover:bg-slate-800 hover:text-white">Hủy</Button>
+                <Button onClick={handleCreateRefund} className="bg-red-600 hover:bg-red-700 text-white">Tạo yêu cầu</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* --- PROCESS REFUND DIALOG --- */}
+      <Dialog open={isProcessRefundOpen} onOpenChange={setIsProcessRefundOpen}>
+        <DialogContent className="bg-[#1e1e1e] border-slate-800 text-white">
+             <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                    {processAction === 'APPROVE' ? <CheckCircle className="text-green-500 w-5 h-5"/> : <XCircle className="text-red-500 w-5 h-5"/>}
+                    {processAction === 'APPROVE' ? 'Duyệt hoàn tiền' : 'Từ chối hoàn tiền'}
+                </DialogTitle>
+                <DialogDescription className="text-slate-400">
+                    Xác nhận thao tác cho yêu cầu của <span className="text-white font-bold">{selectedRefund?.user.display_name}</span>.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                <p className="text-sm text-slate-300">
+                    {processAction === 'APPROVE' 
+                        ? 'Hành động này sẽ hủy gói đăng ký của người dùng và đánh dấu giao dịch là ĐÃ HOÀN TIỀN.' 
+                        : 'Yêu cầu hoàn tiền này sẽ bị đánh dấu là TỪ CHỐI.'}
+                </p>
+                {selectedRefund?.reason && (
+                    <div className="mt-4 p-3 bg-slate-900/50 rounded-lg border border-slate-800">
+                        <span className="text-xs text-slate-500 uppercase font-bold">Lý do từ khách hàng:</span>
+                        <p className="text-sm text-slate-300 mt-1">{selectedRefund.reason}</p>
+                    </div>
+                )}
+            </div>
+            <DialogFooter>
+                <Button variant="ghost" onClick={() => setIsProcessRefundOpen(false)} className="text-slate-400 hover:bg-slate-800 hover:text-white">Hủy</Button>
+                <Button 
+                    onClick={handleProcessRefund} 
+                    className={processAction === 'APPROVE' ? "bg-green-600 hover:bg-green-700 text-white" : "bg-red-600 hover:bg-red-700 text-white"}
+                >
                     Xác nhận
                 </Button>
             </DialogFooter>
