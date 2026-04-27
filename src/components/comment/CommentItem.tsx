@@ -14,6 +14,8 @@ import {
   Trash,
   AlertTriangle,
 } from 'lucide-react';
+import { ReportModal } from '@/components/common/ReportModal';
+import { ReportTargetType } from '@/types/report';
 import { SpoilerWarning } from './SpoilerWarning';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -152,6 +154,22 @@ export function CommentItem({
                 <MessageSquareReply className="h-4 w-4" />
                 <span className="text-xs">Trả lời</span>
               </Button>
+            )}
+            {user && !isAuthor && (
+              <ReportModal
+                targetType={ReportTargetType.COMMENT}
+                targetId={comment.id}
+                triggerElement={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-1.5 text-gray-400 hover:text-red-400 px-2"
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="text-xs">Báo cáo</span>
+                  </Button>
+                }
+              />
             )}
             {isAuthor && ( 
               <>
