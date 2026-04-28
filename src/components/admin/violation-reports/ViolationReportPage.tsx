@@ -34,9 +34,11 @@ import {
   XCircle, 
   Loader2,
   Filter,
-  Eye
+  Eye,
+  Lock
 } from "lucide-react";
 import { adminReportService } from "@/services/admin.report.service";
+import apiClient from "@/lib/apiClient";
 import { Report, ReportStatus, ReportTargetType } from "@/types/report";
 import {
   Dialog,
@@ -46,6 +48,202 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
+const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, updatingId }: any) => {
+  const [commentDetails, setCommentDetails] = useState<any>(null);
+  const [loadingComment, setLoadingComment] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCommentDetails = async () => {
+      if (open && report.targetType === ReportTargetType.COMMENT && report.targetId) {
+        if (isMounted) setLoadingComment(true);
+        try {
+          const res = await apiClient.get(`/comments/admin/${report.targetId}`);
+          let data = res.data;
+          
+          if (data && data.user_id && !data.user) {
+            try {
+              const userRes = await apiClient.get(`/profile/admin/users/${data.user_id}`);
+              data = { ...data, user: userRes.data };
+            } catch (err) {
+              console.error("Lỗi khi lấy thông tin người dùng của bình luận:", err);
+            }
+          }
+          
+          if (isMounted) setCommentDetails(data);
+        } catch (error) {
+          console.error("Lỗi khi lấy thông tin bình luận:", error);
+        } finally {
+          if (isMounted) setLoadingComment(false);
+        }
+      }
+    };
+    fetchCommentDetails();
+    return () => { isMounted = false; };
+  }, [open, report]);
+
+  const tUserId = report.targetType === ReportTargetType.USER 
+    ? report.targetId 
+    : (commentDetails?.user_id || commentDetails?.userId || commentDetails?.user?.id || report.targetData?.user_id || report.targetData?.userId || report.targetData?.user?.id || report.targetData?.author_id || report.targetData?.author?.id);
+
+  const commentUser = commentDetails?.user || report.targetData?.user || report.targetData?.user_info || report.targetData?.author;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white hover:bg-slate-800" title="Chi tiết">
+          <Eye className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[500px] bg-[#1f1f1f] text-white border-slate-700">
+        <DialogHeader>
+          <DialogTitle className="text-white">Chi tiết báo cáo vi phạm</DialogTitle>
+          <DialogDescription className="text-gray-400">
+            Thông tin đầy đủ về báo cáo và đối tượng bị báo cáo.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4 text-sm max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <span className="text-slate-400 font-medium">Trạng thái:</span>
+            <div className="col-span-3">
+               {report.status === ReportStatus.PENDING && <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">Chờ xử lý</Badge>}
+               {report.status === ReportStatus.RESOLVED && <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">Đã xử lý</Badge>}
+               {report.status === ReportStatus.REJECTED && <Badge variant="outline" className="bg-gray-500/10 text-gray-500 border-gray-500/20">Đã từ chối</Badge>}
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <span className="text-gray-400 font-medium">Loại / ID:</span>
+            <div className="col-span-3 flex items-center gap-2 overflow-hidden">
+              {report.targetType === ReportTargetType.COMMENT && <Badge variant="secondary">Bình luận</Badge>}
+              {report.targetType === ReportTargetType.USER && <Badge variant="secondary" className="bg-blue-500/10 text-blue-400">Người dùng</Badge>}
+              <span className="font-mono text-gray-300 bg-slate-800/50 border border-slate-700 px-2 py-1 rounded text-xs truncate max-w-full">
+                {report.targetId}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 gap-4">
+            <span className="text-gray-400 font-medium pt-1">Nội dung bị báo cáo:</span>
+            <div className="col-span-3 bg-red-950/30 border border-red-900/50 rounded p-3 text-gray-200 text-sm overflow-hidden">
+              {report.targetType === ReportTargetType.COMMENT && (
+                <div className="flex flex-col gap-2">
+                  {report.targetData?.movie && (
+                      <span className="text-xs text-blue-400 font-medium pb-1 border-b border-red-900/30 truncate">
+                        Phim: {report.targetData.movie.title}
+                      </span>
+                  )}
+                  {loadingComment ? (
+                    <div className="flex items-center gap-2 text-xs text-gray-400 py-2">
+                      <Loader2 className="h-3 w-3 animate-spin"/> Đang tải thông tin người dùng...
+                    </div>
+                  ) : (
+                    commentUser && tUserId && (
+                      <div className="flex items-center justify-between bg-black/20 p-2 rounded">
+                        <div className="flex items-center gap-2">
+                          <img src={commentUser?.avatar_url || '/images/placeholder-avatar.png'} alt="user" className="w-6 h-6 rounded-full" />
+                          <div className="flex flex-col">
+                            <span className="text-xs font-semibold text-white">{commentUser?.display_name || 'Người dùng ẩn danh'}</span>
+                            <span className="text-[10px] text-gray-500">ID: {tUserId}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  )}
+                  <p className="italic text-gray-300 bg-black/40 p-2 rounded mt-1 border-l-2 border-red-500 break-words">
+                    "{commentDetails?.comment || report.targetData?.comment}"
+                  </p>
+                </div>
+              )}
+              {report.targetType === ReportTargetType.USER && report.targetData && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <img src={report.targetData.avatar_url || '/images/placeholder-avatar.png'} alt="avatar" className="w-8 h-8 rounded-full flex-shrink-0" />
+                    <div className="overflow-hidden">
+                      <p className="font-medium text-white truncate">{report.targetData.display_name}</p>
+                      <p className="text-xs text-gray-400 truncate">{report.targetData.email}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 gap-4">
+            <span className="text-gray-400 font-medium pt-1">Lý do:</span>
+            <div className="col-span-3 bg-[#262626] border border-slate-700 rounded p-3 text-gray-300 min-h-[80px] break-words">
+              {report.reason}
+            </div>
+          </div>
+          <div className="grid grid-cols-4 gap-4 mt-2 items-center">
+            <span className="text-gray-400 font-medium">Người gửi:</span>
+            <span className="col-span-3 text-gray-300 truncate">
+              {report.reporter ? (
+                <div className="flex items-center gap-2 truncate">
+                  <img src={report.reporter.avatar_url || '/images/placeholder-avatar.png'} alt="user" className="w-6 h-6 rounded-full bg-slate-800 flex-shrink-0" />
+                  <span className="truncate">{report.reporter.display_name} ({report.reporter.email})</span>
+                </div>
+              ) : (
+                <span className="truncate">{report.reporterId}</span>
+              )}
+            </span>
+          </div>
+          <div className="grid grid-cols-4 gap-4">
+            <span className="text-gray-400 font-medium">Ngày gửi:</span>
+            <span className="col-span-3 text-gray-300">
+              {format(new Date(report.createdAt), 'dd MMMM yyyy, HH:mm', { locale: vi })}
+            </span>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-700">
+          {tUserId ? (
+            <Button 
+              variant="destructive" 
+              onClick={() => handleBanUser(tUserId, report.id)}
+              disabled={updatingId === `ban-${tUserId}` || report.status !== ReportStatus.PENDING || commentUser?.status === "locked"}
+              className="bg-red-600 hover:bg-red-700 text-white mr-auto disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {updatingId === `ban-${tUserId}` ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
+              {commentUser?.status === "locked" ? "User đã bị khoá" : "Khoá User này"}
+            </Button>
+          ) : (
+            <Button 
+              variant="destructive" 
+              disabled={true}
+              className="bg-red-600/50 text-white/50 mr-auto cursor-not-allowed"
+              title="Đang tìm kiếm thông tin người dùng..."
+            >
+              <Lock className="h-4 w-4 mr-2" />
+              Khoá User này
+            </Button>
+          )}
+
+          <Button 
+            onClick={() => handleUpdateStatus(report.id, ReportStatus.RESOLVED)}
+            disabled={updatingId === report.id || report.status === ReportStatus.RESOLVED}
+            className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {updatingId === report.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+            {report.status === ReportStatus.RESOLVED ? 'Đã xử lý' : 'Đánh dấu: Đã xử lý'}
+          </Button>
+          
+          {report.status !== ReportStatus.RESOLVED && (
+            <Button 
+              variant="outline" 
+              onClick={() => handleUpdateStatus(report.id, ReportStatus.REJECTED)}
+              disabled={updatingId === report.id || report.status === ReportStatus.REJECTED}
+              className="text-gray-300 hover:text-white border-slate-700 bg-transparent hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {updatingId === report.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
+              Từ chối
+            </Button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 export default function ViolationReportPage() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -118,6 +316,20 @@ export default function ViolationReportPage() {
       setReports(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
     } catch (error) {
       toast.error('Lỗi khi cập nhật trạng thái');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleBanUser = async (userId: string, reportId: string) => {
+    try {
+      setUpdatingId(`ban-${userId}`);
+      await apiClient.put(`/profile/admin/users/${userId}/status`, { status: "locked" });
+      toast.success('Đã khoá tài khoản người dùng!');
+      await handleUpdateStatus(reportId, ReportStatus.RESOLVED);
+    } catch (error) {
+      console.error('Lỗi khi khoá user:', error);
+      toast.error('Lỗi khi khoá tài khoản. Vui lòng thử lại sau.');
     } finally {
       setUpdatingId(null);
     }
@@ -281,110 +493,12 @@ export default function ViolationReportPage() {
                         {getStatusBadge(report.status)}
                       </TableCell>
                       <TableCell className="text-right space-x-2 pr-4">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white hover:bg-slate-800" title="Chi tiết">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-[500px] bg-[#1f1f1f] text-white border-slate-700">
-                            <DialogHeader>
-                              <DialogTitle className="text-white">Chi tiết báo cáo vi phạm</DialogTitle>
-                              <DialogDescription className="text-gray-400">
-                                Thông tin đầy đủ về báo cáo và đối tượng bị báo cáo.
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4 text-sm">
-                              <div className="grid grid-cols-4 items-center gap-4">
-                                <span className="text-slate-400 font-medium">Trạng thái:</span>
-                                <div className="col-span-3">{getStatusBadge(report.status)}</div>
-                              </div>
-                              <div className="grid grid-cols-4 items-center gap-4">
-                                <span className="text-gray-400 font-medium">Loại / ID:</span>
-                                <div className="col-span-3 flex items-center gap-2">
-                                  {getTargetBadge(report.targetType)}
-                                  <span className="font-mono text-gray-300 bg-slate-800/50 border border-slate-700 px-2 py-1 rounded text-xs truncate max-w-[150px]">
-                                    {report.targetId}
-                                  </span>
-                                </div>
-                              </div>
-                              {report.targetData && (
-                                <div className="grid grid-cols-4 gap-4">
-                                  <span className="text-gray-400 font-medium pt-1">Nội dung bị báo cáo:</span>
-                                  <div className="col-span-3 bg-red-950/30 border border-red-900/50 rounded p-3 text-gray-200 min-h-[60px] text-sm">
-                                    {report.targetType === ReportTargetType.COMMENT && (
-                                      <div className="flex flex-col gap-1">
-                                        {report.targetData.movie && (
-                                           <span className="text-xs text-blue-400 font-medium mb-1">
-                                             Phim: {report.targetData.movie.title}
-                                           </span>
-                                        )}
-                                        <p className="italic">"{report.targetData.comment}"</p>
-                                      </div>
-                                    )}
-                                    {report.targetType === ReportTargetType.USER && (
-                                      <div className="flex items-center gap-2">
-                                        <img src={report.targetData.avatar_url || '/images/placeholder-avatar.png'} alt="avatar" className="w-8 h-8 rounded-full" />
-                                        <div>
-                                          <p className="font-medium text-white">{report.targetData.display_name}</p>
-                                          <p className="text-xs text-gray-400">{report.targetData.email}</p>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                              <div className="grid grid-cols-4 gap-4">
-                                <span className="text-gray-400 font-medium pt-1">Lý do:</span>
-                                <div className="col-span-3 bg-[#262626] border border-slate-700 rounded p-3 text-gray-300 min-h-[80px]">
-                                  {report.reason}
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-4 gap-4 mt-2 items-center">
-                                <span className="text-gray-400 font-medium">Người gửi:</span>
-                                <span className="col-span-3 text-gray-300">
-                                  {report.reporter ? (
-                                    <div className="flex items-center gap-2">
-                                      <img src={report.reporter.avatar_url || '/images/placeholder-avatar.png'} alt="user" className="w-6 h-6 rounded-full bg-slate-800" />
-                                      <span>{report.reporter.display_name} ({report.reporter.email})</span>
-                                    </div>
-                                  ) : (
-                                    report.reporterId
-                                  )}
-                                </span>
-                              </div>
-                              <div className="grid grid-cols-4 gap-4">
-                                <span className="text-gray-400 font-medium">Ngày gửi:</span>
-                                <span className="col-span-3 text-gray-300">
-                                  {format(new Date(report.createdAt), 'dd MMMM yyyy, HH:mm', { locale: vi })}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-700">
-                              {report.status !== ReportStatus.RESOLVED && (
-                                <Button 
-                                  onClick={() => handleUpdateStatus(report.id, ReportStatus.RESOLVED)}
-                                  disabled={updatingId === report.id}
-                                  className="bg-green-600 hover:bg-green-700 text-white"
-                                >
-                                  {updatingId === report.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                                  Đánh dấu: Đã xử lý
-                                </Button>
-                              )}
-                              {report.status !== ReportStatus.REJECTED && (
-                                <Button 
-                                  variant="outline" 
-                                  onClick={() => handleUpdateStatus(report.id, ReportStatus.REJECTED)}
-                                  disabled={updatingId === report.id}
-                                  className="text-gray-300 hover:text-white border-slate-700 bg-transparent hover:bg-slate-800"
-                                >
-                                  {updatingId === report.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
-                                  Từ chối
-                                </Button>
-                              )}
-                            </div>
-                          </DialogContent>
-                        </Dialog>
+                        <ViolationReportDialog 
+                          report={report} 
+                          handleUpdateStatus={handleUpdateStatus} 
+                          handleBanUser={handleBanUser} 
+                          updatingId={updatingId} 
+                        />
                       </TableCell>
                     </TableRow>
                   ))
