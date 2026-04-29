@@ -113,7 +113,7 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
   }
   const genres: string[] = movieData.movie_genres?.map((mg: any) => mg.genre.name) || [];
 
-  const displayPoster = movie.posterUrl || movie.poster_url || "/images/placeholder-poster.png";
+  const displayPoster = movie.posterUrl || (movie as any).poster_url || "/images/placeholder-poster.png";
 
   const handleDelete = async () => {
     if (!movie || !movie.id) return;
@@ -137,7 +137,7 @@ const RenderPreviewCard = ({ movie, onMovieDeleted, onEditMovie }: {
         <div className="max-w-[160px] mx-auto">
           <div className="aspect-[2/3] relative rounded-md overflow-hidden bg-slate-800">
             <Image
-              src={movie.posterUrl || "/images/placeholder-poster.png"}
+              src={movie.posterUrl || (movie as any).poster_url || displayPoster || "/images/placeholder-poster.png"}
               alt={movie.title}
               fill
               className="object-contain"
