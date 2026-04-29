@@ -15,11 +15,12 @@ export interface PricingDisplayPlan extends SubscriptionPlan {
 interface PricingCardProps {
   plan: PricingDisplayPlan;
   isCurrentPlan: boolean;
+  isDowngrade?: boolean;
   isLoading?: boolean;
   onSubscribe: (planId: string) => void;
 }
 
-export default function PricingCard({ plan, isCurrentPlan, isLoading = false, onSubscribe }: PricingCardProps) {
+export default function PricingCard({ plan, isCurrentPlan, isDowngrade = false, isLoading = false, onSubscribe }: PricingCardProps) {
   const formatCurrency = (amount: number, currency: string) => {
     return amount === 0 
       ? "Miễn phí" 
@@ -73,22 +74,26 @@ export default function PricingCard({ plan, isCurrentPlan, isLoading = false, on
 
         <Button 
           onClick={() => onSubscribe(plan.id)}
-          disabled={isCurrentPlan || isLoading}
+          disabled={isCurrentPlan || isDowngrade || isLoading}
           size="sm"
           className={`w-full font-bold text-sm transition-all h-9
             ${isCurrentPlan 
               ? 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed' 
-              : plan.isRecommended 
-                ? 'bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25' 
-                : 'bg-white text-black hover:bg-slate-200'}`}
+              : isDowngrade
+                ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                : plan.isRecommended 
+                  ? 'bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25' 
+                  : 'bg-white text-black hover:bg-slate-200'}`}
         >
           {isCurrentPlan
             ? "Đang sử dụng"
-            : isLoading
-              ? "Đang xử lý..."
-              : plan.price === 0
-                ? "Bắt đầu ngay"
-                : "Mua ngay"}
+            : isDowngrade
+              ? "Không khả dụng"
+              : isLoading
+                ? "Đang xử lý..."
+                : plan.price === 0
+                  ? "Bắt đầu ngay"
+                  : "Mua ngay"}
         </Button>
       </CardContent>
     </Card>
