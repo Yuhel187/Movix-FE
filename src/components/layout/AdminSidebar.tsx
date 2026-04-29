@@ -78,17 +78,17 @@ const navGroups: NavGroupConfig[] = [
       { id: "billing", label: "Quản lý giao dịch", href: "/admin/billing-management", icon: DollarSign },
     ]
   },
-  {
-    title: "Hệ thống",
-    items: [
-      { id: "system-settings", label: "Cấu hình hệ thống", href: "/admin/system-settings", icon: Settings },
-    ]
-  },
+  // {
+  //   title: "Hệ thống",
+  //   items: [
+  //     { id: "system-settings", label: "Cấu hình hệ thống", href: "/admin/system-settings", icon: Settings },
+  //   ]
+  // },
 ];
 
 const masterDataNavItems = [
   {
-    id: "genres", 
+    id: "genres",
     label: "Thể loại",
     href: "/admin/master-data/genres",
     icon: Tag,
@@ -112,8 +112,8 @@ interface NavGroupProps {
   icon: React.ElementType;
   items: NavItem[];
   active: string;
-  open: boolean; 
-  isExpanded: boolean; 
+  open: boolean;
+  isExpanded: boolean;
   onToggleExpand: () => void;
   onClick: (id: string) => void;
 }
@@ -205,7 +205,7 @@ export default function AdminSidebar({
 }: AdminSidebarProps) {
   const [internalOpen, setInternalOpen] = useState<boolean>(defaultOpen);
   const open = typeof openProp === "boolean" ? openProp : internalOpen;
-  
+
   const [isMasterDataExpanded, setIsMasterDataExpanded] = useState(false);
 
   const [active, setActive] = useState<string>(defaultActive);
@@ -228,7 +228,7 @@ export default function AdminSidebar({
       const matchedMaster = masterDataNavItems.find((n) => pathname.startsWith(n.href));
       if (matchedMaster) {
         setActive(matchedMaster.id);
-        setIsMasterDataExpanded(true); 
+        setIsMasterDataExpanded(true);
       }
     }
   }, [pathname]);

@@ -102,6 +102,7 @@ interface WatchParty {
   episode?: Episode;
   members?: WatchPartyMember[];
   max_participants: number;
+  viewer_count?: number;
   _count?: {
     members: number;
   };
@@ -164,6 +165,7 @@ const generateMockParties = (count: number): WatchParty[] => {
       members: members,
       viewer_count: members.filter(m => m.is_online).length,
       max_participants: isPrivate ? 5 : 50,
+      scheduled_at: null,
     };
   });
 };
@@ -211,7 +213,7 @@ export default function WatchPartyMonitoring() {
   // Filter Logic
   const filteredParties = parties.filter(party =>
     party.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    party.join_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (party.join_code?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
     party.host_user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -425,10 +427,10 @@ export default function WatchPartyMonitoring() {
                   </TableCell>
 
                   {/* Participants Info */}
-                  <TableCell>
+                    <TableCell>
                     <div className="flex items-center gap-2 cursor-pointer hover:underline" onClick={() => handleOpenDetails(party)}>
                       <Users className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-bold">{party.viewers || 0}</span>
+                      <span className="font-bold">{party.viewer_count || 0}</span>
                       <span className="text-muted-foreground text-xs">/ {party.max_participants} max</span>
                     </div>
                   </TableCell>
@@ -524,7 +526,7 @@ export default function WatchPartyMonitoring() {
                         <span className="font-bold text-sm">{msg.user?.username || "Unknown"}</span>
                         <span className="text-[10px] text-slate-500 uppercase">{format(new Date(msg.created_at), "HH:mm:ss")}</span>
                       </div>
-                      <p className="text-sm bg-red-500/10 text-red-200 p-2 rounded border border-red-500/20">{msg.message}</p>
+                      <p className="text-sm bg-red-500/10 text-red-200 p-2 rounded border border-red-500/20">{msg.content}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

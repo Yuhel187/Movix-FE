@@ -68,7 +68,7 @@ export function MovieCard({
 
     const subTitle = movie.subTitle || "";
     const displayDuration = duration || (displayType === 'Phim bộ' ? `${seasons?.length || 0} Mùa` : 'Phim lẻ');
-    const displayPoster = movie.posterUrl || (movie as any).posterUrl || "https://static.vecteezy.com/system/resources/previews/020/276/914/non_2x/404-internet-error-page-icon-404-number-symbol-free-vector.jpg";
+    const displayPoster = movie.posterUrl || (movie as any).poster_url || (movie as any).posterUrl || "https://static.vecteezy.com/system/resources/previews/020/276/914/non_2x/404-internet-error-page-icon-404-number-symbol-free-vector.jpg";
     const cardRef = useRef<HTMLDivElement>(null)
     const [previewPosition, setPreviewPosition] = useState<"left" | "right" | "center">("center")
 

@@ -272,7 +272,7 @@ export default function WatchPartyRoomPage() {
 
         const fetchVoiceToken = async () => {
             try {
-                const res = await apiClient.get(`/livekit/generate-liveToken`, {
+                const res = await apiClient.get(`livekit/generate-liveToken`, {
                     params: { roomId, userId: user.id },
                 });
                 setLiveKitToken(res.data.token);
@@ -280,7 +280,7 @@ export default function WatchPartyRoomPage() {
             } catch (err: any) {
                 console.error("Không thể lấy LiveKit Token", err);
                 const errorMsg = err.response?.data?.message || "Lỗi kết nối Voice Chat. Hãy thử F5 tải lại trang.";
-                toast.error(errorMsg);
+                // toast.error(errorMsg);
                 setVoiceErrorDialog({ isOpen: true, message: errorMsg });
             }
         };
