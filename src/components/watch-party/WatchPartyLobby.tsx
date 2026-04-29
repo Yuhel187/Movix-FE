@@ -308,7 +308,7 @@ const router = useRouter();
                                         <div className="flex items-center justify-between p-3 group/btn hover:bg-white/5 transition-colors cursor-pointer">
                                             <div className="flex items-center gap-2 text-xs text-yellow-500">
                                                 <Clock className="w-3.5 h-3.5"/> 
-                                                <span className="font-mono font-medium">{format(new Date(room.scheduledAt), "HH:mm dd/MM", { locale: vi })}</span>
+                                                <span className="font-mono font-medium">{room.scheduledAt ? format(new Date(room.scheduledAt), "HH:mm dd/MM", { locale: vi }) : "N/A"}</span>
                                             </div>
 
                                             {user?.id === room.hostId ? (
@@ -331,7 +331,7 @@ const router = useRouter();
                                     {room.status === 'ended' && (
                                         <div className="p-2.5 text-center bg-slate-800/50">
                                             <span className="text-[10px] text-slate-500 flex items-center justify-center gap-1.5 font-medium uppercase tracking-wide">
-                                                <CheckCircle2 className="w-3 h-3" /> Kết thúc lúc {format(new Date(room.endedAt), "HH:mm", { locale: vi })}
+                                                <CheckCircle2 className="w-3 h-3" /> Kết thúc lúc {room.endedAt ? format(new Date(room.endedAt), "HH:mm", { locale: vi }) : "N/A"}
                                             </span>
                                         </div>
                                     )}
