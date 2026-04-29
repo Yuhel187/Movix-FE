@@ -138,6 +138,12 @@ export default function PricingPage() {
   );
 
   const currentPlanId = isActive ? subscription?.plan_id : null;
+  const currentPlanLevel = useMemo(() => {
+    if (!currentPlanId) return 0;
+    if (subscription?.plan?.level) return subscription.plan.level;
+    const plan = plans.find(p => p.id === currentPlanId);
+    return plan ? plan.level : 0;
+  }, [currentPlanId, subscription, plans]);
 
   const handleSubscribe = async (planId: string) => {
     const selectedPlan = plans.find((plan) => plan.id === planId);
@@ -154,6 +160,11 @@ export default function PricingPage() {
 
     if (currentPlanId === planId) {
       toast.info("Bạn đang sử dụng gói này");
+      return;
+    }
+
+    if (isActive && selectedPlan.level < currentPlanLevel) {
+      toast.error("Bạn không thể hạ cấp xuống gói thấp hơn");
       return;
     }
 
@@ -226,6 +237,7 @@ export default function PricingPage() {
               <PricingCard
                 plan={plan}
                 isCurrentPlan={currentPlanId === plan.id}
+                isDowngrade={isActive && plan.level < currentPlanLevel}
                 isLoading={isCheckingOut}
                 onSubscribe={handleSubscribe}
               />
