@@ -28,10 +28,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle, 
+import {
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
   Loader2,
   Filter,
   Eye,
@@ -62,7 +62,7 @@ const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, upda
         try {
           const res = await apiClient.get(`/comments/admin/${report.targetId}`);
           let data = res.data;
-          
+
           if (data && data.user_id && !data.user) {
             try {
               const userRes = await apiClient.get(`/profile/admin/users/${data.user_id}`);
@@ -71,7 +71,7 @@ const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, upda
               console.error("Lỗi khi lấy thông tin người dùng của bình luận:", err);
             }
           }
-          
+
           if (isMounted) setCommentDetails(data);
         } catch (error) {
           console.error("Lỗi khi lấy thông tin bình luận:", error);
@@ -84,8 +84,8 @@ const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, upda
     return () => { isMounted = false; };
   }, [open, report]);
 
-  const tUserId = report.targetType === ReportTargetType.USER 
-    ? report.targetId 
+  const tUserId = report.targetType === ReportTargetType.USER
+    ? report.targetId
     : (commentDetails?.user_id || commentDetails?.userId || commentDetails?.user?.id || report.targetData?.user_id || report.targetData?.userId || report.targetData?.user?.id || report.targetData?.author_id || report.targetData?.author?.id);
 
   const commentUser = commentDetails?.user || report.targetData?.user || report.targetData?.user_info || report.targetData?.author;
@@ -108,9 +108,9 @@ const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, upda
           <div className="grid grid-cols-4 items-center gap-4">
             <span className="text-slate-400 font-medium">Trạng thái:</span>
             <div className="col-span-3">
-               {report.status === ReportStatus.PENDING && <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">Chờ xử lý</Badge>}
-               {report.status === ReportStatus.RESOLVED && <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">Đã xử lý</Badge>}
-               {report.status === ReportStatus.REJECTED && <Badge variant="outline" className="bg-gray-500/10 text-gray-500 border-gray-500/20">Đã từ chối</Badge>}
+              {report.status === ReportStatus.PENDING && <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">Chờ xử lý</Badge>}
+              {report.status === ReportStatus.RESOLVED && <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">Đã xử lý</Badge>}
+              {report.status === ReportStatus.REJECTED && <Badge variant="outline" className="bg-gray-500/10 text-gray-500 border-gray-500/20">Đã từ chối</Badge>}
             </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -130,13 +130,13 @@ const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, upda
               {report.targetType === ReportTargetType.COMMENT && (
                 <div className="flex flex-col gap-2">
                   {report.targetData?.movie && (
-                      <span className="text-xs text-blue-400 font-medium pb-1 border-b border-red-900/30 truncate">
-                        Phim: {report.targetData.movie.title}
-                      </span>
+                    <span className="text-xs text-blue-400 font-medium pb-1 border-b border-red-900/30 truncate">
+                      Phim: {report.targetData.movie.title}
+                    </span>
                   )}
                   {loadingComment ? (
                     <div className="flex items-center gap-2 text-xs text-gray-400 py-2">
-                      <Loader2 className="h-3 w-3 animate-spin"/> Đang tải thông tin người dùng...
+                      <Loader2 className="h-3 w-3 animate-spin" /> Đang tải thông tin người dùng...
                     </div>
                   ) : (
                     commentUser && tUserId && (
@@ -198,8 +198,8 @@ const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, upda
         </div>
         <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-700">
           {tUserId ? (
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={() => handleBanUser(tUserId, report.id)}
               disabled={updatingId === `ban-${tUserId}` || report.status !== ReportStatus.PENDING || commentUser?.status === "locked"}
               className="bg-red-600 hover:bg-red-700 text-white mr-auto disabled:opacity-50 disabled:cursor-not-allowed"
@@ -208,8 +208,8 @@ const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, upda
               {commentUser?.status === "locked" ? "User đã bị khoá" : "Khoá User này"}
             </Button>
           ) : (
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               disabled={true}
               className="bg-red-600/50 text-white/50 mr-auto cursor-not-allowed"
               title="Đang tìm kiếm thông tin người dùng..."
@@ -219,7 +219,7 @@ const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, upda
             </Button>
           )}
 
-          <Button 
+          <Button
             onClick={() => handleUpdateStatus(report.id, ReportStatus.RESOLVED)}
             disabled={updatingId === report.id || report.status === ReportStatus.RESOLVED}
             className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
@@ -227,10 +227,10 @@ const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, upda
             {updatingId === report.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
             {report.status === ReportStatus.RESOLVED ? 'Đã xử lý' : 'Đánh dấu: Đã xử lý'}
           </Button>
-          
+
           {report.status !== ReportStatus.RESOLVED && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => handleUpdateStatus(report.id, ReportStatus.REJECTED)}
               disabled={updatingId === report.id || report.status === ReportStatus.REJECTED}
               className="text-gray-300 hover:text-white border-slate-700 bg-transparent hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -272,7 +272,7 @@ export default function ViolationReportPage() {
       if (filterTarget !== 'ALL') params.targetType = filterTarget;
 
       const res = await adminReportService.getAllReports(params) as any;
-      
+
       const rawReports = res.reports || res.data?.reports || res.data?.data || [];
       const mappedReports = rawReports.map((r: any) => ({
         ...r,
@@ -312,7 +312,7 @@ export default function ViolationReportPage() {
       setUpdatingId(id);
       await adminReportService.updateReportStatus(id, newStatus);
       toast.success('Cập nhật trạng thái báo cáo thành công!');
-      
+
       setReports(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
     } catch (error) {
       toast.error('Lỗi khi cập nhật trạng thái');
@@ -377,8 +377,8 @@ export default function ViolationReportPage() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-[#1f1f1f] p-1 rounded-md border border-slate-800">
             <Filter className="h-4 w-4 text-gray-400 ml-2" />
-            <Select 
-              value={filterTarget} 
+            <Select
+              value={filterTarget}
               onValueChange={(val: any) => setFilterTarget(val)}
             >
               <SelectTrigger className="w-[140px] border-0 bg-transparent text-gray-300 focus:ring-0">
@@ -389,14 +389,13 @@ export default function ViolationReportPage() {
                 <SelectItem value={ReportTargetType.COMMENT}>Bình luận</SelectItem>
                 <SelectItem value={ReportTargetType.USER}>Người dùng</SelectItem>
                 <SelectItem value={ReportTargetType.BLOG}>Bài viết</SelectItem>
-                <SelectItem value={ReportTargetType.WATCH_PARTY}>Phòng xem chung</SelectItem>
               </SelectContent>
             </Select>
 
             <span className="w-px h-6 bg-slate-700"></span>
 
-            <Select 
-              value={filterStatus} 
+            <Select
+              value={filterStatus}
               onValueChange={(val: any) => setFilterStatus(val)}
             >
               <SelectTrigger className="w-[130px] border-0 bg-transparent text-gray-300 focus:ring-0">
@@ -421,7 +420,7 @@ export default function ViolationReportPage() {
                 <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
               </div>
             )}
-            
+
             <Table className="w-full relative">
               <TableHeader className="sticky top-0 bg-[#262626] z-10 border-b border-slate-700">
                 <TableRow className="border-slate-700 hover:bg-transparent">
@@ -470,9 +469,9 @@ export default function ViolationReportPage() {
                                 @{report.targetData.display_name}
                               </span>
                             ) : (
-                               <span className="text-xs text-gray-500 max-w-[150px] truncate font-mono">
-                                 ID: {report.targetId}
-                               </span>
+                              <span className="text-xs text-gray-500 max-w-[150px] truncate font-mono">
+                                ID: {report.targetId}
+                              </span>
                             )
                           ) : (
                             <span className="text-xs text-gray-500 max-w-[150px] truncate font-mono">
@@ -493,11 +492,11 @@ export default function ViolationReportPage() {
                         {getStatusBadge(report.status)}
                       </TableCell>
                       <TableCell className="text-right space-x-2 pr-4">
-                        <ViolationReportDialog 
-                          report={report} 
-                          handleUpdateStatus={handleUpdateStatus} 
-                          handleBanUser={handleBanUser} 
-                          updatingId={updatingId} 
+                        <ViolationReportDialog
+                          report={report}
+                          handleUpdateStatus={handleUpdateStatus}
+                          handleBanUser={handleBanUser}
+                          updatingId={updatingId}
                         />
                       </TableCell>
                     </TableRow>
@@ -506,7 +505,7 @@ export default function ViolationReportPage() {
               </TableBody>
             </Table>
           </div>
-          
+
           {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-slate-700 bg-[#262626] flex-shrink-0">
               <div className="text-sm text-gray-400">

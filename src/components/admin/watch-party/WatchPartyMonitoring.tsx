@@ -125,51 +125,6 @@ interface MonitoringStats {
   pendingReports: number;
 }
 
-// --- Mock Data Generator ---
-
-const MOCK_USERS: User[] = [
-  { id: "u1", username: "admin_super", email: "admin@movix.com", avatar_url: "https://github.com/shadcn.png" },
-  { id: "u2", username: "movie_fan_99", email: "fan99@gmail.com" },
-  { id: "u3", username: "cinema_lover", email: "lover@yahoo.com", avatar_url: "https://github.com/shadcn.png" },
-  { id: "u4", username: "casual_viewer", email: "viewer@outlook.com" },
-  { id: "u5", username: "critic_pro", email: "critic@movix.com" },
-];
-
-const MOCK_MOVIES: Movie[] = [
-  { id: "m1", title: "Inception", poster_path: "/images/placeholder-poster.png" }, // Mock paths
-  { id: "m2", title: "The Matrix", poster_path: "/images/placeholder-poster.png" },
-  { id: "m3", title: "Interstellar", poster_path: "/images/placeholder-poster.png" },
-];
-
-const generateMockParties = (count: number): WatchParty[] => {
-  return Array.from({ length: count }).map((_, i) => {
-    const isPrivate = Math.random() > 0.7;
-    const memberCount = Math.floor(Math.random() * 20) + 1;
-    const members: WatchPartyMember[] = Array.from({ length: memberCount }).map((__, j) => ({
-      id: `m-${i}-${j}`,
-      user: MOCK_USERS[j % MOCK_USERS.length],
-      role: j === 0 ? "host" : "participant",
-      is_online: Math.random() > 0.2, // 80% online
-      joined_at: new Date().toISOString(),
-    }));
-
-    return {
-      id: `wp-${i}`,
-      title: `Watch Party #${i + 1} - ${isPrivate ? "Private" : "Public"}`,
-      join_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
-      is_private: isPrivate,
-      is_active: true,
-      started_at: new Date(Date.now() - Math.random() * 3600000).toISOString(), // Started within last hour
-      host_user: MOCK_USERS[i % MOCK_USERS.length],
-      movie: MOCK_MOVIES[i % MOCK_MOVIES.length],
-      members: members,
-      viewer_count: members.filter(m => m.is_online).length,
-      max_participants: isPrivate ? 5 : 50,
-      scheduled_at: null,
-    };
-  });
-};
-
 export default function WatchPartyMonitoring() {
   const [parties, setParties] = useState<WatchParty[]>([]);
   const [stats, setStats] = useState<MonitoringStats>({ activeRooms: 0, watchingUsers: 0, pendingReports: 0 });
@@ -210,14 +165,12 @@ export default function WatchPartyMonitoring() {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter Logic
   const filteredParties = parties.filter(party =>
     party.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (party.join_code?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
     party.host_user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Actions
   const handleCloseRoom = async (partyId: string) => {
     try {
       await apiClient.put(`/watch-party/${partyId}/end`);
@@ -310,7 +263,7 @@ export default function WatchPartyMonitoring() {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card className="bg-[#1e1e1e] border-slate-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -332,16 +285,7 @@ export default function WatchPartyMonitoring() {
             <p className="text-xs text-muted-foreground">Real-time participants</p>
           </CardContent>
         </Card>
-        {/* <Card className="bg-[#1e1e1e] border-slate-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Báo Cáo Chờ Xử Lý</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingReports}</div>
-            <p className="text-xs text-muted-foreground">Pending AI/User flags</p>
-          </CardContent>
-        </Card> */}
+        
       </div>
 
       <div className="flex items-center gap-2 max-w-sm">
@@ -353,7 +297,7 @@ export default function WatchPartyMonitoring() {
         />
       </div>
 
-      {/* Main Table */}
+      
       <Card>
         <Table>
           <TableHeader>
@@ -369,7 +313,7 @@ export default function WatchPartyMonitoring() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              // Loading Skeleton
+
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><div className="h-10 w-40 bg-muted animate-pulse rounded" /></TableCell>
@@ -390,7 +334,7 @@ export default function WatchPartyMonitoring() {
             ) : (
               filteredParties.map((party) => (
                 <TableRow key={party.id}>
-                  {/* Room Info */}
+                  
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="font-semibold truncate max-w-[250px]">{party.title || "Untitled Party"}</span>
@@ -405,7 +349,7 @@ export default function WatchPartyMonitoring() {
                     </div>
                   </TableCell>
 
-                  {/* Content Info */}
+                  
                   <TableCell>
                     <div className="text-sm">
                       <div className="font-medium">{party.movie?.title || "Unknown Movie"}</div>
@@ -415,7 +359,7 @@ export default function WatchPartyMonitoring() {
                     </div>
                   </TableCell>
 
-                  {/* Host Info */}
+                  
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Avatar className="h-8 w-8">
@@ -426,7 +370,7 @@ export default function WatchPartyMonitoring() {
                     </div>
                   </TableCell>
 
-                  {/* Participants Info */}
+                  
                     <TableCell>
                     <div className="flex items-center gap-2 cursor-pointer hover:underline" onClick={() => handleOpenDetails(party)}>
                       <Users className="h-4 w-4 text-muted-foreground" />
@@ -435,7 +379,7 @@ export default function WatchPartyMonitoring() {
                     </div>
                   </TableCell>
 
-                  {/* Time Info */}
+                  
                   <TableCell>
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <Clock className="h-3 w-3" />
@@ -455,7 +399,7 @@ export default function WatchPartyMonitoring() {
                     </div>
                   </TableCell>
 
-                  {/* Status */}
+                  
                   <TableCell>
                     {party.is_active ? (
                       <Badge className="bg-green-600 hover:bg-green-700 animate-pulse">Live</Badge>
@@ -464,7 +408,7 @@ export default function WatchPartyMonitoring() {
                     )}
                   </TableCell>
 
-                  {/* Actions */}
+                  
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -495,7 +439,7 @@ export default function WatchPartyMonitoring() {
         </Table>
       </Card>
 
-      {/* Flagged Messages Dialog */}
+      
       <Dialog open={isFlaggedMessagesOpen} onOpenChange={setIsFlaggedMessagesOpen}>
         <DialogContent className="max-w-2xl bg-[#1e1e1e] border-slate-800 text-white">
           <DialogHeader>
@@ -573,7 +517,7 @@ export default function WatchPartyMonitoring() {
         </DialogContent>
       </Dialog>
 
-      {/* Room Details & Member Management Dialog */}
+      
       <Dialog open={!!selectedParty} onOpenChange={(open) => !open && setSelectedParty(null)}>
         <DialogContent className="max-w-4xl bg-[#1e1e1e] border-slate-800 text-white p-0 overflow-hidden">
           {selectedParty && (
@@ -592,7 +536,7 @@ export default function WatchPartyMonitoring() {
 
               <div className="p-6 pt-0">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
-                  {/* Left: Info */}
+                  
                   <div className="space-y-4">
                     <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800 space-y-4">
                       <div className="space-y-1">
@@ -619,7 +563,7 @@ export default function WatchPartyMonitoring() {
                     </div>
                   </div>
 
-                  {/* Right: Member List */}
+                  
                   <div className="md:col-span-2 space-y-3">
                     <div className="flex justify-between items-center">
                       <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400">Thành viên online ({selectedParty.members?.filter(m => m.is_online).length})</h3>
@@ -704,7 +648,7 @@ export default function WatchPartyMonitoring() {
         </DialogContent>
       </Dialog>
 
-      {/* Action Confirm Dialog */}
+      
       <Dialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, type: null, partyId: null })}>
         <DialogContent className="bg-[#1e1e1e] border-slate-800 text-white shadow-2xl">
           <DialogHeader>

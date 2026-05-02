@@ -86,16 +86,12 @@ export default function UserSubscriptionsTab({
   const [total, setTotal] = useState(0);
   const [activePlanFilter, setActivePlanFilter] = useState<string | "all">(
     filterPlanId || "all",
-  );
-
-  // Grant Subscription states
+  );
   const [isGrantDialogOpen, setIsGrantDialogOpen] = useState(false);
   const [grantUserId, setGrantUserId] = useState("");
   const [grantPlanId, setGrantPlanId] = useState("");
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
-  const [grantLoading, setGrantLoading] = useState(false);
-
-  // Search User States
+  const [grantLoading, setGrantLoading] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearchingUser, setIsSearchingUser] = useState(false);
@@ -152,8 +148,7 @@ export default function UserSubscriptionsTab({
     try {
       const data = await subscriptionService.getAllPlans();
       setAvailablePlans(data);
-    } catch {
-      // safe fail
+    } catch {
     }
   };
 
@@ -402,7 +397,7 @@ export default function UserSubscriptionsTab({
           </Table>
         </div>
 
-        {/* Pagination */}
+        
         <div className="flex items-center justify-end space-x-2 mt-4 text-white">
           <Button
             variant="outline"
@@ -428,7 +423,7 @@ export default function UserSubscriptionsTab({
         </div>
       </CardContent>
 
-      {/* GRANT DIALOG */}
+      
       <Dialog open={isGrantDialogOpen} onOpenChange={setIsGrantDialogOpen}>
         <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-md">
           <DialogHeader>

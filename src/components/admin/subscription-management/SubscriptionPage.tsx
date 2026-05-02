@@ -95,27 +95,17 @@ const DEFAULT_FORM_DATA: Omit<SubscriptionPlan, "id"> = {
 };
 
 export default function SubscriptionPage() {
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-
-  // Dialog states
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-
-  // Edit states
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
   const [formData, setFormData] =
-    useState<Omit<SubscriptionPlan, "id">>(DEFAULT_FORM_DATA);
-
-  // Basic states
-  const [loading, setLoading] = useState(false);
-
-  // Focus plan cho Tab Danh Sách Người Dùng (bấm từ thẻ Package)
+    useState<Omit<SubscriptionPlan, "id">>(DEFAULT_FORM_DATA);
+  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("plans");
   const [filterPlanId, setFilterPlanId] = useState<string | undefined>(
     undefined,
-  );
-
-  // --- FETCH DATA ---
+  );
   const fetchPlans = async () => {
     try {
       setLoading(true);
@@ -149,9 +139,7 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     fetchPlans();
-  }, []);
-
-  // --- PLAN MANAGEMENT ---
+  }, []);
 
   const handleOpenAddDialog = () => {
     setCurrentPlan(null);
@@ -329,9 +317,7 @@ export default function SubscriptionPage() {
         setLoading(false);
       }
     }
-  };
-
-  // --- HELPERS ---
+  };
 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -399,7 +385,7 @@ export default function SubscriptionPage() {
                 key={plan.id}
                 className={`border-slate-800 bg-[#1e1e1e] overflow-hidden relative group transition-all duration-300 hover:border-slate-600 hover:shadow-lg flex flex-col`}
               >
-                {/* Overlay Gradient for Recommended Plans */}
+                
                 {plan.recommended && (
                   <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 z-20" />
                 )}
@@ -496,7 +482,7 @@ export default function SubscriptionPage() {
               </Card>
             ))}
 
-            {/* Card thêm mới nhanh */}
+            
             <button
               onClick={handleOpenAddDialog}
               className="border-2 border-dashed border-slate-800 rounded-lg flex flex-col items-center justify-center p-6 text-slate-500 hover:border-slate-600 hover:text-slate-300 hover:bg-slate-800/20 transition-all min-h-[400px] group"
@@ -514,7 +500,7 @@ export default function SubscriptionPage() {
         </TabsContent>
       </Tabs>
 
-      {/* --- DIALOG THÊM / SỬA GÓI --- */}
+      
       <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
         <DialogContent className="max-w-[90vw] w-full lg:max-w-4xl bg-[#1e1e1e] border-slate-800 text-white max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -524,7 +510,7 @@ export default function SubscriptionPage() {
           </DialogHeader>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 py-4">
-            {/* Cột trái: Thông tin cơ bản */}
+            
             <div className="space-y-4">
               <h3 className="text-lg font-semibold flex items-center text-primary">
                 <Settings className="mr-2 h-5 w-5" />
@@ -647,7 +633,7 @@ export default function SubscriptionPage() {
                 </div>
               </div>
 
-              {/* Watch Party Configuration */}
+              
               <div className="space-y-4 pt-4 border-t border-slate-700">
                 <h3 className="text-md font-semibold flex items-center text-primary">
                   <span className="mr-2">🎉</span> Cấu hình Watch Party
@@ -723,7 +709,7 @@ export default function SubscriptionPage() {
               </div>
             </div>
 
-            {/* Cột phải: Cấu hình Quyền lợi */}
+            
             <div className="space-y-4 flex flex-col h-full">
               <h3 className="text-lg font-semibold flex items-center text-primary">
                 <ListPlus className="mr-2 h-5 w-5" />
@@ -888,7 +874,7 @@ export default function SubscriptionPage() {
         </DialogContent>
       </Dialog>
 
-      {/* --- DIALOG XÓA --- */}
+      
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="bg-[#1e1e1e] border-slate-800 text-white">
           <DialogHeader>
