@@ -28,7 +28,7 @@ export default function GamificationPage() {
         </div>
       </div>
 
-      {/* Custom Tabs */}
+      
       <div className="flex space-x-1 bg-[#1F1F1F] p-1 rounded-lg w-fit border border-slate-800">
         <button
           onClick={() => setActiveTab("achievements")}

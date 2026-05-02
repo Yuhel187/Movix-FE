@@ -51,65 +51,28 @@ import {
   Zap, 
   Users,
   CheckCircle, 
-  XCircle 
+  XCircle,
+  MessageSquare
 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 
-// Mock Data
-const MOCK_ACHIEVEMENTS = [
-  {
-    id: "1",
-    name: "Tân Binh",
-    description: "Hoàn thành việc đăng ký và xem bộ phim đầu tiên.",
-    icon_url: "https://cdn-icons-png.flaticon.com/512/2583/2583344.png",
-    condition_type: "WATCH_TIME",
-    condition_value: 0, // Just need to watch 1 movie, let's say 0 means 'any activity'
-    reward_xp: 50,
-    is_active: true,
-  },
-  {
-    id: "2",
-    name: "Mọt Phim",
-    description: "Đạt 10 giờ xem phim trên hệ thống.",
-    icon_url: "https://cdn-icons-png.flaticon.com/512/2583/2583434.png",
-    condition_type: "WATCH_TIME",
-    condition_value: 600, // 600 minutes
-    reward_xp: 200,
-    is_active: true,
-  },
-  {
-    id: "3",
-    name: "Thợ Săn XP",
-    description: "Đạt mốc 1000 XP từ các hoạt động.",
-    icon_url: "https://cdn-icons-png.flaticon.com/512/2583/2583319.png",
-    condition_type: "XP",
-    condition_value: 1000,
-    reward_xp: 500,
-    is_active: true,
-  },
-  {
-    id: "4",
-    name: "Khách Quen",
-    description: "Đăng nhập liên tiếp 7 ngày.",
-    icon_url: "https://cdn-icons-png.flaticon.com/512/2583/2583290.png",
-    condition_type: "LOGIN_STREAK",
-    condition_value: 7,
-    reward_xp: 150,
-    is_active: false,
-  },
-];
-
-type Achievement = typeof MOCK_ACHIEVEMENTS[0];
+import { Achievement } from "@/types/gamification";
+import { 
+  getAllAchievements, 
+  createAchievement, 
+  updateAchievement, 
+  toggleAchievement,
+  deleteAchievement
+} from "@/services/gamification.service";
 
 export default function AchievementManager() {
-  const [achievements, setAchievements] = useState<Achievement[]>(MOCK_ACHIEVEMENTS);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  // Form State
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Achievement>>({
     name: "",
     description: "",
@@ -119,6 +82,22 @@ export default function AchievementManager() {
     reward_xp: 0,
     is_active: true,
   });
+
+  React.useEffect(() => {
+    fetchAchievements();
+  }, []);
+
+  const fetchAchievements = async () => {
+    try {
+      setLoading(true);
+      const res = await getAllAchievements(1, 100);
+      setAchievements(res.achievements || []);
+    } catch (error) {
+      toast.error("Lỗi khi tải danh sách danh hiệu");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredAchievements = achievements.filter((ach) =>
     ach.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -143,49 +122,53 @@ export default function AchievementManager() {
     setIsDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name || !formData.condition_type) {
       toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
       return;
     }
 
-    if (editingId) {
-      setAchievements((prev) =>
-        prev.map((ach) =>
-          ach.id === editingId ? { ...ach, ...formData } as Achievement : ach
-        )
-      );
-      toast.success("Cập nhật danh hiệu thành công");
-    } else {
-      const newAchievement: Achievement = {
-        ...formData,
-        id: Math.random().toString(36).substr(2, 9),
-      } as Achievement;
-      setAchievements([...achievements, newAchievement]);
-      toast.success("Tạo danh hiệu mới thành công");
+    try {
+      if (editingId) {
+        await updateAchievement(editingId, formData);
+        toast.success("Cập nhật danh hiệu thành công");
+      } else {
+        await createAchievement(formData as Omit<Achievement, 'id'>);
+        toast.success("Tạo danh hiệu mới thành công");
+      }
+      fetchAchievements();
+      setIsDialogOpen(false);
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi lưu");
     }
-    setIsDialogOpen(false);
   };
   const confirmDelete = (id: string) => {
     setDeleteId(id);
   };
 
-  const executeDelete = () => {
+  const executeDelete = async () => {
     if (deleteId) {
-      setAchievements((prev) => prev.filter((ach) => ach.id !== deleteId));
-      toast.success("Đã xóa danh hiệu");
-      setDeleteId(null);
+      try {
+        await deleteAchievement(deleteId);
+        toast.success("Đã xóa danh hiệu");
+        fetchAchievements();
+        setDeleteId(null);
+      } catch (error) {
+        toast.error("Có lỗi xảy ra khi xóa danh hiệu");
+      }
     }
   };
 
   const getConditionIcon = (type: string) => {
     switch (type) {
-      case "WATCH_TIME":
+      case "TOTAL_WATCH_TIME":
         return <Clock className="w-4 h-4 mr-1 text-blue-400" />;
       case "XP":
         return <Zap className="w-4 h-4 mr-1 text-yellow-400" />;
       case "LOGIN_STREAK":
         return <Users className="w-4 h-4 mr-1 text-green-400" />;
+      case "TOTAL_COMMENTS":
+        return <MessageSquare className="w-4 h-4 mr-1 text-pink-400" />;
       default:
         return null;
     }
@@ -193,12 +176,14 @@ export default function AchievementManager() {
 
   const getConditionText = (type: string, value: number) => {
      switch (type) {
-      case "WATCH_TIME":
+      case "TOTAL_WATCH_TIME":
         return `${value} phút xem`;
       case "XP":
         return `${value} XP`;
       case "LOGIN_STREAK":
         return `${value} ngày liên tiếp`;
+      case "TOTAL_COMMENTS":
+        return `${value} bình luận`;
       default:
         return value;
     }
@@ -206,7 +191,7 @@ export default function AchievementManager() {
 
   return (
     <div className="space-y-4">
-      {/* Header Actions */}
+      
       <div className="flex items-center justify-between gap-4 bg-[#1F1F1F] p-4 rounded-lg border border-slate-800">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
@@ -225,7 +210,7 @@ export default function AchievementManager() {
         </Button>
       </div>
 
-      {/* Main Table */}
+      
       <div className="rounded-md border border-slate-800 bg-[#1F1F1F]">
         <Table>
           <TableHeader className="bg-[#262626]">
@@ -251,13 +236,13 @@ export default function AchievementManager() {
                   <TableCell>
                     <div className="relative w-10 h-10 rounded-md overflow-hidden bg-slate-800 border border-slate-700">
                       {achievement.icon_url ? (
-                        <Image 
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img 
                           src={achievement.icon_url} 
                           alt={achievement.name} 
-                          fill 
-                          className="object-cover"
+                          className="object-cover w-full h-full"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = "https://via.placeholder.com/40"; // Fallback
+                            (e.target as HTMLImageElement).src = "https://via.placeholder.com/40";
                           }}
                         />
                       ) : (
@@ -329,7 +314,7 @@ export default function AchievementManager() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Dialog Form */}
+      
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="bg-[#1F1F1F] border-slate-800 text-white sm:max-w-[500px]">
           <DialogHeader>
@@ -372,8 +357,9 @@ export default function AchievementManager() {
                 </SelectTrigger>
                 <SelectContent className="bg-[#262626] border-slate-700 text-white">
                   <SelectItem value="XP">XP Tích Lũy</SelectItem>
-                  <SelectItem value="WATCH_TIME">Thời Gian Xem (phút)</SelectItem>
+                  <SelectItem value="TOTAL_WATCH_TIME">Thời Gian Xem (phút)</SelectItem>
                   <SelectItem value="LOGIN_STREAK">Chuỗi Đăng Nhập (ngày)</SelectItem>
+                  <SelectItem value="TOTAL_COMMENTS">Tổng Bình Luận</SelectItem>
                 </SelectContent>
               </Select>
             </div>
