@@ -69,3 +69,13 @@ export const updateSystemRank = async (data: any): Promise<any> => {
   const response = await apiClient.put('/admin/gamification/update-system-rank', data);
   return response.data.ranks;
 };
+
+export const getProfile = async (): Promise<any> => {
+  const response = await apiClient.get('/gamification/profile');
+  return response.data.data;
+};
+
+export const getAchievements = async (): Promise<any[]> => {
+  const response = await apiClient.get('/gamification/achievements');
+  return response.data.data;
+};
