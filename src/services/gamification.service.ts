@@ -74,3 +74,8 @@ export const getProfile = async (): Promise<any> => {
   const response = await apiClient.get('/gamification/profile');
   return response.data.data;
 };
+
+export const getAchievements = async (): Promise<any[]> => {
+  const response = await apiClient.get('/gamification/achievements');
+  return response.data.data;
+};

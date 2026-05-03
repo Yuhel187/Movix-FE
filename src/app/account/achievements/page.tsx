@@ -5,7 +5,7 @@ import { Trophy, Lock, Star, Medal, Award, Crown, Zap, Flame, Loader2 } from "lu
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getProfile } from "@/services/gamification.service";
+import { getProfile, getAchievements } from "@/services/gamification.service";
 import Image from "next/image";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,12 +24,19 @@ export default function AchievementsPage() {
       if (!user) return;
       try {
         setLoading(true);
-        const data = await getProfile();
-        setXp(data.xp || 0);
-        setTotalWatchTime(data.total_watch_time || 0);
-        setCurrentRank(data.current_rank || null);
-        setNextRank(data.next_rank || null);
-        setAchievements(data.achievements || []);
+        const [profileData, allAchievements] = await Promise.all([getProfile(), getAchievements()]);
+        setXp(profileData.xp || 0);
+        setTotalWatchTime(profileData.total_watch_time || 0);
+        setCurrentRank(profileData.current_rank || null);
+        setNextRank(profileData.next_rank || null);
+
+        const unlockedIds = new Set((profileData.achievements || []).map((a: any) => a.id));
+        const merged = (allAchievements || []).map((ach: any) => ({
+          ...ach,
+          is_unlocked: Boolean(ach.is_unlocked || ach.unlocked_at || unlockedIds.has(ach.id)),
+        }));
+
+        setAchievements(merged);
       } catch (error) {
         console.error("Failed to load achievements", error);
         toast.error("Không thể tải thông tin thành tựu.");
@@ -41,8 +48,14 @@ export default function AchievementsPage() {
     fetchData();
   }, [user]);
 
-  const unlockedAchievements = achievements.filter((a) => a.is_unlocked);
-  const lockedAchievements = achievements.filter((a) => !a.is_unlocked);
+  // normalize achievements: some API responses use `unlocked_at` instead of `is_unlocked`
+  const processedAchievements = achievements.map((a) => ({
+    ...a,
+    is_unlocked: Boolean(a.is_unlocked || a.unlocked_at),
+  }));
+
+  const unlockedAchievements = processedAchievements.filter((a) => a.is_unlocked);
+  const lockedAchievements = processedAchievements.filter((a) => !a.is_unlocked);
 
   const totalAchievements = achievements.length;
   const unlockedCount = unlockedAchievements.length;
@@ -174,11 +187,11 @@ export default function AchievementsPage() {
 
         <div className="space-y-4">
           {lockedAchievements.map((achievement) => {
-            let progressValue = achievement.progress ?? 0;
-            if (!progressValue) {
-              if (achievement.condition_type === "XP") progressValue = xp;
-              else if (achievement.condition_type === "TOTAL_WATCH_TIME") progressValue = totalWatchTime;
-            }
+              let progressValue = achievement.current_progress ?? achievement.progress ?? 0;
+              if (!progressValue) {
+                if (achievement.condition_type === "XP") progressValue = xp;
+                else if (achievement.condition_type === "TOTAL_WATCH_TIME") progressValue = totalWatchTime;
+              }
             const percent = achievement.condition_value > 0 
                 ? Math.min(100, Math.round((progressValue / achievement.condition_value) * 100))
                 : 0;
