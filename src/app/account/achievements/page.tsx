@@ -5,25 +5,31 @@ import { Trophy, Lock, Star, Medal, Award, Crown, Zap, Flame, Loader2 } from "lu
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { UserAchievement } from "@/types/gamification";
-import { getUserAchievements } from "@/services/gamification.service";
+import { getProfile } from "@/services/gamification.service";
 import Image from "next/image";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function AchievementsPage() {
   const { user } = useAuth();
-  const [achievements, setAchievements] = useState<UserAchievement[]>([]);
+  const [achievements, setAchievements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [xp, setXp] = useState<number>(0);
+  const [totalWatchTime, setTotalWatchTime] = useState<number>(0);
+  const [currentRank, setCurrentRank] = useState<any>(null);
+  const [nextRank, setNextRank] = useState<any>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       if (!user) return;
       try {
         setLoading(true);
-        // Pass dummy user ID since our mock service doesn't really use it yet
-        const data = await getUserAchievements(user.id || "user-1");
-        setAchievements(data);
+        const data = await getProfile();
+        setXp(data.xp || 0);
+        setTotalWatchTime(data.total_watch_time || 0);
+        setCurrentRank(data.current_rank || null);
+        setNextRank(data.next_rank || null);
+        setAchievements(data.achievements || []);
       } catch (error) {
         console.error("Failed to load achievements", error);
         toast.error("Không thể tải thông tin thành tựu.");
@@ -44,6 +50,15 @@ export default function AchievementsPage() {
   const completionPercentage = totalAchievements > 0 
     ? Math.round((unlockedCount / totalAchievements) * 100) 
     : 0;
+
+  const rankProgressPercent = React.useMemo(() => {
+    if (!currentRank) return 0;
+    if (!nextRank) return 100;
+    const denom = (nextRank.min_xp - currentRank.min_xp);
+    if (!denom || denom <= 0) return 100;
+    const p = Math.round(((xp - (currentRank.min_xp || 0)) / denom) * 100);
+    return Math.max(0, Math.min(100, p));
+  }, [xp, currentRank, nextRank]);
 
   if (loading) {
      return (
@@ -73,13 +88,22 @@ export default function AchievementsPage() {
             <div>
               <h2 className="text-lg font-semibold text-white">Tiến độ tổng quan</h2>
               <p className="text-sm text-gray-400">Bạn đã mở khóa {unlockedCount}/{totalAchievements} danh hiệu</p>
+              <div className="mt-2 text-sm text-gray-300">
+                <span className="font-medium">Hạng hiện tại:</span> {currentRank?.name || "—"}
+                {nextRank && (
+                  <span className="ml-3 text-gray-400">Tiến tới: {nextRank.name}</span>
+                )}
+              </div>
             </div>
-            <div className="text-3xl font-bold text-yellow-500">{completionPercentage}%</div>
+            <div className="text-3xl font-bold text-yellow-500">{rankProgressPercent}%</div>
           </div>
           <div className="h-4 w-full bg-zinc-800 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 transition-all duration-1000 ease-out"
-              style={{ width: `${completionPercentage}%` }}
+            <div
+              className={cn(
+                "h-full transition-all duration-1000 ease-out",
+                nextRank ? "bg-gradient-to-r from-yellow-600 to-yellow-400" : "bg-gradient-to-r from-yellow-400 to-yellow-200 shadow-lg ring-2 ring-yellow-400/20"
+              )}
+              style={{ width: `${rankProgressPercent}%` }}
             />
           </div>
         </CardContent>
@@ -150,8 +174,13 @@ export default function AchievementsPage() {
 
         <div className="space-y-4">
           {lockedAchievements.map((achievement) => {
+            let progressValue = achievement.progress ?? 0;
+            if (!progressValue) {
+              if (achievement.condition_type === "XP") progressValue = xp;
+              else if (achievement.condition_type === "TOTAL_WATCH_TIME") progressValue = totalWatchTime;
+            }
             const percent = achievement.condition_value > 0 
-                ? Math.min(100, Math.round((achievement.progress / achievement.condition_value) * 100))
+                ? Math.min(100, Math.round((progressValue / achievement.condition_value) * 100))
                 : 0;
             
             return (
@@ -175,10 +204,10 @@ export default function AchievementsPage() {
 
                 {/* Content */}
                 <div className="flex-1 w-full text-center sm:text-left">
-                  <div className="flex flex-col sm:flex-row justify-between items-center mb-2">
+                    <div className="flex flex-col sm:flex-row justify-between items-center mb-2">
                     <h3 className="font-semibold text-gray-300">{achievement.name}</h3>
                     <span className="text-xs font-mono text-gray-500 bg-zinc-900 px-2 py-1 rounded">
-                      {achievement.progress}/{achievement.condition_value}
+                      {progressValue}/{achievement.condition_value}
                     </span>
                   </div>
                   
