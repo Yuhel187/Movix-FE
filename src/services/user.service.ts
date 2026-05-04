@@ -5,6 +5,8 @@ export interface UserProfile {
   email: string;
   username: string;
   display_name: string | null;
+  display_name_color?: string | null;
+  user_badge?: string | null;
   avatar_url: string | null;
   gender: 'male' | 'female' | 'other' | null;
   role: {
@@ -16,6 +18,7 @@ export interface UpdateProfileData {
   display_name?: string;
   gender?: 'male' | 'female' | 'other';
   avatar_url?: string | null;
+  display_name_color?: string | null;
 }
 
 

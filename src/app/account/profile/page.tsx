@@ -7,9 +7,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { getMyProfile, updateMyProfile } from '@/services/user.service';
+import { getProfile as getGamificationProfile } from '@/services/gamification.service';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Link from 'next/link';
+
+const HEX_COLOR_REGEX = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
 
 export default function ProfilePage() {
   const { user, setUser } = useAuth();
@@ -19,17 +22,26 @@ export default function ProfilePage() {
   const [gender, setGender] = useState<'male' | 'female' | 'other' | undefined>(undefined);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [email, setEmail] = useState('');
+  const [displayNameColor, setDisplayNameColor] = useState('#ffffff');
+  const [isColorLocked, setIsColorLocked] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         setIsLoading(true);
-        const profile = await getMyProfile();
+        const [profile, gamification] = await Promise.all([
+          getMyProfile(),
+          getGamificationProfile().catch(() => null),
+        ]);
 
         setDisplayName(profile.display_name || profile.username);
         setGender(profile.gender || undefined);
         setAvatarUrl(profile.avatar_url);
         setEmail(profile.email);
+        setDisplayNameColor(profile.display_name_color || '#ffffff');
+
+        const rankKey = gamification?.current_rank?.key;
+        setIsColorLocked(rankKey === 'NEWBIE');
 
       } catch (error) {
         console.error('Lỗi khi tải profile:', error);
@@ -45,10 +57,17 @@ export default function ProfilePage() {
   const handleSubmit = async () => {
     const toastId = toast.loading('Đang cập nhật thông tin...');
 
+    const normalizedColor = displayNameColor.trim();
+    if (normalizedColor && !HEX_COLOR_REGEX.test(normalizedColor)) {
+      toast.error('Màu tên không hợp lệ. Vui lòng dùng mã hex (#RGB hoặc #RRGGBB).', { id: toastId });
+      return;
+    }
+
     const updateData = {
       display_name: displayName,
       gender: gender,
       avatar_url: avatarUrl,
+      display_name_color: normalizedColor || null,
     };
 
     try {
@@ -60,6 +79,7 @@ export default function ProfilePage() {
           ...user,
           display_name: updatedProfile.display_name ?? undefined,
           avatarUrl: updatedProfile.avatar_url,
+          display_name_color: updatedProfile.display_name_color ?? null,
         });
       }
     } catch (error) {
@@ -118,6 +138,14 @@ export default function ProfilePage() {
             setDisplayName={setDisplayName}
             gender={gender}
             setGender={setGender}
+            displayNameColor={displayNameColor}
+            setDisplayNameColor={setDisplayNameColor}
+            isColorLocked={isColorLocked}
+            colorHelperText={
+              isColorLocked
+                ? 'Bạn cần đạt hạng Cinephile (MEMBER) trở lên để đổi màu tên hiển thị.'
+                : 'Nhập mã màu hex hoặc chọn màu gợi ý để cá nhân hóa tên hiển thị.'
+            }
           />
         </div>
 

@@ -11,6 +11,7 @@ interface AuthUser {
   role: string;
   avatarUrl?: string | null;
   display_name?: string;
+  display_name_color?: string | null;
 }
 
 interface AuthContextType {
@@ -33,7 +34,8 @@ const normalizeUser = (data: any): AuthUser => {
   return {
     ...data,
     role: roleNormalized,
-    avatarUrl: data.avatar_url || data.avatarUrl || null
+    avatarUrl: data.avatar_url || data.avatarUrl || null,
+    display_name_color: data.display_name_color ?? null,
   };
 };
 

@@ -1,6 +1,20 @@
 import apiClient from '@/lib/apiClient';
 import { Achievement, UserAchievement } from "@/types/gamification";
 
+export interface GamificationRank {
+  key: 'NEWBIE' | 'MEMBER' | 'EXPERT' | 'LEGEND' | string;
+  name: string;
+  min_xp: number;
+}
+
+export interface GamificationProfile {
+  xp: number;
+  total_watch_time: number;
+  current_rank: GamificationRank | null;
+  next_rank: GamificationRank | null;
+  achievements: Achievement[];
+}
+
 export const getAllAchievements = async (page = 1, limit = 100, isActive?: boolean): Promise<{achievements: Achievement[], total: number, page: number, totalPages: number}> => {
   const params: any = { page, limit };
   if (isActive !== undefined) {
@@ -70,7 +84,7 @@ export const updateSystemRank = async (data: any): Promise<any> => {
   return response.data.ranks;
 };
 
-export const getProfile = async (): Promise<any> => {
+export const getProfile = async (): Promise<GamificationProfile> => {
   const response = await apiClient.get('/gamification/profile');
   return response.data.data;
 };
