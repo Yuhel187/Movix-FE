@@ -131,11 +131,13 @@ export function MovieCommentSection({ movieId, onRatingUpdate }: MovieCommentSec
           {isLoading ? (
             <CommentSkeleton />
           ) : (
-            <CommentList
-              comments={comments}
-              movieId={movieId}
-              onCommentUpdated={fetchComments}
-            />
+            <div className="mt-5">
+              <CommentList
+                comments={comments}
+                movieId={movieId}
+                onCommentUpdated={fetchComments}
+              />
+            </div>
           )}
         </div>
         <div className={cn(
