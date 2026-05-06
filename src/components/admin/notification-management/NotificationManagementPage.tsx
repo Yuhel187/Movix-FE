@@ -60,6 +60,23 @@ export default function NotificationPage() {
           return;
       }
 
+      const selectedChannels: string[] = [];
+      // Nếu chọn In-App mà không chọn Push thì gửi IN_APP, nếu có Push thì gửi PUSH (bao gồm cả In-App)
+      if (channels.push) {
+          selectedChannels.push("PUSH");
+      } else if (channels.inApp) {
+          selectedChannels.push("IN_APP");
+      }
+      
+      if (channels.email) {
+          selectedChannels.push("EMAIL");
+      }
+
+      if (selectedChannels.length === 0) {
+          toast.error("Vui lòng chọn ít nhất một kênh gửi.");
+          return;
+      }
+
       setIsSending(true);
       try {
           await apiClient.post('/notifications/send', {
@@ -67,9 +84,11 @@ export default function NotificationPage() {
               targetUserId: targetType === 'specific' ? targetUserId : undefined,
               title,
               message,
-              url: actionUrl
+              url: actionUrl,
+              channels: selectedChannels,
+              scheduledAt: scheduledDate ? scheduledDate.toISOString() : undefined
           });
-          toast.success("Đã gửi thông báo thành công!");
+          toast.success("Thông báo đang được hệ thống xử lý gửi đi!");
           setTitle("");
           setMessage("");
           setRefreshHistory(prev => prev + 1);
