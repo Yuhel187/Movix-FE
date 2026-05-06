@@ -8,6 +8,7 @@ import { vi } from "date-fns/locale";
 import { Clock, ExternalLink, BellRing } from "lucide-react";
 import apiClient from "@/lib/apiClient";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface HistoryItem {
     id: string;
