@@ -48,6 +48,7 @@ import {
 } from "lucide-react"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { useAuth } from "@/contexts/AuthContext"
+import { blogService } from "@/services/blog.service"
 // --- MOCK DATA ---
 const MOCK_USER = {
     username: "Nguyễn Phát",
@@ -201,9 +202,20 @@ export default function MockCreatePostModalContent({
 
         setIsLoading(true)
 
-        // GIẢ LẬP CALL API
-        setTimeout(() => {
-            setIsLoading(false)
+        try {
+            const formData = new FormData()
+            formData.append("title", title.trim())
+            formData.append("content", bodyContent)
+            formData.append("status", status)
+            if (images.length > 0) {
+                formData.append("thumbnail", images[0])
+                for (let i = 1; i < images.length; i++) {
+                    formData.append("images", images[i])
+                }
+            }
+
+            await blogService.createBlogPost(formData)
+            
             setOpen(false)
             setTitle("")
             setContent("")
@@ -213,8 +225,13 @@ export default function MockCreatePostModalContent({
             setDeletedAttachmentIds([])
             setEditReason("")
 
-            if (onSuccess) onSuccess();
-        }, 1000)
+            if (onSuccess) onSuccess()
+        } catch (err: any) {
+            console.error(err)
+            setError(err.response?.data?.message || "Đã có lỗi xảy ra khi tạo bài viết.")
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     const removeFile = (type: "image" | "pdf", indexToRemove: number) => {

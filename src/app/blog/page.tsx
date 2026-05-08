@@ -1,109 +1,111 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Navbar from "@/components/layout/NavBar";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { PostCard, Post } from "@/components/post/PostCard";
 import { CreatePostTrigger } from "@/components/post/CreatePostTrigger";
-import Link from "next/link";
-import { Sparkles, MessageSquare, TrendingUp } from "lucide-react";
+import { Sparkles, MessageSquare, TrendingUp, Loader2 } from "lucide-react";
+import { blogService, GetAllBlogsParams } from "@/services/blog.service";
+import { formatDistanceToNow } from "date-fns";
+import { vi } from "date-fns/locale";
 
-// Extend Post interface for filtering
+// Extended interface mapping API data to Post format expected by PostCard
 interface BlogPost extends Post {
   category: "newest" | "reviews" | "top";
+  createdAt: string;
 }
-
-// --- MOCK DATA ---
-const BLOG_POSTS: BlogPost[] = [
-  {
-    id: "1",
-    author: {
-        username: "Admin Movix",
-        avatarUrl: "/images/logo.png",
-    },
-    timeAgo: "2 giờ trước",
-    content: "Khi mùa xuân đang dần chuyển sang hè, các hãng phim lớn cũng bắt đầu tung ra những bom tấn đầu tiên. Cùng điểm qua những cái tên không thể bỏ lỡ trong tháng 3 này. Dune Part 2 vẫn đang làm mưa làm gió tại các rạp chiếu...",
-    imageUrl: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1000&auto=format&fit=crop",
-    stats: {
-        likes: 120,
-        comments: 45,
-        shares: 12
-    },
-    category: "newest"
-  },
-  {
-    id: "2",
-    author: {
-        username: "Minh Tuấn",
-        avatarUrl: "https://github.com/shadcn.png",
-    },
-    timeAgo: "5 giờ trước",
-    content: "REVIEW CHI TIẾT: Dune Part 2.\nSau thành công vang dội của phần 1, đạo diễn Denis Villeneuve tiếp tục đưa chúng ta trở lại Arrakis với quy mô hoành tráng hơn gấp bội. Kịch bản chặt chẽ, hình ảnh mãn nhãn và âm nhạc của Hans Zimmer vẫn là điểm nhấn không thể chối từ...",
-    imageUrl: "https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=1000&auto=format&fit=crop",
-    stats: {
-        likes: 85,
-        comments: 32,
-        shares: 5
-    },
-    category: "reviews"
-  },
-  {
-    id: "3",
-    author: {
-        username: "Support Team",
-        avatarUrl: "/images/support.png",
-    },
-    timeAgo: "1 ngày trước",
-    content: "Xem phim cùng bạn bè chưa bao giờ dễ dàng đến thế. Tìm hiểu cách tạo phòng, mời bạn bè và chat voice trực tiếp trên Movix với tính năng Watch Party mới nhất...",
-    imageUrl: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=1000&auto=format&fit=crop",
-    stats: {
-        likes: 210,
-        comments: 88,
-        shares: 45
-    },
-    category: "newest"
-  },
-  {
-    id: "4",
-    author: {
-        username: "Lan Anh",
-        avatarUrl: "https://github.com/shadcn.png",
-    },
-    timeAgo: "2 ngày trước",
-    content: "Thảo luận: Oscar 2026 và những dự đoán táo bạo.\nLiệu phim nghệ thuật hay bom tấn thương mại sẽ lên ngôi? Cùng nhìn lại những ứng cử viên sáng giá nhất cho hạng mục Phim Hay Nhất...",
-    imageUrl: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=1000&auto=format&fit=crop",
-    stats: {
-        likes: 156,
-        comments: 142,
-        shares: 18
-    },
-    category: "top"
-  },
-  {
-    id: "5",
-    author: {
-        username: "Phê Phim",
-        avatarUrl: "https://yt3.googleusercontent.com/ytc/AIdro_nC4q7q4j-9vM4d8d8d8d8d8d8d=s900-c-k-c0x00ffffff-no-rj",
-    },
-    timeAgo: "3 ngày trước",
-    content: "Top 10 Easter Eggs bạn có thể đã bỏ lỡ trong 'The Batman Part II'. Matt Reeves thực sự là một thiên tài trong việc cài cắm các chi tiết nhỏ...",
-    imageUrl: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=1000&auto=format&fit=crop",
-    stats: {
-        likes: 312,
-        comments: 56,
-        shares: 21
-    },
-    category: "reviews"
-  }
-];
 
 export default function BlogPage() {
   const [activeFilter, setActiveFilter] = useState<"newest" | "reviews" | "top">("newest");
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
-  const filteredPosts = activeFilter === "newest" 
-    ? BLOG_POSTS 
-    : BLOG_POSTS.filter(post => post.category === activeFilter);
+  const mapApiDataToPost = (item: any): BlogPost => {
+    return {
+      id: item.id,
+      title: item.title,
+      category: "newest", 
+      createdAt: item.created_at,
+      author: {
+        username: item.user?.display_name || "Unknown User",
+        avatarUrl: item.user?.avatar_url || "/images/logo.png",
+      },
+      timeAgo: item.created_at ? formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: vi }) : "Vừa xong",
+      content: item.excerpt || item.content || "",
+      imageUrl: item.thumbnail || (item.images && item.images.length > 0 ? item.images[0] : undefined),
+      stats: {
+        likes: item._count?.likes || 0,
+        comments: item._count?.comments || 0, 
+        shares: item._count?.bookmarks || 0, 
+      },
+    };
+  };
+
+  const fetchBlogs = useCallback(async (pageNum: number, isLoadMore = false) => {
+    try {
+      if (isLoadMore) setIsLoadingMore(true);
+      else setIsLoading(true);
+      const params: GetAllBlogsParams = {
+        page: pageNum,
+        limit: 10,
+      };
+
+      const response = await blogService.getAllBlogs(params);
+      
+      const newPosts = (response.data || []).map(mapApiDataToPost);
+      
+      if (isLoadMore) {
+        setPosts(prev => [...prev, ...newPosts]);
+      } else {
+        setPosts(newPosts);
+      }
+
+      setHasMore(response.pagination?.page < response.pagination?.pages);
+      setPage(response.pagination?.page || 1);
+    } catch (error) {
+      console.error("Failed to fetch blogs:", error);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+    fetchBlogs(1, false);
+  }, [activeFilter, fetchBlogs]);
+
+  const handleLoadMore = () => {
+    if (!isLoadingMore && hasMore) {
+      fetchBlogs(page + 1, true);
+    }
+  };
+
+  const getFilteredAndSortedPosts = () => {
+    let sortedPosts = [...posts];
+    
+    if (activeFilter === "top") {
+        sortedPosts.sort((a, b) => b.stats.likes - a.stats.likes);
+    } else if (activeFilter === "reviews") {
+        sortedPosts = sortedPosts.filter(p => p.content.length > 200); 
+    } else { 
+        sortedPosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+
+    return sortedPosts;
+  }
+
+  const displayedPosts = getFilteredAndSortedPosts();
+
+  const handlePostCreated = () => {
+     fetchBlogs(1, false);
+     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="bg-black min-h-screen flex flex-col font-sans dark text-white">
@@ -121,7 +123,7 @@ export default function BlogPage() {
                </p>
                <div className="pt-3 flex flex-col sm:flex-row sm:items-center gap-3 w-full">
                  <div className="w-full">
-                    <CreatePostTrigger />
+                    <CreatePostTrigger onPostCreated={handlePostCreated} />
                  </div>
                </div>
              </div>
@@ -159,8 +161,12 @@ export default function BlogPage() {
 
              {/* Blog List - Social Feed Layout */}
              <div className="space-y-6">
-               {filteredPosts.length > 0 ? (
-                 filteredPosts.map((post) => (
+               {isLoading && page === 1 ? (
+                 <div className="flex justify-center items-center py-10">
+                   <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
+                 </div>
+               ) : displayedPosts.length > 0 ? (
+                 displayedPosts.map((post) => (
                    <div key={post.id} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                      <PostCard post={post} />
                    </div>
@@ -173,11 +179,19 @@ export default function BlogPage() {
              </div>
 
              {/* Load More */}
-             <div className="mt-10 text-center flex justify-center">
-                 <Button variant="ghost" className="text-zinc-500 hover:text-white hover:bg-zinc-900 transition-all">
-                    Đang tải thêm...
-                 </Button>
-             </div>
+             {hasMore && displayedPosts.length > 0 && (
+               <div className="mt-10 text-center flex justify-center">
+                   <Button 
+                     variant="ghost" 
+                     className="text-zinc-500 hover:text-white hover:bg-zinc-900 transition-all"
+                     onClick={handleLoadMore}
+                     disabled={isLoadingMore}
+                   >
+                      {isLoadingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      {isLoadingMore ? "Đang tải thêm..." : "Tải thêm"}
+                   </Button>
+               </div>
+             )}
           </div>
        </main>
 
