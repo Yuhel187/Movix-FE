@@ -19,4 +19,11 @@ export const adminReportService = {
     const response = await api.patch(`/admin/reports/update-status/${id}`, { status });
     return response.data;
   },
+
+  getFinancialReport: async (startDate: string, endDate: string): Promise<any> => {
+    const response = await api.get('/admin/reports/get-financial-report', {
+      params: { startDate, endDate }
+    });
+    return response.data;
+  },
 };
