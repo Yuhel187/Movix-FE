@@ -26,4 +26,9 @@ export const adminReportService = {
     });
     return response.data;
   },
+
+  moderateAndHideBlogPost: async (reportId: string, blogId: string): Promise<any> => {
+    const response = await api.patch(`/admin/reports/moderate-and-hide-blog-post/${reportId}`, { blogId });
+    return response.data;
+  },
 };
