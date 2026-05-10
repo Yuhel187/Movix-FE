@@ -38,8 +38,10 @@ import {
   Lock
 } from "lucide-react";
 import { adminReportService } from "@/services/admin.report.service";
+import { adminBlogService } from "@/services/admin.blog.service";
 import apiClient from "@/lib/apiClient";
 import { Report, ReportStatus, ReportTargetType } from "@/types/report";
+import { BlogPost } from "@/types/blog";
 import {
   Dialog,
   DialogContent,
@@ -49,16 +51,19 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, updatingId }: any) => {
+const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, handleModerateBlog, updatingId }: any) => {
   const [commentDetails, setCommentDetails] = useState<any>(null);
-  const [loadingComment, setLoadingComment] = useState(false);
+  const [blogDetails, setBlogDetails] = useState<BlogPost | null>(null);
+  const [loadingTarget, setLoadingTarget] = useState(false);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
-    const fetchCommentDetails = async () => {
-      if (open && report.targetType === ReportTargetType.COMMENT && report.targetId) {
-        if (isMounted) setLoadingComment(true);
+    const fetchTargetDetails = async () => {
+      if (!open || !report.targetId) return;
+
+      if (report.targetType === ReportTargetType.COMMENT) {
+        if (isMounted) setLoadingTarget(true);
         try {
           const res = await apiClient.get(`/comments/admin/${report.targetId}`);
           let data = res.data;
@@ -76,19 +81,29 @@ const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, upda
         } catch (error) {
           console.error("Lỗi khi lấy thông tin bình luận:", error);
         } finally {
-          if (isMounted) setLoadingComment(false);
+          if (isMounted) setLoadingTarget(false);
+        }
+      } else if (report.targetType === ReportTargetType.BLOG) {
+        if (isMounted) setLoadingTarget(true);
+        try {
+          const data = await adminBlogService.getBlogDetail(report.targetId);
+          if (isMounted) setBlogDetails(data);
+        } catch (error) {
+          console.error("Lỗi khi lấy thông tin bài viết:", error);
+        } finally {
+          if (isMounted) setLoadingTarget(false);
         }
       }
     };
-    fetchCommentDetails();
+    fetchTargetDetails();
     return () => { isMounted = false; };
   }, [open, report]);
 
   const tUserId = report.targetType === ReportTargetType.USER
     ? report.targetId
-    : (commentDetails?.user_id || commentDetails?.userId || commentDetails?.user?.id || report.targetData?.user_id || report.targetData?.userId || report.targetData?.user?.id || report.targetData?.author_id || report.targetData?.author?.id);
+    : (commentDetails?.user_id || commentDetails?.userId || commentDetails?.user?.id || blogDetails?.user_id || blogDetails?.user?.id || report.targetData?.user_id || report.targetData?.userId || report.targetData?.user?.id || report.targetData?.author_id || report.targetData?.author?.id);
 
-  const commentUser = commentDetails?.user || report.targetData?.user || report.targetData?.user_info || report.targetData?.author;
+  const commentUser = commentDetails?.user || blogDetails?.user || report.targetData?.user || report.targetData?.user_info || report.targetData?.author;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -134,9 +149,9 @@ const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, upda
                       Phim: {report.targetData.movie.title}
                     </span>
                   )}
-                  {loadingComment ? (
+                  {loadingTarget ? (
                     <div className="flex items-center gap-2 text-xs text-gray-400 py-2">
-                      <Loader2 className="h-3 w-3 animate-spin" /> Đang tải thông tin người dùng...
+                      <Loader2 className="h-3 w-3 animate-spin" /> Đang tải thông tin...
                     </div>
                   ) : (
                     commentUser && tUserId && (
@@ -154,6 +169,34 @@ const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, upda
                   <p className="italic text-gray-300 bg-black/40 p-2 rounded mt-1 border-l-2 border-red-500 break-words">
                     "{commentDetails?.comment || report.targetData?.comment}"
                   </p>
+                </div>
+              )}
+              {report.targetType === ReportTargetType.BLOG && (
+                <div className="flex flex-col gap-2">
+                  {loadingTarget ? (
+                    <div className="flex items-center gap-2 text-xs text-gray-400 py-2">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Đang tải thông tin...
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 bg-black/20 p-2 rounded">
+                        <img src={commentUser?.avatar_url || '/images/placeholder-avatar.png'} alt="user" className="w-6 h-6 rounded-full" />
+                        <div className="flex flex-col overflow-hidden">
+                          <span className="text-xs font-semibold text-white truncate">{commentUser?.display_name || 'Người dùng ẩn danh'}</span>
+                          <span className="text-[10px] text-gray-500">Tác giả bài viết</span>
+                        </div>
+                      </div>
+                      <div className="mt-1">
+                        <p className="text-xs text-blue-400 font-medium mb-1">Tiêu đề bài viết:</p>
+                        <p className="text-white font-medium break-words">
+                          {blogDetails?.title || report.targetData?.title || 'Không rõ tiêu đề'}
+                        </p>
+                        {blogDetails?.thumbnail && (
+                          <img src={blogDetails.thumbnail} alt="thumbnail" className="mt-2 w-full h-32 object-cover rounded border border-slate-700" />
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
               {report.targetType === ReportTargetType.USER && report.targetData && (
@@ -197,7 +240,19 @@ const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, upda
           </div>
         </div>
         <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-700">
-          {tUserId ? (
+          {report.targetType === ReportTargetType.BLOG && report.status === ReportStatus.PENDING && (
+            <Button
+              variant="destructive"
+              onClick={() => handleModerateBlog(report.id, report.targetId)}
+              disabled={updatingId === `moderate-${report.id}`}
+              className="bg-orange-600 hover:bg-orange-700 text-white mr-auto"
+            >
+              {updatingId === `moderate-${report.id}` ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
+              Ẩn bài viết & Xử lý
+            </Button>
+          )}
+
+          {tUserId && report.targetType !== ReportTargetType.BLOG && (
             <Button
               variant="destructive"
               onClick={() => handleBanUser(tUserId, report.id)}
@@ -207,17 +262,10 @@ const ViolationReportDialog = ({ report, handleUpdateStatus, handleBanUser, upda
               {updatingId === `ban-${tUserId}` ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
               {commentUser?.status === "locked" ? "User đã bị khoá" : "Khoá User này"}
             </Button>
-          ) : (
-            <Button
-              variant="destructive"
-              disabled={true}
-              className="bg-red-600/50 text-white/50 mr-auto cursor-not-allowed"
-              title="Đang tìm kiếm thông tin người dùng..."
-            >
-              <Lock className="h-4 w-4 mr-2" />
-              Khoá User này
-            </Button>
           )}
+          
+          {/* Default spacer if no special action button shown */}
+          {(!tUserId || report.targetType === ReportTargetType.BLOG) && report.targetType !== ReportTargetType.BLOG && <div className="mr-auto"></div>}
 
           <Button
             onClick={() => handleUpdateStatus(report.id, ReportStatus.RESOLVED)}
@@ -330,6 +378,20 @@ export default function ViolationReportPage() {
     } catch (error) {
       console.error('Lỗi khi khoá user:', error);
       toast.error('Lỗi khi khoá tài khoản. Vui lòng thử lại sau.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleModerateBlog = async (reportId: string, blogId: string) => {
+    try {
+      setUpdatingId(`moderate-${reportId}`);
+      await adminReportService.moderateAndHideBlogPost(reportId, blogId);
+      toast.success('Đã ẩn bài viết và đánh dấu báo cáo là đã xử lý!');
+      setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: ReportStatus.RESOLVED } : r));
+    } catch (error) {
+      console.error('Lỗi khi ẩn bài viết:', error);
+      toast.error('Lỗi khi thực hiện thao tác.');
     } finally {
       setUpdatingId(null);
     }
@@ -496,6 +558,7 @@ export default function ViolationReportPage() {
                           report={report}
                           handleUpdateStatus={handleUpdateStatus}
                           handleBanUser={handleBanUser}
+                          handleModerateBlog={handleModerateBlog}
                           updatingId={updatingId}
                         />
                       </TableCell>
