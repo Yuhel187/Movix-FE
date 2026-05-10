@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from "next/link";
-import { Search, Bell, ChevronDown, X, LayoutDashboard, Users, Plus } from 'lucide-react';
+import { Search, ChevronDown, X, LayoutDashboard, Zap } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import NotificationDropdown from '@/components/common/NotificationDropdown';
@@ -59,7 +59,8 @@ const Navbar = () => {
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  const navItems = ['Phim hay', 'Thể loại', 'Phim lẻ', 'Phim bộ', 'Quốc gia',  'Watching Party', 'Nâng cấp'];
+  // Gọn còn 4 mục — "Phim" gom Phim hay/lẻ/bộ + Thể loại + Quốc gia
+  const navItems = ['Phim hay', 'Phim lẻ & Bộ', 'Thể loại & Quốc gia', 'Blog', 'Watching Party', 'Nâng cấp'];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -124,18 +125,10 @@ const Navbar = () => {
   const handleClickNavItem = (item: string) => {
     if (item === 'Phim hay') {
       router.push('/movies');
-    } else if (item === 'Phim lẻ') {
-      router.push('/filter?type=phim-le');
-    } else if (item === 'Phim bộ') {
-      router.push('/filter?type=phim-bo');
-    }
-    else if (item === 'Diễn viên') {
-      router.push('/peoples');
-    }
-    else if (item === 'Watching Party') {
-      router.push('/watch-party');
     } else if (item === 'Blog') {
       router.push('/blog');
+    } else if (item === 'Watching Party') {
+      router.push('/watch-party');
     } else if (item === 'Nâng cấp') {
       router.push('/pricing');
     }
@@ -164,46 +157,20 @@ const Navbar = () => {
     }, 300);
   };
 
-  const renderDropdownItems = (item: string) => {
-    if (item === 'Thể loại') {
-      if (!genres.length) return <DropdownMenuItem disabled>Đang tải...</DropdownMenuItem>;
-      return genres.map((g) => (
-        <DropdownMenuItem key={g.id} onClick={() => handleNavigate('genre', g.name)}>
-          {g.name}
-        </DropdownMenuItem>
-      ));
-    }
-    if (item === 'Quốc gia') {
-      if (!countries.length) return <DropdownMenuItem disabled>Đang tải...</DropdownMenuItem>;
-      return countries.map((c) => (
-        <DropdownMenuItem key={c.id} onClick={() => handleNavigate('country', c.name || '')}>
-          {c.name}
-        </DropdownMenuItem>
-      ));
-    }
-    return null;
-  };
-
   const getActiveItem = () => {
     const type = searchParams.get('type');
     const genre = searchParams.get('genre');
     const country = searchParams.get('country');
 
-    if (pathname === '/movies' || pathname === '/') {
-      return 'Phim hay';
-    }
+    if (pathname === '/movies' || pathname === '/') return 'Phim hay';
     if (pathname === '/filter') {
-      if (type === 'phim-le') return 'Phim lẻ';
-      if (type === 'phim-bo') return 'Phim bộ';
-      if (genre) return 'Thể loại';
-      if (country) return 'Quốc gia';
+      if (type === 'phim-le' || type === 'phim-bo') return 'Phim lẻ & Bộ';
+      if (genre) return 'Thể loại & Quốc gia';
+      if (country) return 'Thể loại & Quốc gia';
     }
-    if (pathname === '/blog') {
-      return 'Blog';
-    }
-    if (pathname === '/pricing' || pathname === '/account/subscription') {
-      return 'Nâng cấp';
-    }
+    if (pathname.startsWith('/blog')) return 'Blog';
+    if (pathname.startsWith('/watch-party')) return 'Watching Party';
+    if (pathname === '/pricing' || pathname === '/account/subscription') return 'Nâng cấp';
 
     return '';
   };
@@ -211,29 +178,108 @@ const Navbar = () => {
   const activeItem = getActiveItem();
 
   const renderNavItem = (item: string) => {
-    const isActive = (item === activeItem);
-
+    const isActive = item === activeItem;
     const commonClasses = "px-4 py-2 text-sm rounded-md transition-colors duration-200";
     const activeClasses = "bg-black text-white";
     const inactiveClasses = "text-gray-400 hover:text-white hover:bg-transparent";
 
-    if (item === 'Thể loại' || item === 'Quốc gia') {
+    // Dropdown: Phim lẻ & Bộ
+    if (item === 'Phim lẻ & Bộ') {
       return (
         <DropdownMenu key={item}>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className={`${commonClasses} ${isActive ? activeClasses : inactiveClasses}`}
-            >
-              {item} <ChevronDown className="w-4 h-4 ml-1" />
+            <Button variant="ghost" className={`${commonClasses} ${isActive ? activeClasses : inactiveClasses}`}>
+              Phim lẻ & Bộ <ChevronDown className="w-4 h-4 ml-1" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-[#1A1A1A] text-white border-gray-700 max-h-64 overflow-y-auto">
-            {renderDropdownItems(item)}
+          <DropdownMenuContent className="bg-[#1A1A1A] text-white border-gray-700">
+            <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/filter?type=phim-le')}>Phim lẻ</DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/filter?type=phim-bo')}>Phim bộ</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );
     }
+
+    // Dropdown: Thể loại & Quốc gia — mega menu
+    if (item === 'Thể loại & Quốc gia') {
+      return (
+        <DropdownMenu key={item}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className={`${commonClasses} ${isActive ? activeClasses : inactiveClasses}`}>
+              Thể loại & Quốc gia <ChevronDown className="w-4 h-4 ml-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="bg-[#1A1A1A] text-white border-gray-700/60 w-[520px] p-3" sideOffset={4}>
+            <div className="flex gap-3">
+              {/* Thể loại — 2 mini cols */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 px-1 border-b border-gray-700/60 pb-1.5">
+                  Thể loại
+                </p>
+                <div className="grid grid-cols-2 gap-x-1 max-h-56 overflow-y-auto no-scrollbar">
+                  {genres.length === 0
+                    ? <span className="text-xs text-gray-500 px-1">Đang tải...</span>
+                    : genres.map(g => (
+                      <button
+                        key={g.id}
+                        onClick={() => handleNavigate('genre', g.name)}
+                        className="text-left text-xs text-gray-300 hover:text-white hover:bg-white/5 px-2 py-1.5 rounded-md truncate transition-colors"
+                      >
+                        {g.name}
+                      </button>
+                    ))}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="w-px bg-gray-700/60 self-stretch" />
+
+              {/* Quốc gia — 2 mini cols */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 px-1 border-b border-gray-700/60 pb-1.5">
+                  Quốc gia
+                </p>
+                <div className="grid grid-cols-2 gap-x-1 max-h-56 overflow-y-auto no-scrollbar">
+                  {countries.length === 0
+                    ? <span className="text-xs text-gray-500 px-1">Đang tải...</span>
+                    : countries.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => handleNavigate('country', c.name || '')}
+                        className="text-left text-xs text-gray-300 hover:text-white hover:bg-white/5 px-2 py-1.5 rounded-md truncate transition-colors"
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
+
+    // Nút đặc biệt: Nâng cấp
+    if (item === 'Nâng cấp') {
+      return (
+        <button
+          key={item}
+          type="button"
+          onClick={() => handleClickNavItem(item)}
+          className="relative ml-1 px-3 py-1.5 text-sm font-semibold rounded-md
+            bg-gradient-to-r from-yellow-500 to-orange-500
+            text-black hover:from-yellow-400 hover:to-orange-400
+            transition-all duration-200 shadow-[0_0_12px_rgba(234,179,8,0.35)]
+            hover:shadow-[0_0_18px_rgba(234,179,8,0.55)]
+            flex items-center gap-1.5"
+        >
+          <Zap className="w-3.5 h-3.5 fill-black text-black" />
+          Nâng cấp
+        </button>
+      );
+    }
+
+    // Plain button
     return (
       <button
         key={item}
@@ -248,10 +294,10 @@ const Navbar = () => {
 
   return (
     <>
-      <nav 
+      <nav
         className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-6 py-3 transition-all duration-300 ${
-          isScrolled 
-            ? "bg-[#0F0F0F] shadow-xl border-b border-zinc-800" 
+          isScrolled
+            ? "bg-[#0F0F0F] shadow-xl border-b border-zinc-800"
             : "bg-black/40 backdrop-blur-md border-b border-white/5"
         }`}
       >
@@ -261,7 +307,7 @@ const Navbar = () => {
             <span className="text-2xl md:text-3xl font-extrabold text-red-600 tracking-tight drop-shadow-lg">Movix</span>
           </Link>
 
-          {/* Navigation Links  */}
+          {/* Navigation Links */}
           <div className="hidden md:flex items-center bg-[#1A1A1A] rounded-lg px-2 py-1">
             {navItems.map(item => renderNavItem(item))}
           </div>
@@ -320,7 +366,7 @@ const Navbar = () => {
                   <DropdownMenuSeparator className="bg-gray-700" />
                   {user?.role === 'Admin' && (
                     <>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         className="cursor-pointer text-yellow-500 focus:text-yellow-400 focus:bg-yellow-500/10"
                         onClick={() => router.push('/admin')}
                       >
@@ -349,7 +395,7 @@ const Navbar = () => {
           )}
         </div>
 
-        {/* (Mobile Menu Button) */}
+        {/* Mobile Menu Button */}
         <div className="md:hidden">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon">
@@ -404,7 +450,6 @@ const Navbar = () => {
         <div className="md:hidden bg-[#1A1A1A] px-4 py-3 space-y-2 border-t border-gray-800">
           {navItems.map(item => {
             const isActive = (item === activeItem);
-
             return (
               <div
                 key={item}
@@ -412,7 +457,7 @@ const Navbar = () => {
                   handleClickNavItem(item);
                   setIsMenuOpen(false);
                 }}
-                className={`block text-sm px-3 py-2 rounded-md ${isActive
+                className={`block text-sm px-3 py-2 rounded-md cursor-pointer ${isActive
                     ? 'bg-red-600 text-white'
                     : 'text-gray-300 hover:bg-[#2A2A2A]'
                   }`}

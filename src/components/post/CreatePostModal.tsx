@@ -42,59 +42,71 @@ import {
     ListOrdered,
     Quote,
     Sigma,
-    Globe,
-    Users,
-    Lock,
+    AlertTriangle,
+    Film,
 } from "lucide-react"
 import { MarkdownRenderer } from "./MarkdownRenderer"
 import { useAuth } from "@/contexts/AuthContext"
 import { blogService } from "@/services/blog.service"
-// --- MOCK DATA ---
-const MOCK_USER = {
-    username: "Nguyễn Phát",
-    avatarUrl: "https://i.pravatar.cc/150?u=1"
-}
+import { toast } from "sonner"
+
 
 const MAX_IMAGE_SIZE_MB = 5
-const MAX_PDF_SIZE_MB = 15
 const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024
-const MAX_PDF_SIZE_BYTES = MAX_PDF_SIZE_MB * 1024 * 1024
 
-export default function MockCreatePostModalContent({
+interface CreatePostModalProps {
+    setOpen: (open: boolean) => void
+    onSuccess: () => void
+    initialData?: {
+        id?: string
+        title?: string
+        body?: string
+        excerpt?: string
+        isSpoiler?: boolean
+        movieId?: string
+        status?: string
+        thumbnail?: string
+        images?: string[]
+    }
+    groupId?: string
+    groupName?: string
+}
+
+export default function CreatePostModal({
     setOpen,
     onSuccess,
     initialData,
     groupId,
     groupName
-}: {
-    setOpen: (open: boolean) => void
-    onSuccess: () => void
-    initialData?: any 
-    groupId?: string
-    groupName?: string
-}) {
-    const user = useAuth().user || MOCK_USER;
+}: CreatePostModalProps) {
+    const user = useAuth().user;
+
+    const isEditing = !!initialData?.id
 
     const [title, setTitle] = useState("")
     const [content, setContent] = useState("")
+    const [excerpt, setExcerpt] = useState("")
+    const [isSpoiler, setIsSpoiler] = useState(false)
+    const [movieId, setMovieId] = useState("")
     const [images, setImages] = useState<File[]>([])
-    const [pdfs, setPdfs] = useState<File[]>([])
-    const [existingAttachments, setExistingAttachments] = useState<any[]>([])
-    const [deletedAttachmentIds, setDeletedAttachmentIds] = useState<string[]>([])
+    const [existingThumbnail, setExistingThumbnail] = useState<string | null>(null)
+    const [existingImages, setExistingImages] = useState<string[]>([])
     const [error, setError] = useState("")
     const [isLoading, setIsLoading] = useState(false)
     const [activeTab, setActiveTab] = useState("edit")
-    const [editReason, setEditReason] = useState("")
 
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const imageInputRef = useRef<HTMLInputElement>(null)
-    const pdfInputRef = useRef<HTMLInputElement>(null)
 
     useEffect(() => {
         if (initialData) {
             setTitle(initialData.title || "")
             setContent(initialData.body || "")
-            setExistingAttachments(initialData.attachments || [])
+            setExcerpt(initialData.excerpt || "")
+            setIsSpoiler(initialData.isSpoiler || false)
+            setMovieId(initialData.movieId || "")
+            if (initialData.thumbnail) setExistingThumbnail(initialData.thumbnail)
+            if (initialData.images) setExistingImages(initialData.images)
         }
     }, [initialData])
 
@@ -105,17 +117,11 @@ export default function MockCreatePostModalContent({
     ) => {
         const textarea = textareaRef.current
         if (!textarea) return
-
         const { selectionStart, selectionEnd, value } = textarea
         const selectedText = value.slice(selectionStart, selectionEnd)
         const textToInsert = selectedText || placeholder
-        const nextValue = `${value.slice(
-            0,
-            selectionStart
-        )}${before}${textToInsert}${after}${value.slice(selectionEnd)}`
-
+        const nextValue = `${value.slice(0, selectionStart)}${before}${textToInsert}${after}${value.slice(selectionEnd)}`
         setContent(nextValue)
-
         requestAnimationFrame(() => {
             const node = textareaRef.current
             if (!node) return
@@ -132,21 +138,14 @@ export default function MockCreatePostModalContent({
     ) => {
         const textarea = textareaRef.current
         if (!textarea) return
-
         const { selectionStart, selectionEnd, value } = textarea
-        const selectedText =
-            value.slice(selectionStart, selectionEnd) || placeholder
+        const selectedText = value.slice(selectionStart, selectionEnd) || placeholder
         const lines = selectedText.split("\n")
         const formatted = lines
             .map((line, index) => formatter(line.trim() || placeholder, index))
             .join("\n")
-        const nextValue = `${value.slice(
-            0,
-            selectionStart
-        )}${formatted}${value.slice(selectionEnd)}`
-
+        const nextValue = `${value.slice(0, selectionStart)}${formatted}${value.slice(selectionEnd)}`
         setContent(nextValue)
-
         requestAnimationFrame(() => {
             const node = textareaRef.current
             if (!node) return
@@ -157,48 +156,38 @@ export default function MockCreatePostModalContent({
         })
     }
 
-    const handleFileChange = (
-        e: React.ChangeEvent<HTMLInputElement>,
-        type: "image" | "pdf"
-    ) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setError("")
-        const file = e.target.files?.[0]
-        if (!file) return
-        if (type === "image") {
+        const files = e.target.files
+        if (!files) return
+        const newFiles: File[] = []
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i]
             if (file.size > MAX_IMAGE_SIZE_BYTES) {
-                setError(
-                    `Kích thước ảnh vượt quá ${MAX_IMAGE_SIZE_MB}MB. Vui lòng chọn file nhỏ hơn.`
-                )
+                setError(`Kích thước ảnh "${file.name}" vượt quá ${MAX_IMAGE_SIZE_MB}MB.`)
                 return
             }
-            if (!["image/png", "image/jpeg", "image/gif"].includes(file.type)) {
-                setError("Chỉ cho phép file ảnh PNG, JPEG hoặc GIF.")
+            if (!["image/png", "image/jpeg", "image/gif", "image/webp"].includes(file.type)) {
+                setError("Chỉ cho phép file ảnh PNG, JPEG, GIF hoặc WebP.")
                 return
             }
-            setImages([...images, file])
+            newFiles.push(file)
         }
-        if (type === "pdf") {
-            if (file.size > MAX_PDF_SIZE_BYTES) {
-                setError(
-                    `Kích thước PDF vượt quá ${MAX_PDF_SIZE_MB}MB. Vui lòng chọn file nhỏ hơn.`
-                )
-                return
-            }
-            if (file.type !== "application/pdf") {
-                setError("Chỉ cho phép file PDF.")
-                return
-            }
-            setPdfs([...pdfs, file])
+        const totalImages = images.length + newFiles.length
+        if (totalImages > 11) {
+            setError("Tối đa 1 ảnh bìa + 10 ảnh nội dung.")
+            return
         }
+        setImages([...images, ...newFiles])
         e.target.value = ""
     }
 
     const handleSubmit = async (status: "PUBLISHED" | "DRAFT" = "PUBLISHED") => {
         setError("")
         if (!title.trim()) return setError("Tiêu đề không được để trống.")
-        const bodyContent = content.trim();
-        if (!bodyContent) return setError("Nội dung không được để trống.");
-        if (bodyContent.length < 10) return setError("Nội dung bài viết phải có ít nhất 10 ký tự.");
+        const bodyContent = content.trim()
+        if (!bodyContent) return setError("Nội dung không được để trống.")
+        if (bodyContent.length < 10) return setError("Nội dung bài viết phải có ít nhất 10 ký tự.")
 
         setIsLoading(true)
 
@@ -207,6 +196,15 @@ export default function MockCreatePostModalContent({
             formData.append("title", title.trim())
             formData.append("content", bodyContent)
             formData.append("status", status)
+
+            if (excerpt.trim()) {
+                formData.append("excerpt", excerpt.trim())
+            }
+            formData.append("isSpoiler", String(isSpoiler))
+            if (movieId.trim()) {
+                formData.append("movieId", movieId.trim())
+            }
+
             if (images.length > 0) {
                 formData.append("thumbnail", images[0])
                 for (let i = 1; i < images.length; i++) {
@@ -214,45 +212,46 @@ export default function MockCreatePostModalContent({
                 }
             }
 
-            await blogService.createBlogPost(formData)
-            
+            if (isEditing && initialData?.id) {
+                await blogService.updateBlogPost(initialData.id, formData)
+                toast.success("Cập nhật bài viết thành công!")
+            } else {
+                await blogService.createBlogPost(formData)
+                toast.success("Đăng bài viết thành công!")
+            }
+
             setOpen(false)
             setTitle("")
             setContent("")
+            setExcerpt("")
+            setIsSpoiler(false)
+            setMovieId("")
             setImages([])
-            setPdfs([])
-            setExistingAttachments([])
-            setDeletedAttachmentIds([])
-            setEditReason("")
+            setExistingThumbnail(null)
+            setExistingImages([])
 
             if (onSuccess) onSuccess()
         } catch (err: any) {
             console.error(err)
-            setError(err.response?.data?.message || "Đã có lỗi xảy ra khi tạo bài viết.")
+            setError(err.response?.data?.message || "Đã có lỗi xảy ra.")
         } finally {
             setIsLoading(false)
         }
     }
 
-    const removeFile = (type: "image" | "pdf", indexToRemove: number) => {
-        if (type === "image") {
-            setImages(images.filter((_, index) => index !== indexToRemove));
-        }
-        if (type === "pdf") {
-            setPdfs(pdfs.filter((_, index) => index !== indexToRemove));
-        }
-    };
-
-    const removeExistingFile = (attachmentId: string) => {
-        setDeletedAttachmentIds([...deletedAttachmentIds, attachmentId])
-        setExistingAttachments(existingAttachments.filter(a => a.id !== attachmentId))
+    const removeFile = (indexToRemove: number) => {
+        setImages(images.filter((_, index) => index !== indexToRemove))
     }
 
     return (
         <DialogContent className="dark sm:max-w-[700px] p-0 bg-[#0F0F0F] text-white border-zinc-800">
             <DialogHeader className="p-6 pb-2 border-b border-zinc-800">
                 <DialogTitle className="text-center text-xl font-bold">
-                    {groupName ? `Đăng bài trong nhóm: ${groupName}` : "Tạo bài viết"}
+                    {isEditing
+                        ? "Chỉnh sửa bài viết"
+                        : groupName
+                            ? `Đăng bài trong nhóm: ${groupName}`
+                            : "Tạo bài viết"}
                 </DialogTitle>
             </DialogHeader>
 
@@ -269,11 +268,11 @@ export default function MockCreatePostModalContent({
                 <TabsContent value="edit" className="p-6 pt-0 space-y-4 max-h-[70vh] overflow-y-auto">
                     <div className="flex items-center gap-3">
                         <Avatar>
-                            <AvatarImage src={user.avatarUrl || undefined} />
-                            <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
+                            <AvatarImage src={user?.avatarUrl || undefined} />
+                            <AvatarFallback>{user?.username?.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col">
-                            <span className="font-semibold text-sm">{user.username}</span>
+                            <span className="font-semibold text-sm">{user?.username}</span>
                             {groupName && (
                                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                                     <span>Đăng trong</span>
@@ -282,9 +281,11 @@ export default function MockCreatePostModalContent({
                             )}
                         </div>
                     </div>
+
+                    {/* Title */}
                     <div className="space-y-1.5">
                         <Label htmlFor="post-title" className="font-semibold">
-                            Tiêu đề
+                            Tiêu đề <span className="text-red-400">*</span>
                         </Label>
                         <Input
                             id="post-title"
@@ -294,12 +295,13 @@ export default function MockCreatePostModalContent({
                             onChange={(e) => setTitle(e.target.value)}
                         />
                     </div>
+
+                    {/* Content with Markdown toolbar */}
                     <div className="space-y-1.5">
                         <Label htmlFor="post-content" className="font-semibold">
-                            Nội dung
+                            Nội dung <span className="text-red-400">*</span>
                         </Label>
                         <div className="border border-zinc-700 rounded-md">
-                            {/* Toolbar Markdown */}
                             <div className="flex items-center gap-1 p-1 border-b border-zinc-700 bg-zinc-900 rounded-t-md flex-wrap">
                                 <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-zinc-800" onClick={() => applyWrapFormatting("**", "**", "in đậm")}><Bold className="h-4 w-4" /></Button>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-zinc-800" onClick={() => applyWrapFormatting("*", "*", "in nghiêng")}><Italic className="h-4 w-4" /></Button>
@@ -310,7 +312,6 @@ export default function MockCreatePostModalContent({
                                 <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-zinc-800" onClick={() => applyLineFormatting((line) => `> ${line.replace(/^>\s?/, "")}`, "Trích dẫn")}><Quote className="h-4 w-4" /></Button>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-zinc-800" onClick={() => applyWrapFormatting("$$", "$$", "latex")}><Sigma className="h-4 w-4" /></Button>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-zinc-800" onClick={() => imageInputRef.current?.click()}><ImageIcon className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-zinc-800" onClick={() => pdfInputRef.current?.click()}><FileText className="h-4 w-4" /></Button>
                             </div>
                             <Textarea
                                 ref={textareaRef}
@@ -323,64 +324,88 @@ export default function MockCreatePostModalContent({
                         </div>
                     </div>
 
-                    {initialData && initialData.status === 'PUBLISHED' && (
+                    {/* Excerpt */}
+                    <div className="space-y-1.5">
+                        <Label htmlFor="post-excerpt" className="font-semibold">
+                            Mô tả ngắn <span className="text-xs text-muted-foreground font-normal">(Không bắt buộc)</span>
+                        </Label>
+                        <Input
+                            id="post-excerpt"
+                            placeholder="Tóm tắt nội dung bài viết cho người đọc"
+                            value={excerpt}
+                            className="bg-zinc-950 border-zinc-700 text-white placeholder-zinc-500"
+                            onChange={(e) => setExcerpt(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Movie ID & Spoiler row */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                            <Label htmlFor="edit-reason" className="font-semibold">
-                                Lý do chỉnh sửa <span className="text-muted-foreground font-normal text-xs">(Không bắt buộc)</span>
+                            <Label htmlFor="post-movie" className="font-semibold flex items-center gap-1.5">
+                                <Film className="h-4 w-4" />
+                                Liên kết phim <span className="text-xs text-muted-foreground font-normal">(ID)</span>
                             </Label>
                             <Input
-                                id="edit-reason"
-                                placeholder="Ví dụ: Cập nhật nội dung, bổ sung thông tin..."
-                                value={editReason}
+                                id="post-movie"
+                                placeholder="Dán Movie ID nếu bài viết review phim"
+                                value={movieId}
                                 className="bg-zinc-950 border-zinc-700 text-white placeholder-zinc-500"
-                                onChange={(e) => setEditReason(e.target.value)}
+                                onChange={(e) => setMovieId(e.target.value)}
                             />
                         </div>
-                    )}
+                        <div className="space-y-1.5">
+                            <Label className="font-semibold flex items-center gap-1.5">
+                                <AlertTriangle className="h-4 w-4 text-amber-400" />
+                                Nội dung Spoiler?
+                            </Label>
+                            <Select
+                                value={isSpoiler ? "true" : "false"}
+                                onValueChange={(v) => setIsSpoiler(v === "true")}
+                            >
+                                <SelectTrigger className="bg-zinc-950 border-zinc-700 text-white">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="dark bg-zinc-900 border-zinc-700 text-white">
+                                    <SelectItem value="false">Không</SelectItem>
+                                    <SelectItem value="true">Có — Đánh dấu spoiler</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
 
-                    {/* Hiển thị File đính kèm */}
+                    {/* Attached files */}
                     <div className="space-y-1.5">
-                        <Label className="font-semibold">Đã đính kèm</Label>
-                        <div className="flex flex-col gap-2">
-                            {existingAttachments.map((file) => (
-                                <Badge key={file.id} variant="outline" className="flex items-center justify-between w-full max-w-[300px] gap-2 p-2">
-                                    <div className="flex items-center gap-2 truncate">
-                                        {file.fileType === "IMAGE" ? (
-                                            <ImageIcon className="h-4 w-4 text-green-500 shrink-0" />
-                                        ) : (
-                                            <FileText className="h-4 w-4 text-blue-500 shrink-0" />
-                                        )}
-                                        <span className="truncate" title={file.fileName}>{file.fileName}</span>
-                                    </div>
-                                    <button type="button" onClick={() => removeExistingFile(file.id)} className="shrink-0">
+                        <Label className="font-semibold">Ảnh đính kèm</Label>
+                        <div className="flex flex-wrap gap-2">
+                            {existingThumbnail && (
+                                <Badge variant="outline" className="flex items-center gap-2 p-2">
+                                    <ImageIcon className="h-4 w-4 text-green-500 shrink-0" />
+                                    <span className="truncate text-xs">Ảnh bìa hiện tại</span>
+                                    <button type="button" onClick={() => setExistingThumbnail(null)} className="shrink-0">
+                                        <X className="h-4 w-4 cursor-pointer hover:text-red-500" />
+                                    </button>
+                                </Badge>
+                            )}
+                            {existingImages.map((url, idx) => (
+                                <Badge key={`existing-${idx}`} variant="outline" className="flex items-center gap-2 p-2">
+                                    <ImageIcon className="h-4 w-4 text-green-500 shrink-0" />
+                                    <span className="truncate text-xs max-w-[120px]">Ảnh {idx + 1}</span>
+                                    <button type="button" onClick={() => setExistingImages(existingImages.filter((_, i) => i !== idx))} className="shrink-0">
                                         <X className="h-4 w-4 cursor-pointer hover:text-red-500" />
                                     </button>
                                 </Badge>
                             ))}
                             {images.map((file, index) => (
-                                <Badge key={`new-img-${index}`} variant="outline" className="flex items-center justify-between w-full max-w-[300px] gap-2 p-2">
-                                    <div className="flex items-center gap-2 truncate">
-                                        <ImageIcon className="h-4 w-4 text-green-500 shrink-0" />
-                                        <span className="truncate" title={file.name}>{file.name}</span>
-                                    </div>
-                                    <button type="button" onClick={() => removeFile("image", index)} className="shrink-0">
+                                <Badge key={`new-img-${index}`} variant="outline" className="flex items-center gap-2 p-2">
+                                    <ImageIcon className="h-4 w-4 text-green-500 shrink-0" />
+                                    <span className="truncate text-xs max-w-[120px]" title={file.name}>{file.name}</span>
+                                    <button type="button" onClick={() => removeFile(index)} className="shrink-0">
                                         <X className="h-4 w-4 cursor-pointer hover:text-red-500" />
                                     </button>
                                 </Badge>
                             ))}
-                            {pdfs.map((file, index) => (
-                                <Badge key={`new-pdf-${index}`} variant="outline" className="flex items-center justify-between w-full max-w-[300px] gap-2 p-2">
-                                    <div className="flex items-center gap-2 truncate">
-                                        <FileText className="h-4 w-4 text-blue-500 shrink-0" />
-                                        <span className="truncate" title={file.name}>{file.name}</span>
-                                    </div>
-                                    <button type="button" onClick={() => removeFile("pdf", index)} className="shrink-0">
-                                        <X className="h-4 w-4 cursor-pointer hover:text-red-500" />
-                                    </button>
-                                </Badge>
-                            ))}
-                            {existingAttachments.length === 0 && images.length === 0 && pdfs.length === 0 && (
-                                <p className="text-xs text-muted-foreground">Chưa có file nào.</p>
+                            {images.length === 0 && !existingThumbnail && existingImages.length === 0 && (
+                                <p className="text-xs text-muted-foreground">Chưa có ảnh nào. Bấm nút ảnh trên toolbar để thêm.</p>
                             )}
                         </div>
                     </div>
@@ -391,18 +416,27 @@ export default function MockCreatePostModalContent({
                     <Card className="w-full shadow-none border border-zinc-800 bg-zinc-950 text-white">
                         <CardHeader className="flex-row items-start gap-3 space-y-0">
                             <Avatar>
-                                <AvatarImage src={user.avatarUrl || undefined} />
-                                <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
+                                <AvatarImage src={user?.avatarUrl || undefined} />
+                                <AvatarFallback>{user?.username?.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
-                                <p className="font-semibold">{user.username}</p>
+                                <p className="font-semibold">{user?.username}</p>
                                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                     <span>Vừa xong</span>
+                                    {isSpoiler && (
+                                        <Badge variant="outline" className="text-amber-400 border-amber-500/30 text-[10px] py-0">
+                                            <AlertTriangle className="h-3 w-3 mr-1" />
+                                            Spoiler
+                                        </Badge>
+                                    )}
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent>
                             <h2 className="text-xl font-semibold mb-2">{title || "(Chưa có tiêu đề)"}</h2>
+                            {excerpt && (
+                                <p className="text-sm text-muted-foreground mb-3 italic">{excerpt}</p>
+                            )}
                             <div className="mb-4">
                                 {content && content.trim() ? (
                                     <MarkdownRenderer content={content} />
@@ -414,16 +448,8 @@ export default function MockCreatePostModalContent({
                             </div>
 
                             {/* Preview Images */}
-                            {(existingAttachments.some(a => a.fileType === "IMAGE") || images.length > 0) && (
+                            {images.length > 0 && (
                                 <div className="mt-4 space-y-4">
-                                    {existingAttachments.filter(a => a.fileType === "IMAGE").map(img => (
-                                        <img
-                                            key={img.id}
-                                            src={img.storageUrl}
-                                            alt={img.fileName}
-                                            className="max-h-96 max-w-full h-auto mx-auto rounded-md border border-zinc-800 object-contain"
-                                        />
-                                    ))}
                                     {images.map((img, idx) => (
                                         <img
                                             key={`preview-new-img-${idx}`}
@@ -434,81 +460,40 @@ export default function MockCreatePostModalContent({
                                     ))}
                                 </div>
                             )}
-
-                            {/* Preview PDFs */}
-                            {(existingAttachments.some(a => a.fileType === "PDF") || pdfs.length > 0) && (
-                                <div className="mt-4 flex flex-col gap-2">
-                                    {existingAttachments.filter(a => a.fileType === "PDF").map(pdf => (
-                                        <a
-                                            key={pdf.id}
-                                            href={pdf.storageUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 rounded-md border border-zinc-800 p-2 text-sm text-blue-400 hover:bg-zinc-800 w-fit transition-colors"
-                                        >
-                                            <FileText className="h-4 w-4" />
-                                            {pdf.fileName}
-                                        </a>
-                                    ))}
-                                    {pdfs.map((pdf, idx) => (
-                                        <a
-                                            key={`preview-new-pdf-${idx}`}
-                                            href={URL.createObjectURL(pdf)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 rounded-md border border-zinc-800 p-2 text-sm text-blue-400 hover:bg-zinc-800 w-fit transition-colors"
-                                        >
-                                            <FileText className="h-4 w-4" />
-                                            {pdf.name}
-                                        </a>
-                                    ))}
-                                </div>
-                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>
             </Tabs>
-            
+
             {error && (
                 <p className="px-6 pb-4 text-center text-sm text-red-500">{error}</p>
             )}
 
-            <div className="flex items-center justify-end gap-2 border-t p-4">
+            <div className="flex items-center justify-end gap-2 border-t border-zinc-800 p-4">
                 <Button
                     variant="ghost"
                     onClick={() => setActiveTab(activeTab === "edit" ? "preview" : "edit")}
                 >
                     {activeTab === "edit" ? "Xem trước" : "Chỉnh sửa"}
                 </Button>
-                
-                {(!initialData || initialData.status !== 'PUBLISHED') && (
-                    <Button
-                        variant="destructive"
-                        onClick={() => handleSubmit("DRAFT")}
-                        disabled={isLoading}
-                    >
-                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Lưu nháp
-                    </Button>
-                )}
 
-                <Button onClick={() => handleSubmit("PUBLISHED")} disabled={isLoading}>
+
+                <Button
+                    onClick={() => handleSubmit("PUBLISHED")}
+                    disabled={isLoading}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold"
+                >
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {initialData && initialData.status === 'PUBLISHED' ? "Lưu thay đổi" : "Đăng bài"}
+                    {isEditing ? "Lưu thay đổi" : "Đăng bài"}
                 </Button>
             </div>
+
             <input
                 type="file"
                 ref={imageInputRef}
-                accept="image/png, image/jpeg, image/gif"
-                onChange={(e) => handleFileChange(e, "image")}
-                className="hidden"
-            />
-            <input
-                type="file"
-                ref={pdfInputRef}
-                accept="application/pdf"
-                onChange={(e) => handleFileChange(e, "pdf")}
+                accept="image/png, image/jpeg, image/gif, image/webp"
+                multiple
+                onChange={handleFileChange}
                 className="hidden"
             />
         </DialogContent>
