@@ -13,6 +13,7 @@ import {
   Edit,
   Trash,
   AlertTriangle,
+  Pin,
 } from 'lucide-react';
 import { ReportModal } from '@/components/common/ReportModal';
 import { ReportTargetType } from '@/types/report';
@@ -36,6 +37,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from "sonner";
 
+const HEX_COLOR_REGEX = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
+
 interface CommentItemProps {
   comment: CommentData | CommentWithReplies; 
   movieId: string;
@@ -53,6 +56,22 @@ function formatTimeAgo(dateString: string) {
   }
 }
 
+function getBadgeClassName(rankKey: string) {
+  const base = 'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide border';
+  switch (rankKey) {
+    case 'NEWBIE':
+      return `${base} border-zinc-500/40 bg-zinc-500/20 text-zinc-200`;
+    case 'MEMBER':
+      return `${base} border-sky-300/40 bg-sky-500/20 text-sky-100`;
+    case 'EXPERT':
+      return `${base} border-cyan-300/40 bg-cyan-500/20 text-cyan-100`;
+    case 'LEGEND':
+      return `${base} border-amber-300/50 bg-amber-500/20 text-amber-100`;
+    default:
+      return `${base} border-violet-300/40 bg-violet-500/20 text-violet-100`;
+  }
+}
+
 export function CommentItem({
   comment,
   movieId,
@@ -65,6 +84,10 @@ export function CommentItem({
 
   const isAuthor = user?.id === comment.user.id;
   const timeAgo = formatTimeAgo(comment.created_at);
+  const isPinned = Boolean(comment.is_pinned);
+  const userNameColor = comment.user.display_name_color;
+  const isValidNameColor = Boolean(userNameColor && HEX_COLOR_REGEX.test(userNameColor));
+  const userBadge = comment.user.user_badge?.trim().toUpperCase() || null;
 
   const handleReplySubmit = async (text: string, isSpoiler: boolean) => {
     try {
@@ -104,7 +127,13 @@ export function CommentItem({
   };
 
   return (
-    <div className={`flex gap-4 py-4 ${isReply ? 'ml-10' : ''}`}>
+    <div
+      className={`flex gap-4 py-4 ${isReply ? 'ml-10' : ''} ${
+        isPinned
+          ? 'rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-zinc-900 to-zinc-900 px-4 shadow-[0_0_0_1px_rgba(245,158,11,0.08)]'
+          : ''
+      }`}
+    >
       <Avatar className="h-10 w-10">
         <AvatarImage
           src={comment.user.avatar_url || ''} 
@@ -116,9 +145,26 @@ export function CommentItem({
       </Avatar>
       <div className="flex-1">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-white">
+          <span
+            className="font-semibold text-white"
+            style={isValidNameColor ? { color: userNameColor as string } : undefined}
+          >
             {comment.user.display_name}
           </span>
+          {userBadge && (
+            <span
+              title={`Thành viên hạng ${userBadge}`}
+              className={getBadgeClassName(userBadge)}
+            >
+              {userBadge}
+            </span>
+          )}
+          {isPinned && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/20 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200">
+              <Pin className="h-3 w-3" />
+              Đã ghim
+            </span>
+          )}
           <span className="text-xs text-gray-400">{timeAgo}</span>
         </div>
         {isEditing ? (

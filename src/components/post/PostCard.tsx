@@ -25,6 +25,7 @@ const MOCK_POST = {
 
 export interface Post {
     id?: string;
+    title?: string;
     author: {
         username: string;
         avatarUrl?: string;
@@ -80,7 +81,12 @@ export function PostCard({ post = MOCK_POST }: PostCardProps) {
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-0">
-        <div className="mb-4 text-sm text-foreground whitespace-pre-wrap">
+        {post.title && (
+          <h3 className="mb-2 text-lg font-bold text-foreground">
+            {post.title}
+          </h3>
+        )}
+        <div className="mb-4 text-sm text-foreground whitespace-pre-wrap line-clamp-4">
           {post.content}
         </div>
 

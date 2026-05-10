@@ -1,7 +1,9 @@
 export interface CommentUser {
   id: string;
   display_name: string;      
-  avatar_url: string | null;   
+  avatar_url: string | null;
+  display_name_color?: string | null;
+  user_badge?: string | null;
 }
 
 export interface CommentData {
@@ -13,6 +15,7 @@ export interface CommentData {
   is_deleted: boolean;
   is_spoiler: boolean;
   is_hidden: boolean;
+  is_pinned?: boolean;
   toxicity_score?: number; 
   message?: string;     
   created_at: string;      
