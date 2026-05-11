@@ -41,6 +41,8 @@ import { useAuth } from "@/contexts/AuthContext"
 import { blogService } from "@/services/blog.service"
 import { toast } from "sonner"
 import CreatePostModal from "./CreatePostModal"
+import { ReportModal } from "@/components/common/ReportModal"
+import { ReportTargetType } from "@/types/report"
 
 export interface Post {
   id?: string;
@@ -202,6 +204,7 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
                   Spoiler
                 </span>
               )}
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
@@ -228,6 +231,24 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
                       <DropdownMenuSeparator className="bg-zinc-700" />
                     </>
                   )}
+                  {user && !isOwner && post.id && (
+                    <>
+                      <ReportModal
+                        targetType={ReportTargetType.BLOG}
+                        targetId={post.id}
+                        triggerElement={
+                          <DropdownMenuItem
+                            className="cursor-pointer text-red-500 focus:text-red-400 focus:bg-red-500/10"
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            Báo cáo bài viết
+                          </DropdownMenuItem>
+                        }
+                      />
+                      <DropdownMenuSeparator className="bg-zinc-700" />
+                    </>
+                  )}
                   <DropdownMenuItem
                     className="cursor-pointer"
                     onClick={(e) => {
@@ -238,6 +259,7 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
                   >
                     Sao chép liên kết
                   </DropdownMenuItem>
+                  
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
