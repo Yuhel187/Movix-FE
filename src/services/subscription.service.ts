@@ -296,11 +296,9 @@ class SubscriptionService {
     return res.data;
   }
 
-  async requestRefund(reason?: string): Promise<{ message: string; refundRequest: any }> {
+  async requestRefund(data: { reason?: string; bank_name?: string; account_number?: string }): Promise<{ message: string; refundRequest: any }> {
     try {
-      const response = await apiClient.post('/profile/me/subscription/refund-request', {
-        reason,
-      });
+      const response = await apiClient.post('/profile/me/subscription/refund-request', data);
       return response.data;
     } catch (error: any) {
       if (error.response?.data?.message) {

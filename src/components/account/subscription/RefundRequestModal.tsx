@@ -12,6 +12,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { subscriptionService } from "@/services/subscription.service";
 import { toast } from "sonner";
 import { RotateCcw, Loader2 } from "lucide-react";
@@ -19,10 +21,24 @@ import { RotateCcw, Loader2 } from "lucide-react";
 export function RefundRequestModal() {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [banks, setBanks] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [hasExistingRequest, setHasExistingRequest] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    fetch('https://api.vietqr.io/v2/banks')
+      .then(res => res.json())
+      .then(data => {
+        if (data.code === '00') {
+          setBanks(data.data);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     const checkExistingRequest = async () => {
@@ -46,7 +62,11 @@ export function RefundRequestModal() {
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      const response = await subscriptionService.requestRefund(reason.trim() || undefined);
+      const response = await subscriptionService.requestRefund({
+        reason: reason.trim() || undefined,
+        bank_name: bankName || undefined,
+        account_number: accountNumber.trim() || undefined,
+      });
       toast.success(response.message || "Đã gửi yêu cầu hoàn tiền thành công!");
       setIsSuccess(true);
       setOpen(false);
@@ -82,6 +102,38 @@ export function RefundRequestModal() {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-slate-300">
+              Ngân hàng nhận tiền hoàn
+            </label>
+            <Select value={bankName} onValueChange={setBankName} disabled={isLoading}>
+              <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
+                <SelectValue placeholder="Chọn ngân hàng" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[250px] bg-slate-900 border-slate-700 text-white">
+                {banks.map((bank) => (
+                  <SelectItem key={bank.id} value={bank.shortName} className="hover:bg-slate-800 focus:bg-slate-800">
+                    {bank.shortName} - {bank.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex flex-col gap-2">
+            <label htmlFor="accountNumber" className="text-sm font-medium text-slate-300">
+              Số tài khoản
+            </label>
+            <Input
+              id="accountNumber"
+              placeholder="Nhập số tài khoản nhận tiền..."
+              className="col-span-3 bg-slate-900 border-slate-700 text-white placeholder:text-slate-500"
+              value={accountNumber}
+              onChange={(e) => setAccountNumber(e.target.value)}
+              disabled={isLoading}
+            />
+          </div>
+
           <div className="flex flex-col gap-2">
             <label htmlFor="reason" className="text-sm font-medium text-slate-300">
               Lý do (Tùy chọn)
