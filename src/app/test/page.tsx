@@ -160,7 +160,7 @@ export default function TestPage() {
         ))}
       </div>
       <div className="w-full max-w-md flex flex-col gap-3 mt-2">
-        <PostCard />
+        {/* <PostCard /> */}
       </div>
     </div>
   )

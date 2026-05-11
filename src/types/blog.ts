@@ -20,6 +20,14 @@ export interface BlogBookmark {
   user_id: string;
 }
 
+export enum PostStatus {
+  DRAFT = "DRAFT",
+  PUBLISHED = "PUBLISHED",
+  HIDDEN = "HIDDEN",
+  ARCHIVED = "ARCHIVED",
+  REJECTED = "REJECTED",
+}
+
 export interface BlogPost {
   id: string;
   title: string;
@@ -29,8 +37,9 @@ export interface BlogPost {
   thumbnail?: string | null;
   images?: string[];
   is_spoiler?: boolean;
-  status: "DRAFT" | "PUBLISHED" | "HIDDEN" | "ARCHIVED";
+  status: PostStatus | "DRAFT" | "PUBLISHED" | "HIDDEN" | "ARCHIVED" | "REJECTED";
   view_count: number;
+
   created_at: string;
   updated_at: string;
   user: BlogUser;
