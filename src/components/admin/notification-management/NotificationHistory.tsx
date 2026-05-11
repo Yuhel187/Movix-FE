@@ -8,11 +8,15 @@ import { vi } from "date-fns/locale";
 import { Clock, ExternalLink, BellRing } from "lucide-react";
 import apiClient from "@/lib/apiClient";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface HistoryItem {
     id: string;
     title: string;
     message: string;
+    channel: "IN_APP" | "EMAIL" | "PUSH";
+    isSent: boolean;
+    scheduledAt?: string;
     actionUrl?: string;
     createdAt: string;
 }
@@ -41,25 +45,26 @@ export function NotificationHistory({ refreshTrigger }: { refreshTrigger: number
     }
 
     return (
-        <Card className="bg-[#1F1F1F] border-slate-800 text-white h-full">
-            <CardHeader>
+        <Card className="bg-[#1F1F1F] border-slate-800 text-white h-full flex flex-col">
+            <CardHeader className="flex-shrink-0">
                 <CardTitle className="text-lg flex items-center gap-2">
                     <Clock className="w-4 h-4 text-slate-400"/> Lịch sử Broadcast
                 </CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
-                <div className="max-h-[500px] overflow-y-auto">
+            <CardContent className="p-0 flex-1 min-h-0">
+                <div className="h-full overflow-y-auto">
                     <Table>
-                        <TableHeader className="bg-black/20 sticky top-0">
+                        <TableHeader className="bg-black/20 sticky top-0 z-10">
                             <TableRow className="border-slate-700 hover:bg-transparent">
                                 <TableHead className="text-slate-300">Nội dung</TableHead>
-                                <TableHead className="text-slate-300 w-[120px]">Thời gian</TableHead>
+                                <TableHead className="text-slate-300 w-[100px]">Kênh/Trạng thái</TableHead>
+                                <TableHead className="text-slate-300 w-[100px]">Thời gian</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {history.length === 0 ? (
                                 <TableRow className="border-none">
-                                    <TableCell colSpan={2} className="text-center text-slate-500 py-8">
+                                    <TableCell colSpan={3} className="text-center text-slate-500 py-8">
                                         Chưa có thông báo nào được gửi.
                                     </TableCell>
                                 </TableRow>
@@ -78,7 +83,25 @@ export function NotificationHistory({ refreshTrigger }: { refreshTrigger: number
                                                 </div>
                                             )}
                                         </TableCell>
-                                        <TableCell className="text-xs text-slate-500 whitespace-nowrap">
+                                        <TableCell>
+                                            <div className="flex flex-col gap-1">
+                                                <span className={cn(
+                                                    "text-[10px] px-1.5 py-0.5 rounded-full w-fit font-bold",
+                                                    item.channel === "EMAIL" ? "bg-blue-500/20 text-blue-400" :
+                                                    item.channel === "PUSH" ? "bg-purple-500/20 text-purple-400" :
+                                                    "bg-orange-500/20 text-orange-400"
+                                                )}>
+                                                    {item.channel}
+                                                </span>
+                                                <span className={cn(
+                                                    "text-[9px] italic",
+                                                    item.isSent ? "text-green-500" : "text-yellow-500"
+                                                )}>
+                                                    {item.isSent ? "Đã gửi" : "Chờ gửi"}
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-[10px] text-slate-500 whitespace-nowrap">
                                             {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: vi })}
                                         </TableCell>
                                     </TableRow>
