@@ -9,9 +9,25 @@ export interface GetAllBlogsParams {
   search?: string;
 }
 
+export interface GetSavedBlogsParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
 export const blogService = {
   getAllBlogs: async (params?: GetAllBlogsParams) => {
     const response = await apiClient.get("/blogs", { params });
+    return response.data;
+  },
+
+  getSavedBlogs: async (params?: GetSavedBlogsParams) => {
+    const response = await apiClient.get("/blogs/bookmarks", { params });
+    return response.data;
+  },
+
+  getBlogBySlug: async (slug: string) => {
+    const response = await apiClient.get(`/blogs/slug/${slug}`);
     return response.data;
   },
 

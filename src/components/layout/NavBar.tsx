@@ -334,6 +334,7 @@ const Navbar = () => {
                   <DropdownMenuItem><a href='/account/favorites'>Yêu thích</a></DropdownMenuItem>
                   <DropdownMenuItem><a href='/account/history'>Lịch sử</a></DropdownMenuItem>
                   <DropdownMenuItem><a href='/account/playlist'>Danh sách</a></DropdownMenuItem>
+                  <DropdownMenuItem><a href='/account/bookmarks'>Bài viết đã lưu</a></DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-gray-700" />
                   <DropdownMenuItem onClick={logout}>Đăng xuất</DropdownMenuItem>
                 </DropdownMenuContent>
@@ -372,6 +373,7 @@ const Navbar = () => {
                   <DropdownMenuItem><a href='/account/favorites'>Yêu thích</a></DropdownMenuItem>
                   <DropdownMenuItem><a href='/account/history'>Lịch sử</a></DropdownMenuItem>
                   <DropdownMenuItem><a href='/account/playlist'>Danh sách</a></DropdownMenuItem>
+                  <DropdownMenuItem><a href='/account/bookmarks'>Bài viết đã lưu</a></DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-gray-700" />
                   <DropdownMenuItem onClick={logout}>Đăng xuất</DropdownMenuItem>
                 </DropdownMenuContent>

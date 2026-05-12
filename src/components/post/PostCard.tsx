@@ -5,10 +5,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { MoreHorizontal, ThumbsUp, MessageCircle, Share2, Globe } from "lucide-react"
 import { cn } from "@/lib/utils"
+import Link from "next/link"
 
 // --- MOCK DATA ---
 const MOCK_POST = {
   id: "post-minimal-1",
+  slug: "post-minimal-1",
   author: {
     username: "Nguyễn Phát",
     avatarUrl: "https://i.pravatar.cc/150?u=1",
@@ -25,6 +27,7 @@ const MOCK_POST = {
 
 export interface Post {
     id?: string;
+    slug?: string;
     title?: string;
     author: {
         username: string;
@@ -52,6 +55,8 @@ export function PostCard({ post = MOCK_POST }: PostCardProps) {
     setIsLiked(!isLiked)
     setLikesCount(prev => isLiked ? prev - 1 : prev + 1)
   }
+
+  const detailHref = `/blog/${post.slug || post.id}`;
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -81,24 +86,26 @@ export function PostCard({ post = MOCK_POST }: PostCardProps) {
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-0">
-        {post.title && (
-          <h3 className="mb-2 text-lg font-bold text-foreground">
-            {post.title}
-          </h3>
-        )}
-        <div className="mb-4 text-sm text-foreground whitespace-pre-wrap line-clamp-4">
-          {post.content}
-        </div>
-
-        {post.imageUrl && (
-          <div className="mt-4">
-            <img
-              src={post.imageUrl}
-              alt="Post image"
-              className="max-h-96 w-full rounded-md border object-cover"
-            />
+        <Link href={detailHref} className="block group">
+          {post.title && (
+            <h3 className="mb-2 text-lg font-bold text-foreground group-hover:text-yellow-500 transition-colors">
+              {post.title}
+            </h3>
+          )}
+          <div className="mb-4 text-sm text-foreground whitespace-pre-wrap line-clamp-4">
+            {post.content}
           </div>
-        )}
+
+          {post.imageUrl && (
+            <div className="mt-4">
+              <img
+                src={post.imageUrl}
+                alt="Post image"
+                className="max-h-96 w-full rounded-md border object-cover transition-transform group-hover:scale-[1.01]"
+              />
+            </div>
+          )}
+        </Link>
       </CardContent>
       <CardFooter className="flex-col items-start gap-4">
         <div className="flex w-full justify-between text-xs text-muted-foreground">
