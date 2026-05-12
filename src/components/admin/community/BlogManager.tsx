@@ -52,13 +52,16 @@ import {
   ShieldAlert,
   History,
   Archive,
-  Ban
+  Ban,
+  Heart,
+  MessageSquare
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { adminBlogService } from "@/services/admin.blog.service";
 import { BlogPost, PostStatus } from "@/types/blog";
+import { BlogCommentSection } from "@/components/comment/BlogCommentSection";
 
 export default function BlogManager() {
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
@@ -382,7 +385,7 @@ export default function BlogManager() {
 
       {/* --- VIEW BLOG DIALOG --- */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="bg-[#1F1F1F] border-slate-800 text-white max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0 custom-scrollbar">
+        <DialogContent className="bg-[#1F1F1F] border-slate-800 text-white sm:max-w-[90vw] md:max-w-[85vw] lg:max-w-6xl max-h-[95vh] overflow-y-auto p-0 gap-0 custom-scrollbar">
             {selectedBlog && (
                 <>
                     <DialogHeader className="sr-only">
@@ -391,12 +394,12 @@ export default function BlogManager() {
                     </DialogHeader>
 
                     {/* Cover Image */}
-                    <div className="relative h-64 w-full bg-slate-900 overflow-hidden">
+                    <div className="relative w-full bg-slate-900 overflow-hidden border-b border-slate-800">
                         {selectedBlog.thumbnail ? (
                             <img 
                                 src={selectedBlog.thumbnail} 
                                 alt={selectedBlog.title} 
-                                className="w-full h-full object-cover opacity-80"
+                                className="w-full h-auto max-h-[600px] object-contain block mx-auto"
                             />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center bg-slate-800 text-gray-500">
@@ -429,15 +432,29 @@ export default function BlogManager() {
                                         <span className="text-blue-400">Phim: {selectedBlog.movie.title}</span>
                                     </>
                                 )}
+                                <div className="flex items-center gap-3 ml-auto">
+                                    <div className="flex items-center gap-1.5 text-rose-400 bg-rose-400/10 px-2.5 py-1 rounded-full border border-rose-400/20">
+                                        <Heart className="h-3.5 w-3.5 fill-rose-400" />
+                                        <span className="font-bold text-xs">{selectedBlog._count?.likes || 0}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-sky-400 bg-sky-400/10 px-2.5 py-1 rounded-full border border-sky-400/20">
+                                        <MessageSquare className="h-3.5 w-3.5" />
+                                        <span className="font-bold text-xs">{selectedBlog._count?.comments || 0}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         {/* Content Body */}
-                        <div className="space-y-6">
+                        <div className="space-y-8">
                             <div 
                                 className="text-gray-300 leading-relaxed whitespace-pre-line text-lg font-light blog-content-preview"
                                 dangerouslySetInnerHTML={{ __html: selectedBlog.content }}
                             />
+
+                            <div className="pt-10 border-t border-slate-800/50">
+                                <BlogCommentSection blogId={selectedBlog.id} />
+                            </div>
                         </div>
 
                         {/* Footer Actions */}

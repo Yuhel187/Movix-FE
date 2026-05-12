@@ -49,7 +49,7 @@ export function BlogCommentSection({ blogId }: BlogCommentSectionProps) {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto rounded-lg pt-6 md:pt-8 text-white min-h-[500px]">
+    <div className="w-full rounded-lg pt-6 md:pt-8 text-white min-h-[500px]">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
         <div className="flex items-center gap-3">
           <MessageSquare className="h-7 w-7 text-gray-300" />
