@@ -1,20 +1,31 @@
-export enum PostStatus {
-  DRAFT = 'DRAFT',
-  PUBLISHED = 'PUBLISHED',
-  REJECTED = 'REJECTED',
-  HIDDEN = 'HIDDEN',
-}
-
 export interface BlogUser {
   id: string;
   display_name: string;
-  email: string;
-  avatar_url?: string;
+  avatar_url: string | null;
+  username?: string;
 }
 
 export interface BlogMovie {
+  id: string;
   title: string;
-  thumbnail?: string;
+  poster_url: string | null;
+  slug: string;
+}
+
+export interface BlogLike {
+  user_id: string;
+}
+
+export interface BlogBookmark {
+  user_id: string;
+}
+
+export enum PostStatus {
+  DRAFT = "DRAFT",
+  PUBLISHED = "PUBLISHED",
+  HIDDEN = "HIDDEN",
+  ARCHIVED = "ARCHIVED",
+  REJECTED = "REJECTED",
 }
 
 export interface BlogPost {
@@ -22,22 +33,38 @@ export interface BlogPost {
   title: string;
   slug: string;
   content: string;
-  thumbnail?: string;
-  status: PostStatus;
-  user_id: string;
-  movie_id?: string;
+  excerpt?: string;
+  thumbnail?: string | null;
+  images?: string[];
+  is_spoiler?: boolean;
+  status: PostStatus | "DRAFT" | "PUBLISHED" | "HIDDEN" | "ARCHIVED" | "REJECTED";
+  view_count: number;
+
   created_at: string;
   updated_at: string;
   user: BlogUser;
-  movie?: BlogMovie;
+  movie?: BlogMovie | null;
+  likes: BlogLike[];
+  bookmarks: BlogBookmark[];
   _count?: {
     likes: number;
+    comments: number;
     bookmarks: number;
   };
 }
 
-export interface BlogPaginationResponse {
-  blogs: BlogPost[];
+export interface BlogPagination {
+  page: number;
+  limit: number;
   total: number;
-  totalPages: number;
+  pages: number;
+}
+
+export interface BlogListResponse {
+  data: BlogPost[];
+  pagination: BlogPagination;
+}
+
+export interface BlogDetailResponse {
+  data: BlogPost;
 }
