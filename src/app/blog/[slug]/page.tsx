@@ -48,6 +48,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { blogService } from "@/services/blog.service";
 import { BlogPost } from "@/types/blog";
 import { MarkdownRenderer } from "@/components/post/MarkdownRenderer";
+import { BlogCommentSection } from "@/components/comment/BlogCommentSection";
 import CreatePostModal from "@/components/post/CreatePostModal";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -390,7 +391,12 @@ export default function BlogDetailPage() {
             
             <button 
               className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
-              onClick={() => toast.info("Chức năng bình luận đang được phát triển")}
+              onClick={() => {
+                const commentSection = document.getElementById('comment-section');
+                if (commentSection) {
+                  commentSection.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
             >
               <MessageCircle className="w-5 h-5" />
               <span className="font-medium">{blog._count?.comments || 0}</span>
@@ -418,6 +424,10 @@ export default function BlogDetailPage() {
             >
               <Share2 className="w-5 h-5" />
             </button>
+          </div>
+
+          <div id="comment-section" className="mt-16 pt-8 border-t border-zinc-800">
+            <BlogCommentSection blogId={blog.id} />
           </div>
         </article>
       </main>

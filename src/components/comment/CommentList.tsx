@@ -4,13 +4,15 @@ import { MessageSquare } from 'lucide-react';
 
 interface CommentListProps {
   comments: CommentWithReplies[];
-  movieId: string;
+  targetId: string;
+  targetType?: 'movie' | 'blog';
   onCommentUpdated: () => void; 
 }
 
 export function CommentList({
   comments,
-  movieId,
+  targetId,
+  targetType = 'movie',
   onCommentUpdated,
 }: CommentListProps) {
   if (comments.length === 0) {
@@ -30,7 +32,8 @@ export function CommentList({
           {/* Bình luận gốc */}
           <CommentItem
             comment={comment}
-            movieId={movieId}
+            targetId={targetId}
+            targetType={targetType}
             onCommentUpdated={onCommentUpdated}
           />
           {/* Các bình luận trả lời (nếu có) */}
@@ -40,7 +43,8 @@ export function CommentList({
                 <CommentItem
                   key={reply.id}
                   comment={reply}
-                  movieId={movieId}
+                  targetId={targetId}
+                  targetType={targetType}
                   onCommentUpdated={onCommentUpdated}
                   isReply={true}
                 />

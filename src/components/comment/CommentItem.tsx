@@ -41,7 +41,8 @@ const HEX_COLOR_REGEX = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
 
 interface CommentItemProps {
   comment: CommentData | CommentWithReplies; 
-  movieId: string;
+  targetId: string;
+  targetType?: 'movie' | 'blog';
   onCommentUpdated: () => void;
   isReply?: boolean;
 }
@@ -74,7 +75,8 @@ function getBadgeClassName(rankKey: string) {
 
 export function CommentItem({
   comment,
-  movieId,
+  targetId,
+  targetType = 'movie',
   onCommentUpdated,
   isReply = false,
 }: CommentItemProps) {
@@ -92,12 +94,15 @@ export function CommentItem({
   const handleReplySubmit = async (text: string, isSpoiler: boolean) => {
     try {
       const parentId = comment.parent_comment_id || comment.id;
-      const result = await commentService.postComment({
-        movieId,
+      const payload: any = {
         comment: text,
         isSpoiler,
         parentCommentId: parentId,
-      });
+      };
+      if (targetType === 'movie') payload.movieId = targetId;
+      else payload.postId = targetId;
+
+      const result = await commentService.postComment(payload);
       onCommentUpdated();
       setIsReplying(false);
       return result; 
