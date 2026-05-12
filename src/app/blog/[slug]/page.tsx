@@ -54,6 +54,8 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { toast } from "sonner";
 import Link from "next/link";
+import { ReportModal } from "@/components/common/ReportModal";
+import { ReportTargetType } from "@/types/report";
 
 export default function BlogDetailPage() {
   const params = useParams();
@@ -247,6 +249,24 @@ export default function BlogDetailPage() {
                         <Trash2 className="h-4 w-4 mr-2" />
                         Xóa bài viết
                       </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-zinc-700" />
+                    </>
+                  )}
+                  {user && !isOwner && blog?.id && (
+                    <>
+                      <ReportModal
+                        targetType={ReportTargetType.BLOG}
+                        targetId={blog.id}
+                        triggerElement={
+                          <DropdownMenuItem
+                            className="cursor-pointer text-red-500 focus:text-red-400 focus:bg-red-500/10"
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            Báo cáo bài viết
+                          </DropdownMenuItem>
+                        }
+                      />
                       <DropdownMenuSeparator className="bg-zinc-700" />
                     </>
                   )}
