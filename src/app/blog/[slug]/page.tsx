@@ -40,8 +40,8 @@ import {
   Pencil,
   Trash2,
   Share2,
-  Loader2,
   MessageCircle,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -49,9 +49,10 @@ import { blogService } from "@/services/blog.service";
 import { BlogPost } from "@/types/blog";
 import { MarkdownRenderer } from "@/components/post/MarkdownRenderer";
 import CreatePostModal from "@/components/post/CreatePostModal";
-import { formatDistanceToNow, format } from "date-fns";
+import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { toast } from "sonner";
+import Link from "next/link";
 
 export default function BlogDetailPage() {
   const params = useParams();
@@ -63,7 +64,6 @@ export default function BlogDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Like / Bookmark state
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -71,13 +71,11 @@ export default function BlogDetailPage() {
   const [isLiking, setIsLiking] = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
 
-  // Dialogs
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showSpoiler, setShowSpoiler] = useState(false);
 
-  // Prevent double-fetch for view_count
   const fetchedRef = useRef(false);
 
   const fetchBlog = useCallback(async () => {
@@ -174,38 +172,10 @@ export default function BlogDetailPage() {
     toast.success("Đã sao chép liên kết bài viết");
   };
 
-  // Loading state
   if (isLoading) {
-    return (
-      <div className="bg-black min-h-screen flex flex-col font-sans dark text-white">
-        <Navbar />
-        <main className="flex-grow pt-24 pb-20 px-4 md:px-8">
-          <div className="max-w-3xl mx-auto space-y-6">
-            <Skeleton className="h-8 w-48 bg-zinc-800" />
-            <Skeleton className="h-12 w-full bg-zinc-800" />
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-12 w-12 rounded-full bg-zinc-800" />
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-32 bg-zinc-800" />
-                <Skeleton className="h-3 w-48 bg-zinc-800" />
-              </div>
-            </div>
-            <Skeleton className="h-64 w-full rounded-xl bg-zinc-800" />
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-full bg-zinc-800" />
-              <Skeleton className="h-4 w-full bg-zinc-800" />
-              <Skeleton className="h-4 w-3/4 bg-zinc-800" />
-              <Skeleton className="h-4 w-full bg-zinc-800" />
-              <Skeleton className="h-4 w-5/6 bg-zinc-800" />
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
+    return <BlogDetailSkeleton />;
   }
 
-  // Error state
   if (error || !blog) {
     return (
       <div className="bg-black min-h-screen flex flex-col font-sans dark text-white">
@@ -237,75 +207,22 @@ export default function BlogDetailPage() {
     <div className="bg-black min-h-screen flex flex-col font-sans dark text-white">
       <Navbar />
 
-      <main className="flex-grow pt-24 pb-20 px-4 md:px-8">
-        <article className="max-w-3xl mx-auto">
-          {/* Back button */}
-          <Button
-            variant="ghost"
-            className="mb-6 text-zinc-400 hover:text-white -ml-2"
-            onClick={() => router.push("/blog")}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Quay lại
-          </Button>
-
-          {/* Movie tag */}
-          {blog.movie && (
-            <button
-              onClick={() => router.push(`/movies/${blog.movie!.slug}`)}
-              className="inline-flex items-center gap-1.5 mb-4 text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full px-3 py-1.5 hover:bg-blue-500/20 transition-colors"
+      <main className="flex-grow pt-28 pb-20 px-4 md:px-8">
+        <article className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-between mb-8">
+            <Button
+              variant="ghost"
+              className="text-zinc-400 hover:text-white -ml-4"
+              onClick={() => router.push("/blog")}
             >
-              <Film className="h-3.5 w-3.5" />
-              Review: {blog.movie.title}
-            </button>
-          )}
-
-          {/* Title */}
-          <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-4 leading-tight">
-            {blog.title}
-          </h1>
-
-          {/* Author & Meta */}
-          <div className="flex items-center justify-between mb-6 pb-6 border-b border-zinc-800">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-12 w-12 ring-2 ring-zinc-700">
-                <AvatarImage src={blog.user?.avatar_url || undefined} />
-                <AvatarFallback className="bg-zinc-800 text-zinc-300">
-                  {blog.user?.display_name?.charAt(0) || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-semibold text-white">
-                  {blog.user?.display_name || "Unknown"}
-                </p>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {format(new Date(blog.created_at), "dd/MM/yyyy HH:mm", { locale: vi })}
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
-                    {blog.view_count} lượt xem
-                  </span>
-                  {blog.is_spoiler && (
-                    <>
-                      <span>•</span>
-                      <Badge
-                        variant="outline"
-                        className="text-amber-400 border-amber-500/30 text-[10px] py-0"
-                      >
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        Spoiler
-                      </Badge>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
+              <ArrowLeft className="h-5 w-5 mr-1" />
+              Quay lại
+            </Button>
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white" onClick={handleShare}>
+                <Share2 className="w-5 h-5" />
+              </Button>
+              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-9 w-9 text-zinc-400 hover:text-white">
@@ -341,139 +258,172 @@ export default function BlogDetailPage() {
             </div>
           </div>
 
-          {/* Excerpt */}
+          <header className="mb-10">
+            {blog.movie && (
+              <Badge 
+                onClick={() => router.push(`/movies/${blog.movie!.slug}`)}
+                className="mb-4 bg-yellow-500 hover:bg-yellow-600 text-black font-semibold cursor-pointer"
+              >
+                <Film className="h-3.5 w-3.5 mr-1.5" />
+                Review: {blog.movie.title}
+              </Badge>
+            )}
+            <h1 className="text-4xl md:text-5xl font-extrabold mb-6 leading-tight tracking-tight text-white">
+              {blog.title}
+            </h1>
+
+            <div className="flex flex-wrap items-center gap-6 text-zinc-400 text-sm border-y border-zinc-800/50 py-6">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10 border border-zinc-700">
+                  <AvatarImage src={blog.user?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-zinc-800 text-zinc-300">
+                    {blog.user?.display_name?.charAt(0) || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-white font-medium">{blog.user?.display_name || "Unknown"}</p>
+                  <p className="text-xs">Tác giả</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                <span>{format(new Date(blog.created_at), "dd MMMM, yyyy", { locale: vi })}</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                <span>10 phút đọc</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Eye className="w-4 h-4" />
+                <span>{blog.view_count} lượt xem</span>
+              </div>
+              
+              {blog.is_spoiler && (
+                <Badge
+                  variant="outline"
+                  className="text-amber-400 border-amber-500/30 text-[10px] py-0"
+                >
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Spoiler
+                </Badge>
+              )}
+            </div>
+          </header>
+
           {blog.excerpt && (
-            <div className="mb-6 p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl">
+            <div className="mb-8 p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl">
               <p className="text-zinc-300 italic text-sm leading-relaxed">
                 {blog.excerpt}
               </p>
             </div>
           )}
 
-          {/* Thumbnail */}
           {blog.thumbnail && (
-            <div className="mb-8 overflow-hidden rounded-xl">
+            <div className="mb-12 rounded-2xl overflow-hidden border border-zinc-800">
               <img
                 src={blog.thumbnail}
                 alt={blog.title}
-                className="w-full max-h-[500px] object-cover rounded-xl"
+                className="w-full h-auto object-cover max-h-[500px]"
               />
             </div>
           )}
 
-          {/* Spoiler Warning */}
           {blog.is_spoiler && !showSpoiler && (
-            <div className="mb-8 p-6 border-2 border-amber-500/30 rounded-xl bg-amber-500/5 text-center">
-              <AlertTriangle className="h-10 w-10 text-amber-400 mx-auto mb-3" />
-              <h3 className="text-lg font-bold text-amber-400 mb-2">
+            <div className="mb-8 p-8 border-2 border-amber-500/30 rounded-2xl bg-amber-500/5 text-center">
+              <AlertTriangle className="h-12 w-12 text-amber-400 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-amber-400 mb-2">
                 Cảnh báo Spoiler!
               </h3>
-              <p className="text-zinc-400 text-sm mb-4">
+              <p className="text-zinc-400 mb-6 max-w-md mx-auto">
                 Bài viết này chứa nội dung tiết lộ cốt truyện. Bạn có muốn xem không?
               </p>
               <Button
                 onClick={() => setShowSpoiler(true)}
-                className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                className="bg-amber-500 hover:bg-amber-600 text-black font-semibold px-8"
               >
                 Tôi muốn đọc
               </Button>
             </div>
           )}
 
-          {/* Content */}
           {(!blog.is_spoiler || showSpoiler) && (
-            <div className="prose prose-lg prose-invert max-w-none mb-8 
-              prose-headings:text-white prose-p:text-zinc-300 prose-a:text-yellow-400 
-              prose-strong:text-white prose-code:text-yellow-300 prose-blockquote:border-yellow-500/50">
-              <MarkdownRenderer content={blog.content} />
-            </div>
-          )}
+            <>
+              <div className="prose prose-lg prose-invert max-w-none mb-12
+                prose-headings:text-white prose-p:text-zinc-300 prose-a:text-yellow-400 
+                prose-strong:text-white prose-code:text-yellow-300 prose-blockquote:border-yellow-500/50">
+                <MarkdownRenderer content={blog.content} />
+              </div>
 
-          {/* Blog images */}
-          {blog.images && blog.images.length > 0 && (!blog.is_spoiler || showSpoiler) && (
-            <div className="mb-8 space-y-4">
-              {blog.images.map((img, idx) => (
-                <div key={idx} className="overflow-hidden rounded-xl">
-                  <img
-                    src={img}
-                    alt={`Ảnh ${idx + 1}`}
-                    className="w-full max-h-[600px] object-contain rounded-xl border border-zinc-800 bg-zinc-900"
-                  />
+              {blog.images && blog.images.length > 0 && (
+                <div className="mb-12 space-y-6">
+                  {blog.images.map((img, idx) => (
+                    <div key={idx} className="overflow-hidden rounded-2xl border border-zinc-800">
+                      <img
+                        src={img}
+                        alt={`Ảnh ${idx + 1}`}
+                        className="w-full max-h-[700px] object-contain bg-zinc-900"
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
 
-          {/* Like / Bookmark / Share bar */}
-          <div className="sticky bottom-4 z-10">
-            <div className="flex items-center justify-center gap-2 py-3 px-6 bg-zinc-900/90 backdrop-blur-lg border border-zinc-700/50 rounded-full max-w-fit mx-auto shadow-2xl">
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "rounded-full px-4 transition-all",
-                  isLiked
-                    ? "text-blue-400 bg-blue-500/10 hover:bg-blue-500/20"
-                    : "text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10"
-                )}
-                onClick={handleLike}
-                disabled={isLiking}
-              >
-                <ThumbsUp className={cn("h-4 w-4 mr-2", isLiked && "fill-current")} />
-                {likesCount > 0 ? likesCount : "Thích"}
-              </Button>
+          <div className="sticky bottom-8 left-0 right-0 max-w-fit mx-auto bg-zinc-900/90 backdrop-blur-xl border border-zinc-800 rounded-full px-6 py-3 flex items-center gap-8 shadow-2xl z-50">
+            <button 
+              onClick={handleLike}
+              disabled={isLiking}
+              className={cn(
+                "flex items-center gap-2 transition-colors group",
+                isLiked ? "text-blue-400" : "hover:text-blue-400 text-zinc-400"
+              )}
+            >
+              <ThumbsUp className={cn("w-5 h-5 group-active:scale-125 transition-transform", isLiked && "fill-current")} />
+              <span className="font-medium">{likesCount}</span>
+            </button>
+            
+            <div className="w-px h-5 bg-zinc-800" />
+            
+            <button 
+              className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
+              onClick={() => toast.info("Chức năng bình luận đang được phát triển")}
+            >
+              <MessageCircle className="w-5 h-5" />
+              <span className="font-medium">{blog._count?.comments || 0}</span>
+            </button>
+            
+            <div className="w-px h-5 bg-zinc-800" />
+            
+            <button 
+              onClick={handleBookmark}
+              disabled={isBookmarking}
+              className={cn(
+                "flex items-center gap-2 transition-colors group",
+                isBookmarked ? "text-yellow-500" : "hover:text-yellow-500 text-zinc-400"
+              )}
+            >
+              <Bookmark className={cn("w-5 h-5 group-active:scale-125 transition-transform", isBookmarked && "fill-current")} />
+              <span className="font-medium">{isBookmarked ? "Đã lưu" : bookmarksCount}</span>
+            </button>
 
-              <div className="w-px h-5 bg-zinc-700" />
+            <div className="w-px h-5 bg-zinc-800" />
 
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-full px-4 text-zinc-400 hover:text-white hover:bg-zinc-800"
-                onClick={() => {
-                  // Scroll to comments (future feature)
-                  toast.info("Chức năng bình luận đang được phát triển")
-                }}
-              >
-                <MessageCircle className="h-4 w-4 mr-2" />
-                Bình luận
-              </Button>
-
-              <div className="w-px h-5 bg-zinc-700" />
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "rounded-full px-4 transition-all",
-                  isBookmarked
-                    ? "text-yellow-400 bg-yellow-500/10 hover:bg-yellow-500/20"
-                    : "text-zinc-400 hover:text-yellow-400 hover:bg-yellow-500/10"
-                )}
-                onClick={handleBookmark}
-                disabled={isBookmarking}
-              >
-                <Bookmark className={cn("h-4 w-4 mr-2", isBookmarked && "fill-current")} />
-                {bookmarksCount > 0 ? bookmarksCount : "Lưu"}
-              </Button>
-
-              <div className="w-px h-5 bg-zinc-700" />
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-full px-4 text-zinc-400 hover:text-white hover:bg-zinc-800"
-                onClick={handleShare}
-              >
-                <Share2 className="h-4 w-4" />
-              </Button>
-            </div>
+            <button 
+              onClick={handleShare}
+              className="text-zinc-400 hover:text-white transition-colors"
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
           </div>
         </article>
       </main>
 
       <Footer />
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent className="dark bg-zinc-900 border-zinc-700 text-white">
           <AlertDialogHeader>
@@ -497,7 +447,6 @@ export default function BlogDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <CreatePostModal
           setOpen={setShowEditDialog}
@@ -519,6 +468,33 @@ export default function BlogDetailPage() {
           }}
         />
       </Dialog>
+    </div>
+  );
+}
+
+function BlogDetailSkeleton() {
+  return (
+    <div className="min-h-screen bg-black text-white flex flex-col font-sans dark">
+      <Navbar />
+      <div className="max-w-4xl mx-auto w-full pt-28 px-4">
+        <Skeleton className="h-8 w-32 mb-8 bg-zinc-800" />
+        <Skeleton className="h-16 w-full mb-6 bg-zinc-800" />
+        <Skeleton className="h-16 w-3/4 mb-10 bg-zinc-800" />
+        <div className="flex gap-4 mb-10">
+          <Skeleton className="h-12 w-12 rounded-full bg-zinc-800" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-32 bg-zinc-800" />
+            <Skeleton className="h-3 w-20 bg-zinc-800" />
+          </div>
+        </div>
+        <Skeleton className="h-[400px] w-full rounded-2xl mb-12 bg-zinc-800" />
+        <div className="space-y-4">
+          <Skeleton className="h-4 w-full bg-zinc-800" />
+          <Skeleton className="h-4 w-full bg-zinc-800" />
+          <Skeleton className="h-4 w-5/6 bg-zinc-800" />
+        </div>
+      </div>
+      <Footer />
     </div>
   );
 }
