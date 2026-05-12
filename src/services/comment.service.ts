@@ -1,16 +1,18 @@
 import apiClient  from '@/lib/apiClient';
 import { CommentData, CommentWithReplies } from '@/types/comment'; 
 
-export const getComments = async (movieId: string) => {
+export const getComments = async (targetId: string, targetType: 'movie' | 'blog' = 'movie') => {
+  const params = targetType === 'movie' ? { movieId: targetId } : { postId: targetId };
   const { data } = await apiClient.get<CommentWithReplies[]>('/comments', {
-    params: { movieId },
+    params,
   });
   return data;
 };
 
 
 interface PostCommentPayload {
-  movieId: string;
+  movieId?: string;
+  postId?: string;
   comment: string;
   parentCommentId?: string;
   isSpoiler?: boolean; 
