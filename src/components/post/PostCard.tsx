@@ -176,8 +176,11 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
 
   return (
     <>
-      <Card className="w-full max-w-2xl mx-auto hover:border-zinc-600 transition-colors duration-200 cursor-pointer group">
-        <CardHeader className="p-4 pb-1 space-y-3">
+      <Card 
+        className="w-full max-w-2xl mx-auto hover:border-zinc-600 transition-all duration-300 cursor-pointer group bg-zinc-900/40 backdrop-blur-sm border-zinc-800"
+        onClick={navigateToDetail}
+      >
+        <CardHeader className="p-4 pb-2 space-y-3">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10 cursor-pointer ring-2 ring-transparent hover:ring-yellow-500/50 transition-all">
               <AvatarImage src={post.author.avatarUrl} />
@@ -271,7 +274,7 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
           </div>
         </CardHeader>
 
-        <CardContent className="p-4 pt-0" onClick={navigateToDetail}>
+        <CardContent className="p-4 pt-0">
           {/* Movie tag */}
           {post.movie && (
             <button
