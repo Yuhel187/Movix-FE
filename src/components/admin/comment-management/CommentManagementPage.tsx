@@ -58,12 +58,19 @@ const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
 ];
 
 interface AdminCommentData extends CommentData {
-  movie: {
+  user: CommentData['user'] & { username: string };
+  movie?: {
     id: string;
     title: string;
     slug: string;
     poster_url: string | null;
-  };
+  } | null;
+  post?: {
+    id: string;
+    title: string;
+    slug: string;
+    thumbnail: string | null;
+  } | null;
   toxicity_score: number;
   is_hidden: boolean;
 }
@@ -246,7 +253,7 @@ export default function CommentManagementPage() {
                         <TableHead className="text-white pl-4">Người dùng</TableHead>
                         <TableHead className="text-white">Nội dung</TableHead>
                         <TableHead className="text-white">AI Đánh giá</TableHead>
-                        <TableHead className="text-white">Phim</TableHead>
+                        <TableHead className="text-white">Ngữ cảnh</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -269,7 +276,7 @@ export default function CommentManagementPage() {
                                 </Avatar>
                                 <div className="flex flex-col">
                                   <span className="text-sm font-medium text-white">{comment.user?.display_name}</span>
-                                  <span className="text-xs text-gray-500">@{(comment.user as any)?.username || 'unknown'}</span>
+                                  <span className="text-xs text-gray-500">@{comment.user?.username || 'unknown'}</span>
                                 </div>
                               </div>
                             </TableCell>
@@ -288,8 +295,8 @@ export default function CommentManagementPage() {
                                 <Badge variant="outline" className="text-green-400 border-green-900 bg-green-900/10 whitespace-nowrap">An toàn</Badge>
                               )}
                             </TableCell>
-                            <TableCell className="text-gray-300 text-sm max-w-[150px] truncate" title={comment.movie?.title}>
-                              {comment.movie?.title}
+                            <TableCell className="text-gray-300 text-sm max-w-[150px] truncate" title={comment.movie?.title || comment.post?.title}>
+                              {comment.movie?.title || comment.post?.title || "—"}
                             </TableCell>
                           </TableRow>
                         );
@@ -410,17 +417,19 @@ const CommentDetailPanel = ({
           <h3 className="text-sm font-semibold text-gray-400 uppercase">Thông tin ngữ cảnh</h3>
           <div className="flex items-center gap-3 mt-2">
             <Image
-              src={comment.movie?.poster_url || "/images/placeholder-poster.png"}
-              alt="Poster" width={40} height={60} className="rounded bg-slate-800 object-cover"
+              src={comment.movie?.poster_url || comment.post?.thumbnail || "/images/placeholder-poster.png"}
+              alt="Context" width={40} height={60} className="rounded bg-slate-800 object-cover"
             />
             <div className="overflow-hidden">
-              <p className="font-bold text-sm line-clamp-1" title={comment.movie?.title}>{comment.movie?.title}</p>
+              <p className="font-bold text-sm line-clamp-1" title={comment.movie?.title || comment.post?.title}>
+                {comment.movie?.title || comment.post?.title || "Không rõ"}
+              </p>
               <a
-                href={`/movies/${comment.movie?.slug}`}
+                href={comment.movie ? `/movies/${comment.movie?.slug}` : `/blog/${comment.post?.slug}`}
                 target="_blank"
                 className="text-xs text-blue-400 hover:underline truncate block"
               >
-                Xem trang phim
+                {comment.movie ? "Xem trang phim" : "Xem bài viết"}
               </a>
             </div>
           </div>
@@ -448,7 +457,8 @@ const CommentDetailPanel = ({
             <div className="break-words break-all whitespace-pre-wrap w-full">
               <CommentItem
                 comment={displayComment}
-                movieId={comment.movie?.id}
+                targetId={comment.movie?.id || comment.post?.id || ""}
+                targetType={comment.movie ? 'movie' : 'blog'}
                 onCommentUpdated={() => { }}
               />
             </div>
