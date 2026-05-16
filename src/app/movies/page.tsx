@@ -5,6 +5,7 @@ import HeroBanner from "@/components/movie/HeroBanner";
 import { MovieCarousel } from "@/components/movie/MovieCarousel";
 import { GenreSection } from "@/components/movie/GenreSection";
 import { RankingSection } from "@/components/movie/ranking/RankingSection";
+import { MoodSuggestionSection } from "@/components/movie/MoodSuggestionSection";
 import Navbar from "@/components/layout/NavBar";
 import Footer from "@/components/layout/Footer";
 import {
@@ -97,6 +98,9 @@ export default function MoviesPage() {
         <div className="mt-4">
           <RankingSection />
         </div>
+
+        {/* Mood-based Suggestion */}
+        <MoodSuggestionSection />
 
         {/* Personalized Movies (Heaviest) */}
         {personalizedMovies === null ? (

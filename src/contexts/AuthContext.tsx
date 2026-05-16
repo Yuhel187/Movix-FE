@@ -39,6 +39,7 @@ const normalizeUser = (data: any): AuthUser => {
     role: roleNormalized,
     avatarUrl: data.avatar_url || data.avatarUrl || null,
     display_name_color: data.display_name_color ?? null,
+    preferences: data.preferences ?? null,
   };
 };
 
@@ -92,9 +93,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user, checkAuth]);
 
   useEffect(() => {
-    if (!isLoading && user && !user.preferences?.onboarded_at) {
-      if (pathname !== '/onboarding' && pathname !== '/logout' && pathname !== '/') {
-        router.push('/onboarding');
+    if (!isLoading && user) {
+      const hasOnboarded = user.preferences?.onboarded_at || (user as any).onboarded_at || (user as any).onboardedAt;
+      if (!hasOnboarded) {
+        if (pathname !== '/onboarding' && pathname !== '/logout' && pathname !== '/') {
+          router.push('/onboarding');
+        }
       }
     }
   }, [user, isLoading, pathname, router]);
@@ -111,8 +115,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const login = (user: AuthUser) => {
-    setUser(user);
+  const login = async (user: AuthUser) => {
+    await checkAuth();
   };
 
   const logout = async () => {
