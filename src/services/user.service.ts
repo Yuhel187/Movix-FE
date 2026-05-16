@@ -12,6 +12,9 @@ export interface UserProfile {
   role: {
     name: string;
   };
+  preferences?: {
+    onboarded_at?: string | null;
+  } | null;
 }
 
 export interface UpdateProfileData {

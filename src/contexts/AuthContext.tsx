@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import apiClient from '@/lib/apiClient';
 
 interface AuthUser {
@@ -12,6 +12,9 @@ interface AuthUser {
   avatarUrl?: string | null;
   display_name?: string;
   display_name_color?: string | null;
+  preferences?: {
+    onboarded_at?: string | null;
+  } | null;
 }
 
 interface AuthContextType {
@@ -43,6 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, _setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   const checkAuth = useCallback(async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
@@ -86,6 +90,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => clearInterval(intervalId);
   }, [user, checkAuth]);
+
+  useEffect(() => {
+    if (!isLoading && user && !user.preferences?.onboarded_at) {
+      if (pathname !== '/onboarding' && pathname !== '/logout' && pathname !== '/') {
+        router.push('/onboarding');
+      }
+    }
+  }, [user, isLoading, pathname, router]);
 
   const setUser = (newUser: AuthUser | null) => {
     const userSafe = newUser ? normalizeUser(newUser) : null;
