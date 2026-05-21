@@ -50,6 +50,7 @@ import { BlogPost } from "@/types/blog";
 import { MarkdownRenderer } from "@/components/post/MarkdownRenderer";
 import { BlogCommentSection } from "@/components/comment/BlogCommentSection";
 import CreatePostModal from "@/components/post/CreatePostModal";
+import { FollowButton } from "@/components/common/FollowButton";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { toast } from "sonner";
@@ -285,6 +286,11 @@ export default function BlogDetailPage() {
                   <p className="text-white font-medium">{blog.user?.display_name || "Unknown"}</p>
                   <p className="text-xs">Tác giả</p>
                 </div>
+                {blog.user?.id && (
+                  <div className="ml-2">
+                    <FollowButton targetUserId={blog.user.id} />
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2">

@@ -44,6 +44,7 @@ import { toast } from "sonner"
 import CreatePostModal from "./CreatePostModal"
 import { ReportModal } from "@/components/common/ReportModal"
 import { ReportTargetType } from "@/types/report"
+import { FollowButton } from "@/components/common/FollowButton"
 
 
 export interface Post {
@@ -188,9 +189,14 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
             </Avatar>
 
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-sm leading-normal truncate cursor-pointer hover:underline">
-                {post.author.username}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-sm leading-normal truncate cursor-pointer hover:underline">
+                  {post.author.username}
+                </p>
+                {post.author.id && (
+                  <FollowButton targetUserId={post.author.id} variant="outline" size="sm" className="h-6 text-[10px] px-2" showIcon={true} />
+                )}
+              </div>
               <div className="text-xs text-muted-foreground flex items-center gap-1">
                 <span>{post.timeAgo}</span>
                 <span>•</span>
