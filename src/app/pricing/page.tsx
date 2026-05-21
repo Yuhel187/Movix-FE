@@ -61,6 +61,8 @@ const toDisplayPlan = (plan: SubscriptionPlan): PricingDisplayPlan => {
       .filter(Boolean);
   }
 
+  featureList = featureList.filter((f) => !f.toLowerCase().includes('remote control'));
+
   if (plan.can_create_watch_party) {
     featureList.push(`Tạo Watch Party (tối đa ${plan.max_watch_party_participants} người)`);
   }
