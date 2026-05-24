@@ -158,7 +158,10 @@ export function CommentItem({
             {comment.user.display_name}
           </span>
           {comment.user.id && (
-            <FollowButton targetUserId={comment.user.id} variant="ghost" size="sm" className="h-5 px-2 text-[10px] bg-zinc-800/50 hover:bg-zinc-700" showIcon={false} />
+            <>
+              <span className="text-zinc-500 text-xs">•</span>
+              <FollowButton targetUserId={comment.user.id} variant="ghost" className="h-auto p-0 text-sm hover:bg-transparent" />
+            </>
           )}
           {userBadge && (
             <span

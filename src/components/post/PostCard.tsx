@@ -194,7 +194,10 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
                   {post.author.username}
                 </p>
                 {post.author.id && (
-                  <FollowButton targetUserId={post.author.id} variant="outline" size="sm" className="h-6 text-[10px] px-2" showIcon={true} />
+                  <>
+                    <span className="text-zinc-500 text-xs mt-0.5">•</span>
+                    <FollowButton targetUserId={post.author.id} variant="ghost" className="h-auto p-0 text-sm hover:bg-transparent" />
+                  </>
                 )}
               </div>
               <div className="text-xs text-muted-foreground flex items-center gap-1">

@@ -4,17 +4,15 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useFollow } from '@/hooks/useFollow';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserPlus, UserMinus, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface FollowButtonProps extends React.ComponentProps<typeof Button> {
   targetUserId: string;
-  showIcon?: boolean;
 }
 
 export const FollowButton: React.FC<FollowButtonProps> = ({ 
   targetUserId, 
-  showIcon = true,
-  variant = 'default',
+  variant = 'ghost',
   size = 'sm',
   className,
   onClick,
@@ -38,23 +36,17 @@ export const FollowButton: React.FC<FollowButtonProps> = ({
 
   return (
     <Button
-      variant={isFollowing ? 'secondary' : variant}
+      variant={variant}
       size={size}
-      className={className}
+      className={cn(
+        `font-semibold ${isFollowing ? 'text-zinc-400 hover:text-red-500' : 'text-blue-500 hover:text-blue-400'} transition-colors`,
+        className
+      )}
       onClick={handleClick}
       disabled={isLoading}
       {...props}
     >
-      {isLoading ? (
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      ) : showIcon ? (
-        isFollowing ? (
-          <UserMinus className="mr-2 h-4 w-4" />
-        ) : (
-          <UserPlus className="mr-2 h-4 w-4" />
-        )
-      ) : null}
-      {isFollowing ? 'Following' : 'Follow'}
+      {isFollowing ? 'Unfollow' : 'Follow'}
     </Button>
   );
 };
