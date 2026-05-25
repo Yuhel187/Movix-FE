@@ -56,7 +56,10 @@ export function ReportModal({ targetType, targetId, triggerElement }: ReportModa
       <DialogTrigger asChild>
         {triggerElement}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] bg-[#262626] text-zinc-100 border-zinc-800">
+      <DialogContent 
+        className="sm:max-w-[425px] bg-[#262626] text-zinc-100 border-zinc-800"
+        onClick={(e) => e.stopPropagation()}
+      >
         <DialogHeader>
           <DialogTitle>Báo cáo vi phạm</DialogTitle>
           <DialogDescription className="text-zinc-400">

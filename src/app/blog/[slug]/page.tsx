@@ -54,6 +54,9 @@ import { FollowButton } from "@/components/common/FollowButton";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { toast } from "sonner";
+import Link from "next/link";
+import { ReportModal } from "@/components/common/ReportModal";
+import { ReportTargetType } from "@/types/report";
 
 export default function BlogDetailPage() {
   const params = useParams();
@@ -278,6 +281,24 @@ export default function BlogDetailPage() {
                       <DropdownMenuSeparator className="bg-zinc-700" />
                     </>
                   )}
+                  {user && !isOwner && blog?.id && (
+                    <>
+                      <ReportModal
+                        targetType={ReportTargetType.BLOG}
+                        targetId={blog.id}
+                        triggerElement={
+                          <DropdownMenuItem
+                            className="cursor-pointer text-red-500 focus:text-red-400 focus:bg-red-500/10"
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            Báo cáo bài viết
+                          </DropdownMenuItem>
+                        }
+                      />
+                      <DropdownMenuSeparator className="bg-zinc-700" />
+                    </>
+                  )}
                   <DropdownMenuItem className="cursor-pointer" onClick={handleShare}>
                     <Share2 className="h-4 w-4 mr-2" />
                     Sao chép liên kết
@@ -323,11 +344,6 @@ export default function BlogDetailPage() {
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
                 <span>{format(new Date(blog.created_at), "dd MMMM, yyyy", { locale: vi })}</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                <span>10 phút đọc</span>
               </div>
 
               <div className="flex items-center gap-2">

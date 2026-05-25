@@ -110,7 +110,7 @@ interface WatchParty {
 
 interface FlaggedMessage {
   id: string;
-  content: string;
+  message: string;
   created_at: string;
   user: {
     id: string;
@@ -470,7 +470,7 @@ export default function WatchPartyMonitoring() {
                         <span className="font-bold text-sm">{msg.user?.username || "Unknown"}</span>
                         <span className="text-[10px] text-slate-500 uppercase">{format(new Date(msg.created_at), "HH:mm:ss")}</span>
                       </div>
-                      <p className="text-sm bg-red-500/10 text-red-200 p-2 rounded border border-red-500/20">{msg.content}</p>
+                      <p className="text-sm bg-red-500/10 text-red-200 p-2 rounded border border-red-500/20">{msg.message}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

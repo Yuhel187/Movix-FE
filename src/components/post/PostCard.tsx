@@ -279,6 +279,7 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
                           <DropdownMenuItem
                             className="cursor-pointer text-red-500 focus:text-red-400 focus:bg-red-500/10"
                             onSelect={(e) => e.preventDefault()}
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <AlertTriangle className="h-4 w-4 mr-2" />
                             Báo cáo bài viết

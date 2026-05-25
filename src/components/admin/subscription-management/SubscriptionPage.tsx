@@ -68,7 +68,7 @@ interface SubscriptionPlan {
   max_devices: number;
   gamification_xp_multiplier: number;
   smart_search_supported: boolean;
-  mobile_remote_control_supported: boolean;
+  //mobile_remote_control_supported: boolean;
   recommended?: boolean;
 }
 
@@ -91,21 +91,26 @@ const DEFAULT_FORM_DATA: Omit<SubscriptionPlan, "id"> = {
   max_devices: 1,
   gamification_xp_multiplier: 1,
   smart_search_supported: false,
-  mobile_remote_control_supported: false,
+  //mobile_remote_control_supported: false,
 };
 
 export default function SubscriptionPage() {
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
   const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
   const [formData, setFormData] =
-    useState<Omit<SubscriptionPlan, "id">>(DEFAULT_FORM_DATA);
-  const [loading, setLoading] = useState(false);
+    useState<Omit<SubscriptionPlan, "id">>(DEFAULT_FORM_DATA);
+
+  const [loading, setLoading] = useState(false);
+
   const [activeTab, setActiveTab] = useState("plans");
   const [filterPlanId, setFilterPlanId] = useState<string | undefined>(
     undefined,
-  );
+  );
+
   const fetchPlans = async () => {
     try {
       setLoading(true);
@@ -123,7 +128,7 @@ export default function SubscriptionPage() {
           max_devices: p.benefits?.device_login?.max_devices ?? 1,
           gamification_xp_multiplier: p.benefits?.gamification?.xp_multiplier ?? 1,
           smart_search_supported: p.benefits?.smart_search?.supported ?? false,
-          mobile_remote_control_supported: p.benefits?.mobile_remote_control?.supported ?? false,
+          //mobile_remote_control_supported: p.benefits?.mobile_remote_control?.supported ?? false,
           duration_days: p.duration_days ?? 30,
           level: p.level ?? 1,
           currency: p.currency ?? "VND",
@@ -139,7 +144,8 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     fetchPlans();
-  }, []);
+  }, []);
+
 
   const handleOpenAddDialog = () => {
     setCurrentPlan(null);
@@ -168,7 +174,7 @@ export default function SubscriptionPage() {
       max_devices: plan.max_devices,
       gamification_xp_multiplier: plan.gamification_xp_multiplier,
       smart_search_supported: plan.smart_search_supported,
-      mobile_remote_control_supported: plan.mobile_remote_control_supported,
+      //mobile_remote_control_supported: plan.mobile_remote_control_supported,
     });
     setIsPlanDialogOpen(true);
   };
@@ -234,11 +240,11 @@ export default function SubscriptionPage() {
         `Tìm kiếm thông minh: ${formData.smart_search_supported ? "Có" : "Không"}.`,
       );
 
-      generatedFeatures.push(
-        formData.mobile_remote_control_supported
-          ? "Có Mobile Remote Control."
-          : "Không Mobile Remote Control.",
-      );
+      // generatedFeatures.push(
+      //   formData.mobile_remote_control_supported
+      //     ? "Có Mobile Remote Control."
+      //     : "Không Mobile Remote Control.",
+      // );
 
       const payload = {
         name: formData.name,
@@ -272,9 +278,9 @@ export default function SubscriptionPage() {
           smart_search: {
             supported: formData.smart_search_supported,
           },
-          mobile_remote_control: {
-            supported: formData.mobile_remote_control_supported,
-          },
+          // mobile_remote_control: {
+          //   supported: formData.mobile_remote_control_supported,
+          // },
         },
       };
 
@@ -317,7 +323,8 @@ export default function SubscriptionPage() {
         setLoading(false);
       }
     }
-  };
+  };
+
 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -385,7 +392,7 @@ export default function SubscriptionPage() {
                 key={plan.id}
                 className={`border-slate-800 bg-[#1e1e1e] overflow-hidden relative group transition-all duration-300 hover:border-slate-600 hover:shadow-lg flex flex-col`}
               >
-                
+
                 {plan.recommended && (
                   <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 z-20" />
                 )}
@@ -427,7 +434,9 @@ export default function SubscriptionPage() {
                       Quyền lợi bao gồm:
                     </p>
                     <div className="space-y-3">
-                      {plan.features.map((feature, idx) => (
+                      {plan.features
+                        .filter((feature) => !feature.toLowerCase().includes('remote control'))
+                        .map((feature, idx) => (
                         <div
                           key={idx}
                           className="flex items-start text-sm text-slate-300 group/item"
@@ -482,7 +491,7 @@ export default function SubscriptionPage() {
               </Card>
             ))}
 
-            
+
             <button
               onClick={handleOpenAddDialog}
               className="border-2 border-dashed border-slate-800 rounded-lg flex flex-col items-center justify-center p-6 text-slate-500 hover:border-slate-600 hover:text-slate-300 hover:bg-slate-800/20 transition-all min-h-[400px] group"
@@ -500,7 +509,7 @@ export default function SubscriptionPage() {
         </TabsContent>
       </Tabs>
 
-      
+
       <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
         <DialogContent className="max-w-[90vw] w-full lg:max-w-4xl bg-[#1e1e1e] border-slate-800 text-white max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -510,7 +519,7 @@ export default function SubscriptionPage() {
           </DialogHeader>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 py-4">
-            
+
             <div className="space-y-4">
               <h3 className="text-lg font-semibold flex items-center text-primary">
                 <Settings className="mr-2 h-5 w-5" />
@@ -633,7 +642,7 @@ export default function SubscriptionPage() {
                 </div>
               </div>
 
-              
+
               <div className="space-y-4 pt-4 border-t border-slate-700">
                 <h3 className="text-md font-semibold flex items-center text-primary">
                   <span className="mr-2">🎉</span> Cấu hình Watch Party
@@ -709,7 +718,7 @@ export default function SubscriptionPage() {
               </div>
             </div>
 
-            
+
             <div className="space-y-4 flex flex-col h-full">
               <h3 className="text-lg font-semibold flex items-center text-primary">
                 <ListPlus className="mr-2 h-5 w-5" />
@@ -831,7 +840,7 @@ export default function SubscriptionPage() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  {/* <div className="flex items-center justify-between">
                     <Label
                       htmlFor="mobile_remote"
                       className="text-sm font-bold text-slate-300 cursor-pointer"
@@ -850,7 +859,7 @@ export default function SubscriptionPage() {
                       }
                       className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-primary"
                     />
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </div>
@@ -874,7 +883,7 @@ export default function SubscriptionPage() {
         </DialogContent>
       </Dialog>
 
-      
+
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="bg-[#1e1e1e] border-slate-800 text-white">
           <DialogHeader>
