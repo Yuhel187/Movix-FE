@@ -13,6 +13,13 @@ import { blogService, GetAllBlogsParams } from "@/services/blog.service";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
+import { BlogPost } from "@/types/blog";
+
+type BlogApiPost = BlogPost & {
+  likes_count?: number;
+  comments_count?: number;
+  bookmarks_count?: number;
+};
 
 export default function BlogPage() {
   const { user } = useAuth();
@@ -30,7 +37,7 @@ export default function BlogPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const mapApiDataToPost = useCallback((item: any): Post => {
+  const mapApiDataToPost = useCallback((item: BlogApiPost): Post => {
     return {
       id: item.id,
       slug: item.slug,
@@ -49,15 +56,15 @@ export default function BlogPage() {
       viewCount: item.view_count || 0,
       movie: item.movie || null,
       stats: {
-        likes: item._count?.likes || 0,
-        comments: item._count?.comments || 0,
-        shares: item._count?.bookmarks || 0,
+        likes: Number((item.like_count ?? item.likes_count ?? item._count?.likes) || 0),
+        comments: Number((item.comment_count ?? item.comments_count ?? item._count?.comments) || 0),
+        shares: Number((item.bookmark_count ?? item.bookmarks_count ?? item._count?.bookmarks) || 0),
       },
       likedByCurrentUser: user
-        ? item.likes?.some((l: any) => l.user_id === user.id) ?? false
+        ? item.is_liked ?? item.likes?.some((l) => l.user_id === user.id) ?? false
         : false,
       bookmarkedByCurrentUser: user
-        ? item.bookmarks?.some((b: any) => b.user_id === user.id) ?? false
+        ? item.is_bookmarked ?? item.bookmarks?.some((b) => b.user_id === user.id) ?? false
         : false,
     };
   }, [user]);

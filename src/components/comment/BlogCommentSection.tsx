@@ -9,13 +9,13 @@ import * as commentService from '@/services/comment.service';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils'; 
 
 interface BlogCommentSectionProps {
   blogId: string;
+  onCommentsCountChange?: (count: number) => void;
 }
 
-export function BlogCommentSection({ blogId }: BlogCommentSectionProps) {
+export function BlogCommentSection({ blogId, onCommentsCountChange }: BlogCommentSectionProps) {
   const [comments, setComments] = useState<CommentWithReplies[]>([]);
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
@@ -24,12 +24,16 @@ export function BlogCommentSection({ blogId }: BlogCommentSectionProps) {
     try {
       const data = await commentService.getComments(blogId, 'blog');
       setComments(data);
+      if (onCommentsCountChange) {
+        const totalCount = data.reduce((acc: number, c: CommentWithReplies) => acc + 1 + (c.replies?.length || 0), 0);
+        onCommentsCountChange(totalCount);
+      }
     } catch (error) {
       console.error('Không thể tải bình luận:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [blogId]);
+  }, [blogId, onCommentsCountChange]);
 
   useEffect(() => {
     fetchComments();

@@ -6,10 +6,17 @@ import { blogService } from "@/services/blog.service";
 import { Pagination } from "@/components/common/pagination";
 import { Input } from "@/components/ui/input";
 import { PostCardSkeleton } from "@/components/post/PostCardSkeleton";
-import { Bookmark, Search, Loader2 } from "lucide-react";
+import { Bookmark, Search } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import { useDebounce } from "@/hooks/useDebounce";
+import { BlogPost } from "@/types/blog";
+
+type BlogApiPost = BlogPost & {
+  likes_count?: number;
+  comments_count?: number;
+  bookmarks_count?: number;
+};
 
 export default function BookmarksPage() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -19,12 +26,13 @@ export default function BookmarksPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 500);
 
-  const mapApiDataToPost = (item: any): Post => {
+  const mapApiDataToPost = (item: BlogApiPost): Post => {
     return {
       id: item.id,
       slug: item.slug,
       title: item.title,
       author: {
+        id: item.user?.id,
         username: item.user?.display_name || "Người dùng Movix",
         avatarUrl: item.user?.avatar_url || "/images/logo.png",
       },
@@ -39,10 +47,12 @@ export default function BookmarksPage() {
         item.thumbnail ||
         (item.images && item.images.length > 0 ? item.images[0] : undefined),
       stats: {
-        likes: item._count?.likes || 0,
-        comments: item._count?.comments || 0,
-        shares: item._count?.bookmarks || 0,
+        likes: Number((item.like_count ?? item.likes_count ?? item._count?.likes) || 0),
+        comments: Number((item.comment_count ?? item.comments_count ?? item._count?.comments) || 0),
+        shares: Number((item.bookmark_count ?? item.bookmarks_count ?? item._count?.bookmarks) || 0),
       },
+      likedByCurrentUser: item.is_liked ?? false,
+      bookmarkedByCurrentUser: item.is_bookmarked ?? true,
     };
   };
 

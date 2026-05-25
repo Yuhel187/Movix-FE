@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { ReportModal } from '@/components/common/ReportModal';
 import { ReportTargetType } from '@/types/report';
+import { FollowButton } from '@/components/common/FollowButton';
 import { SpoilerWarning } from './SpoilerWarning';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -156,6 +157,12 @@ export function CommentItem({
           >
             {comment.user.display_name}
           </span>
+          {comment.user.id && (
+            <>
+              <span className="text-zinc-500 text-xs">•</span>
+              <FollowButton targetUserId={comment.user.id} variant="ghost" className="h-auto p-0 text-sm hover:bg-transparent" />
+            </>
+          )}
           {userBadge && (
             <span
               title={`Thành viên hạng ${userBadge}`}

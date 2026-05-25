@@ -46,6 +46,11 @@ export interface BlogPost {
   movie?: BlogMovie | null;
   likes: BlogLike[];
   bookmarks: BlogBookmark[];
+  like_count?: number;
+  comment_count?: number;
+  bookmark_count?: number;
+  is_liked?: boolean;
+  is_bookmarked?: boolean;
   _count?: {
     likes: number;
     comments: number;

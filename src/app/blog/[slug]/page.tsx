@@ -50,6 +50,7 @@ import { BlogPost } from "@/types/blog";
 import { MarkdownRenderer } from "@/components/post/MarkdownRenderer";
 import { BlogCommentSection } from "@/components/comment/BlogCommentSection";
 import CreatePostModal from "@/components/post/CreatePostModal";
+import { FollowButton } from "@/components/common/FollowButton";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { toast } from "sonner";
@@ -69,6 +70,7 @@ export default function BlogDetailPage() {
 
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
+  const [commentsCount, setCommentsCount] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [bookmarksCount, setBookmarksCount] = useState(0);
   const [isLiking, setIsLiking] = useState(false);
@@ -87,17 +89,16 @@ export default function BlogDetailPage() {
     setError(null);
     try {
       const response = await blogService.getBlogBySlug(slug);
-      const data: BlogPost = response.data;
+      const data: BlogPost = response.data || response;
       setBlog(data);
-      setLikesCount(data._count?.likes ?? data.likes?.length ?? 0);
-      setBookmarksCount(data._count?.bookmarks ?? data.bookmarks?.length ?? 0);
-      if (user) {
-        setIsLiked(data.likes?.some((l) => l.user_id === user.id) ?? false);
-        setIsBookmarked(data.bookmarks?.some((b) => b.user_id === user.id) ?? false);
-      }
-    } catch (err: any) {
+      setLikesCount(data.like_count ?? data._count?.likes ?? data.likes?.length ?? 0);
+      setCommentsCount(data.comment_count ?? data._count?.comments ?? 0);
+      setBookmarksCount(data.bookmark_count ?? data._count?.bookmarks ?? data.bookmarks?.length ?? 0);
+      // Việc set status like/bookmark của current user sẽ được xử lý ở useEffect riêng
+    } catch (err: unknown) {
       console.error("Failed to fetch blog:", err);
-      if (err.response?.status === 404) {
+      const status = (err as { response?: { status?: number } }).response?.status;
+      if (status === 404) {
         setError("Bài viết không tồn tại hoặc đã bị xóa.");
       } else {
         setError("Có lỗi xảy ra khi tải bài viết.");
@@ -105,7 +106,7 @@ export default function BlogDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [slug, user]);
+  }, [slug]);
 
   useEffect(() => {
     if (!fetchedRef.current) {
@@ -113,6 +114,16 @@ export default function BlogDetailPage() {
       fetchBlog();
     }
   }, [fetchBlog]);
+
+  useEffect(() => {
+    if (blog && user) {
+      setIsLiked(blog.is_liked ?? blog.likes?.some((l) => l.user_id === user.id) ?? false);
+      setIsBookmarked(blog.is_bookmarked ?? blog.bookmarks?.some((b) => b.user_id === user.id) ?? false);
+    } else {
+      setIsLiked(false);
+      setIsBookmarked(false);
+    }
+  }, [blog, user]);
 
   const isOwner = user?.id === blog?.user?.id;
 
@@ -126,7 +137,16 @@ export default function BlogDetailPage() {
     setIsLiked(!isLiked);
     setLikesCount((prev) => (isLiked ? prev - 1 : prev + 1));
     try {
-      await blogService.toggleLike(blog.id);
+      const response = await blogService.toggleLike(blog.id);
+      const data = response?.data;
+      if (data) {
+        if (typeof data.liked === "boolean") {
+          setIsLiked(data.liked);
+        }
+        if (typeof data.like_count === "number") {
+          setLikesCount(data.like_count);
+        }
+      }
     } catch {
       setIsLiked(isLiked);
       setLikesCount((prev) => (isLiked ? prev + 1 : prev - 1));
@@ -146,7 +166,16 @@ export default function BlogDetailPage() {
     setIsBookmarked(!isBookmarked);
     setBookmarksCount((prev) => (isBookmarked ? prev - 1 : prev + 1));
     try {
-      await blogService.toggleBookmark(blog.id);
+      const response = await blogService.toggleBookmark(blog.id);
+      const data = response?.data;
+      if (data) {
+        if (typeof data.bookmarked === "boolean") {
+          setIsBookmarked(data.bookmarked);
+        }
+        if (typeof data.bookmark_count === "number") {
+          setBookmarksCount(data.bookmark_count);
+        }
+      }
     } catch {
       setIsBookmarked(isBookmarked);
       setBookmarksCount((prev) => (isBookmarked ? prev + 1 : prev - 1));
@@ -305,6 +334,11 @@ export default function BlogDetailPage() {
                   <p className="text-white font-medium">{blog.user?.display_name || "Unknown"}</p>
                   <p className="text-xs">Tác giả</p>
                 </div>
+                {blog.user?.id && (
+                  <div className="ml-2">
+                    <FollowButton targetUserId={blog.user.id} />
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -414,7 +448,7 @@ export default function BlogDetailPage() {
               }}
             >
               <MessageCircle className="w-5 h-5" />
-              <span className="font-medium">{blog._count?.comments || 0}</span>
+              <span className="font-medium">{commentsCount}</span>
             </button>
             
             <div className="w-px h-5 bg-zinc-800" />
@@ -442,7 +476,7 @@ export default function BlogDetailPage() {
           </div>
 
           <div id="comment-section" className="mt-16 pt-8 border-t border-zinc-800">
-            <BlogCommentSection blogId={blog.id} />
+            <BlogCommentSection blogId={blog.id} onCommentsCountChange={setCommentsCount} />
           </div>
         </article>
       </main>

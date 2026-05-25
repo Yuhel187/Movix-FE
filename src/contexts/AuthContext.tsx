@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import apiClient from '@/lib/apiClient';
 
 interface AuthUser {
@@ -12,6 +12,9 @@ interface AuthUser {
   avatarUrl?: string | null;
   display_name?: string;
   display_name_color?: string | null;
+  preferences?: {
+    onboarded_at?: string | null;
+  } | null;
 }
 
 interface AuthContextType {
@@ -36,6 +39,7 @@ const normalizeUser = (data: any): AuthUser => {
     role: roleNormalized,
     avatarUrl: data.avatar_url || data.avatarUrl || null,
     display_name_color: data.display_name_color ?? null,
+    preferences: data.preferences ?? null,
   };
 };
 
@@ -43,6 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, _setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   const checkAuth = useCallback(async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
@@ -87,6 +92,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(intervalId);
   }, [user, checkAuth]);
 
+  useEffect(() => {
+    if (!isLoading && user) {
+      const hasOnboarded = user.preferences?.onboarded_at || (user as any).onboarded_at || (user as any).onboardedAt;
+      if (!hasOnboarded) {
+        if (pathname !== '/onboarding' && pathname !== '/logout' && pathname !== '/') {
+          router.push('/onboarding');
+        }
+      }
+    }
+  }, [user, isLoading, pathname, router]);
+
   const setUser = (newUser: AuthUser | null) => {
     const userSafe = newUser ? normalizeUser(newUser) : null;
     _setUser(userSafe);
@@ -99,8 +115,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const login = (user: AuthUser) => {
-    setUser(user);
+  const login = async (user: AuthUser) => {
+    await checkAuth();
   };
 
   const logout = async () => {
