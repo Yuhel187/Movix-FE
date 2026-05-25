@@ -9,31 +9,34 @@ export const useFollow = (targetUserId: string) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const handleFollowChange = (e: CustomEvent) => {
-      if (e.detail.userId === targetUserId) {
-        setIsFollowing(e.detail.isFollowing);
+    const handleFollowChange = (event: Event) => {
+      const { userId, isFollowing } = (event as CustomEvent<{ userId: string; isFollowing: boolean }>).detail;
+      if (userId === targetUserId) {
+        setIsFollowing(isFollowing);
       }
     };
     
-    window.addEventListener('follow_status_change' as any, handleFollowChange);
+    window.addEventListener('follow_status_change', handleFollowChange);
     return () => {
-      window.removeEventListener('follow_status_change' as any, handleFollowChange);
+      window.removeEventListener('follow_status_change', handleFollowChange);
     };
   }, [targetUserId]);
 
   useEffect(() => {
-    if (!user || user.id === targetUserId) {
+    if (!user || !targetUserId || user.id === targetUserId) {
+      setIsFollowing(false);
       setIsLoading(false);
       return;
     }
     
     const checkFollowStatus = async () => {
+      setIsLoading(true);
       try {
-        const followings = await followService.getMyFollowings();
-        const following = followings.some((f) => f.id === targetUserId);
+        const following = await followService.isFollowing(targetUserId);
         setIsFollowing(following);
       } catch (error) {
         console.error('Failed to fetch followings', error);
+        setIsFollowing(false);
       } finally {
         setIsLoading(false);
       }
@@ -67,12 +70,12 @@ export const useFollow = (targetUserId: string) => {
     try {
       if (currentStatus) {
         await followService.unFollow(targetUserId);
-        toast.success('Unfollowed user successfully');
+        toast.success('Đã ngừng theo dõi');
       } else {
         await followService.follow(targetUserId);
-        toast.success('Followed user successfully');
+        toast.success('Đã theo dõi');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Revert on error
       setIsFollowing(currentStatus);
       window.dispatchEvent(
@@ -80,7 +83,8 @@ export const useFollow = (targetUserId: string) => {
           detail: { userId: targetUserId, isFollowing: currentStatus }
         })
       );
-      toast.error(error.response?.data?.error || 'An error occurred');
+      const message = (error as { response?: { data?: { error?: string } } }).response?.data?.error;
+      toast.error(message || 'Đã xảy ra lỗi');
     }
   };
 

@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useCallback } from "react"
+import React, { useState, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -37,7 +37,6 @@ import {
   Film,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import Link from "next/link"
 import { useAuth } from "@/contexts/AuthContext"
 import { blogService } from "@/services/blog.service"
 import { toast } from "sonner"
@@ -99,6 +98,13 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
 
   const isOwner = user?.id === post.author.id
 
+  useEffect(() => {
+    setIsLiked(post.likedByCurrentUser ?? false)
+    setLikesCount(post.stats.likes)
+    setIsBookmarked(post.bookmarkedByCurrentUser ?? false)
+    setBookmarksCount(post.stats.shares)
+  }, [post.likedByCurrentUser, post.bookmarkedByCurrentUser, post.stats.likes, post.stats.shares])
+
   const handleLike = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!isLoggedIn) {
@@ -111,7 +117,16 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
     setIsLiked(!isLiked)
     setLikesCount(prev => isLiked ? prev - 1 : prev + 1)
     try {
-      await blogService.toggleLike(post.id)
+      const response = await blogService.toggleLike(post.id)
+      const data = response?.data
+      if (data) {
+        if (typeof data.liked === "boolean") {
+          setIsLiked(data.liked)
+        }
+        if (typeof data.like_count === "number") {
+          setLikesCount(data.like_count)
+        }
+      }
     } catch {
       // Rollback on error
       setIsLiked(isLiked)
@@ -133,7 +148,16 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
     setIsBookmarked(!isBookmarked)
     setBookmarksCount(prev => isBookmarked ? prev - 1 : prev + 1)
     try {
-      await blogService.toggleBookmark(post.id)
+      const response = await blogService.toggleBookmark(post.id)
+      const data = response?.data
+      if (data) {
+        if (typeof data.bookmarked === "boolean") {
+          setIsBookmarked(data.bookmarked)
+        }
+        if (typeof data.bookmark_count === "number") {
+          setBookmarksCount(data.bookmark_count)
+        }
+      }
     } catch {
       setIsBookmarked(isBookmarked)
       setBookmarksCount(prev => isBookmarked ? prev + 1 : prev - 1)
@@ -172,8 +196,6 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
       router.push(`/movies/${post.movie.slug}`)
     }
   }
-
-  const detailHref = `/blog/${post.slug || post.id}`;
 
   return (
     <>

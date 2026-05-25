@@ -25,5 +25,10 @@ export const followService = {
   getMyFollowers: async (): Promise<UserProfile[]> => {
     const response = await api.get<UserProfile[]>('/follow/followers');
     return response.data;
+  },
+
+  isFollowing: async (followingId: string): Promise<boolean> => {
+    const response = await api.get<{ isFollowing: boolean }>(`/follow/is-following/${followingId}`);
+    return response.data.isFollowing;
   }
 };

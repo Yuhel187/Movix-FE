@@ -46,7 +46,7 @@ export const FollowButton: React.FC<FollowButtonProps> = ({
       disabled={isLoading}
       {...props}
     >
-      {isFollowing ? 'Unfollow' : 'Follow'}
+      {isFollowing ? 'Ngừng theo dõi' : 'Theo dõi'}
     </Button>
   );
 };
