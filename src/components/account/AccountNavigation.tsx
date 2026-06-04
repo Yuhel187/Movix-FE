@@ -34,14 +34,14 @@ export function AccountNavigation() {
   };
 
   const UserProfile = () => (
-    <div className="flex items-center gap-3">
-      <Avatar className="h-10 w-10">
+    <div className="flex min-w-0 items-center gap-3">
+      <Avatar className="h-10 w-10 shrink-0">
         <AvatarImage src={user?.avatarUrl || ''} alt={user?.username} />
         <AvatarFallback>
           {user?.display_name?.[0] || user?.username?.[0] || 'U'}
         </AvatarFallback>
       </Avatar>
-      <div className="text-sm overflow-hidden">
+      <div className="min-w-0 overflow-hidden text-sm">
         <p className="font-semibold text-white truncate">
           {user?.display_name || user?.username}
         </p>
@@ -89,7 +89,7 @@ export function AccountNavigation() {
         </nav>
 
         {/* User Info & Logout  */}
-        <div className="mt-auto space-y-6">
+        <div className="mt-auto space-y-6 pt-8">
           <UserProfile />
           <LogoutButton />
         </div>
