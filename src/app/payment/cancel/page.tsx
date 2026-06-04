@@ -30,22 +30,10 @@ export default function PaymentCancelPage() {
   const searchParams = useSearchParams();
 
   const payment = useMemo(() => {
-    const code = searchParams.get("code") ?? "";
-    const id = searchParams.get("id") ?? "";
-    const cancel = searchParams.get("cancel") ?? "";
-    const status = searchParams.get("status") ?? "";
     const orderCode = searchParams.get("orderCode") ?? "";
 
-    const normalizedStatus = status.toUpperCase();
-    const isCancelled = cancel === "true" || normalizedStatus === "CANCELLED";
-
     return {
-      code,
-      id,
-      cancel,
-      status,
       orderCode,
-      isCancelled,
     };
   }, [searchParams]);
 
@@ -72,22 +60,22 @@ export default function PaymentCancelPage() {
                 <div>
                   <h1 className="text-2xl font-bold text-white">Giao dịch đã bị hủy</h1>
                   <p className="mt-1 text-sm text-slate-300">
-                    Hệ thống ghi nhận callback hủy thanh toán. Bạn có thể quay lại chọn gói để thanh toán lại.
+                    Bạn đã hủy thanh toán. Giao dịch chưa hoàn tất và sẽ không bị tính phí.
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4">
               <div className="rounded-lg border border-slate-800 bg-zinc-900 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm text-slate-400">Order Code</p>
+                  <p className="text-sm text-slate-400">Mã đơn hàng</p>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     className="h-8 px-2 text-slate-300 hover:bg-slate-800 hover:text-white"
-                    onClick={() => copyText(payment.orderCode, "order code")}
+                    onClick={() => copyText(payment.orderCode, "mã đơn hàng")}
                   >
                     <Copy className="mr-2 h-4 w-4" />
                     Sao chép
@@ -95,50 +83,18 @@ export default function PaymentCancelPage() {
                 </div>
                 <p className="mt-2 break-all font-mono text-base text-white">{displayValue(payment.orderCode)}</p>
               </div>
+            </div>
 
-              <div className="rounded-lg border border-slate-800 bg-zinc-900 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm text-slate-400">Transaction ID</p>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2 text-slate-300 hover:bg-slate-800 hover:text-white"
-                    onClick={() => copyText(payment.id, "transaction id")}
-                  >
-                    <Copy className="mr-2 h-4 w-4" />
-                    Sao chép
-                  </Button>
-                </div>
-                <p className="mt-2 break-all font-mono text-base text-white">{displayValue(payment.id)}</p>
-              </div>
-
-              <div className="rounded-lg border border-slate-800 bg-zinc-900 p-4">
-                <p className="text-sm text-slate-400">Code</p>
-                <p className="mt-2 text-base font-semibold text-white">{displayValue(payment.code)}</p>
-              </div>
-
-              <div className="rounded-lg border border-slate-800 bg-zinc-900 p-4">
-                <p className="text-sm text-slate-400">Status</p>
-                <p className="mt-2 text-base font-semibold text-white">{displayValue(payment.status)}</p>
-              </div>
-
-              <div className="rounded-lg border border-slate-800 bg-zinc-900 p-4">
-                <p className="text-sm text-slate-400">Cancel flag</p>
-                <p className="mt-2 text-base font-semibold text-white">{displayValue(payment.cancel)}</p>
-              </div>
-
-              <div className="rounded-lg border border-slate-800 bg-zinc-900 p-4">
-                <p className="text-sm text-slate-400">Kết luận</p>
-                <p className="mt-2 text-base font-semibold text-white">
-                  {payment.isCancelled ? "Đã hủy thành công" : "Không xác định là hủy"}
-                </p>
-              </div>
+            <div className="mt-6 rounded-lg border border-slate-800 bg-zinc-900 p-4 text-sm text-slate-300">
+              <p className="font-medium text-white">Bạn muốn thanh toán lại?</p>
+              <p className="mt-1">
+                Bạn có thể quay lại trang gói dịch vụ và chọn lại gói phù hợp.
+              </p>
             </div>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <Button variant="outline" asChild className="border-slate-700 bg-transparent text-white hover:bg-slate-800">
-                <Link href="/payment/success">Kiểm tra trang success</Link>
+                <Link href="/">Về trang chủ</Link>
               </Button>
               <Button asChild className="bg-primary text-white hover:bg-primary/90">
                 <Link href="/pricing">

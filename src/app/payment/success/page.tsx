@@ -43,7 +43,6 @@ export default function PaymentSuccessPage() {
 
   const payment = useMemo(() => {
     const code = searchParams.get("code") ?? "";
-    const id = searchParams.get("id") ?? "";
     const cancel = searchParams.get("cancel") ?? "";
     const status = searchParams.get("status") ?? "";
     const orderCode = searchParams.get("orderCode") ?? "";
@@ -62,20 +61,15 @@ export default function PaymentSuccessPage() {
     }
 
     return {
-      code,
-      id,
-      cancel,
-      status,
       orderCode,
       state,
-      isSuccess,
     };
   }, [searchParams]);
 
   const statusMeta = {
     success: {
       title: "Thanh toán thành công",
-      description: "Giao dịch test đã được xác nhận và gói dịch vụ sẽ sớm được kích hoạt.",
+      description: "Giao dịch đã được xác nhận. Gói dịch vụ của bạn sẽ được kích hoạt trong giây lát.",
       badge: "Thành công",
       badgeClassName: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
       icon: CheckCircle2,
@@ -84,7 +78,7 @@ export default function PaymentSuccessPage() {
     },
     cancelled: {
       title: "Giao dịch đã bị hủy",
-      description: "Người dùng đã hủy thanh toán nên hệ thống không ghi nhận giao dịch hoàn tất.",
+      description: "Bạn đã hủy thanh toán. Giao dịch chưa hoàn tất và sẽ không bị tính phí.",
       badge: "Đã hủy",
       badgeClassName: "bg-amber-500/10 text-amber-300 border-amber-500/20",
       icon: CircleX,
@@ -93,7 +87,7 @@ export default function PaymentSuccessPage() {
     },
     pending: {
       title: "Thanh toán đang xử lý",
-      description: "Giao dịch chưa có trạng thái hoàn tất. Vui lòng chờ hệ thống xác nhận.",
+      description: "Giao dịch đang được xác nhận. Vui lòng chờ trong ít phút trước khi thử lại.",
       badge: "Đang xử lý",
       badgeClassName: "bg-sky-500/10 text-sky-300 border-sky-500/20",
       icon: ReceiptText,
@@ -102,7 +96,7 @@ export default function PaymentSuccessPage() {
     },
     failed: {
       title: "Thanh toán không thành công",
-      description: "Mã phản hồi không thỏa điều kiện thành công hoặc giao dịch không được xác nhận.",
+      description: "Giao dịch chưa được hoàn tất. Bạn có thể thử lại hoặc chọn phương thức thanh toán khác.",
       badge: "Thất bại",
       badgeClassName: "bg-rose-500/10 text-rose-300 border-rose-500/20",
       icon: Ticket,
@@ -139,7 +133,7 @@ export default function PaymentSuccessPage() {
 
         <Card className="bg-[#1e1e1e] border-slate-800">
           <CardContent className="p-6 sm:p-8">
-            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="mb-6 space-y-2">
               <div className="space-y-2">
                 <Badge className={meta.badgeClassName}>{meta.badge}</Badge>
                 <div className="flex items-center gap-3">
@@ -150,23 +144,18 @@ export default function PaymentSuccessPage() {
                   </div>
                 </div>
               </div>
-
-              <div className="rounded-lg border border-slate-800 bg-zinc-900 px-4 py-3 text-sm text-slate-300">
-                <p className="text-slate-400">Mã kiểm tra</p>
-                <p className="mt-1 font-mono text-xs tracking-wider text-white">{formatLabel(payment.code || null)}</p>
-              </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4">
               <div className="rounded-lg border border-slate-800 bg-zinc-900 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm text-slate-400">Order Code</p>
+                  <p className="text-sm text-slate-400">Mã đơn hàng</p>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     className="h-8 px-2 text-slate-300 hover:bg-slate-800 hover:text-white"
-                    onClick={() => copyText(payment.orderCode, "order code")}
+                    onClick={() => copyText(payment.orderCode, "mã đơn hàng")}
                   >
                     <Copy className="mr-2 h-4 w-4" />
                     Sao chép
@@ -174,39 +163,12 @@ export default function PaymentSuccessPage() {
                 </div>
                 <p className="mt-2 break-all font-mono text-base text-white">{formatLabel(payment.orderCode)}</p>
               </div>
-
-              <div className="rounded-lg border border-slate-800 bg-zinc-900 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm text-slate-400">Transaction ID</p>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2 text-slate-300 hover:bg-slate-800 hover:text-white"
-                    onClick={() => copyText(payment.id, "transaction id")}
-                  >
-                    <Copy className="mr-2 h-4 w-4" />
-                    Sao chép
-                  </Button>
-                </div>
-                <p className="mt-2 break-all font-mono text-base text-white">{formatLabel(payment.id)}</p>
-              </div>
-
-              <div className="rounded-lg border border-slate-800 bg-zinc-900 p-4">
-                <p className="text-sm text-slate-400">Trạng thái từ callback</p>
-                <p className="mt-2 text-base font-semibold text-white">{formatLabel(payment.status || null)}</p>
-              </div>
-
-              <div className="rounded-lg border border-slate-800 bg-zinc-900 p-4">
-                <p className="text-sm text-slate-400">Cancel flag</p>
-                <p className="mt-2 text-base font-semibold text-white">{formatLabel(payment.cancel || null)}</p>
-              </div>
             </div>
 
             <div className="mt-6 rounded-lg border border-slate-800 bg-zinc-900 p-4 text-sm text-slate-300">
-              <p className="font-medium text-white">Điều kiện xác nhận</p>
+              <p className="font-medium text-white">Cần hỗ trợ?</p>
               <p className="mt-1">
-                Thành công khi code = 00, cancel = false và status = PAID.
+                Nếu gói chưa được kích hoạt sau vài phút, vui lòng liên hệ hỗ trợ kèm mã đơn hàng.
               </p>
             </div>
 

@@ -86,10 +86,10 @@ export default function UserSubscriptionPage() {
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="mt-8 grid grid-cols-1 gap-8">
         
-        {/* Left Column: Plan Status & History */}
-        <div className="md:col-span-2 space-y-8">
+        {/* Main Content: Plan Status & History */}
+        <div className="space-y-8">
           
           {/* Current Plan Section */}
           <section>
@@ -220,28 +220,6 @@ export default function UserSubscriptionPage() {
             </h2>
             <RefundHistory />
           </section>
-        </div>
-
-        {/* Right Column: Wallet & Help */}
-        <div className="space-y-8">
-            {/* Wallet Balance for Auto-Renew
-            <section>
-              <WalletBalance balance={balance} />
-            </section>
-            */}
-
-            {/* Help Block */}
-            <Card className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 border-slate-800">
-               <CardContent className="p-6">
-                  <h3 className="font-semibold text-white mb-2">Cần hỗ trợ?</h3>
-                  <p className="text-sm text-slate-400 mb-4">
-                    Nếu bạn có thắc mắc về hóa đơn hoặc gói cước, hãy liên hệ với chúng tôi.
-                  </p>
-                  <Button variant="outline" className="w-full border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
-                    Liên hệ CSKH
-                  </Button>
-               </CardContent>
-            </Card>
         </div>
       </div>
     </div>

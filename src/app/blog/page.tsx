@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { PostCard, Post } from "@/components/post/PostCard";
 import { PostCardSkeletonList } from "@/components/post/PostCardSkeleton";
 import { CreatePostTrigger } from "@/components/post/CreatePostTrigger";
-import { Sparkles, MessageSquare, TrendingUp, Loader2, Search, X } from "lucide-react";
+import { Sparkles, TrendingUp, Loader2, Search, X, Star, Film } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { blogService, GetAllBlogsParams } from "@/services/blog.service";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
@@ -117,7 +118,7 @@ export default function BlogPage() {
     const sortedPosts = [...posts];
 
     if (activeFilter === "top") {
-      sortedPosts.sort((a, b) => b.stats.likes - a.stats.likes);
+      sortedPosts.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
     } else if (activeFilter === "reviews") {
       return sortedPosts.filter(p => p.movie != null);
     }
@@ -148,16 +149,22 @@ export default function BlogPage() {
         <div className="max-w-xl mx-auto">
           {/* Header Section */}
           <div className="mb-8 text-center sm:text-left space-y-2 border-b border-zinc-800 pb-6">
-            <h1 className="text-2xl font-bold text-white tracking-tight">
-              Cộng Đồng Movix
+            <h1 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent inline-flex items-center gap-2">
+              <Sparkles className="h-8 w-8 text-yellow-500" />
+              Cộng đồng
             </h1>
-            <p className="text-zinc-400 text-sm">
-              Nơi chia sẻ, thảo luận và kết nối đam mê điện ảnh.
+            <p className="text-zinc-400 text-sm sm:text-base max-w-md mx-auto sm:mx-0">
+              Khám phá và chia sẻ những khoảnh khắc điện ảnh cùng mọi người.
             </p>
+          </div>
+
+          {/* Action Bar */}
+          <div className="mb-6 flex flex-col gap-4 py-4">
+            <CreatePostTrigger onPostCreated={handlePostCreated} />
 
             {/* Search */}
-            <div className="pt-2 relative">
-              <Search className="absolute left-3 top-1/2 translate-y-[1px] h-4 w-4 text-zinc-500" />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
               <Input
                 placeholder="Tìm kiếm bài viết..."
                 value={searchQuery}
@@ -166,6 +173,7 @@ export default function BlogPage() {
               />
               {searchQuery && (
                 <button
+                  type="button"
                   onClick={() => setSearchQuery("")}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
                 >
@@ -174,42 +182,48 @@ export default function BlogPage() {
               )}
             </div>
 
-            <div className="pt-3 flex flex-col sm:flex-row sm:items-center gap-3 w-full">
-              <div className="w-full">
-                <CreatePostTrigger onPostCreated={handlePostCreated} />
-              </div>
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              <Button
+                variant={activeFilter === "newest" ? "default" : "outline"}
+                className={cn(
+                  "rounded-full px-5",
+                  activeFilter === "newest"
+                    ? "bg-yellow-500 hover:bg-yellow-600 text-black font-semibold border-transparent"
+                    : "border-zinc-700 bg-zinc-900/50 hover:bg-zinc-800 text-zinc-300"
+                )}
+                onClick={() => setActiveFilter("newest")}
+              >
+                <Star className="w-4 h-4 mr-1.5" />
+                Mới nhất
+              </Button>
+              <Button
+                variant={activeFilter === "reviews" ? "default" : "outline"}
+                className={cn(
+                  "rounded-full px-5",
+                  activeFilter === "reviews"
+                    ? "bg-yellow-500 hover:bg-yellow-600 text-black font-semibold border-transparent"
+                    : "border-zinc-700 bg-zinc-900/50 hover:bg-zinc-800 text-zinc-300"
+                )}
+                onClick={() => setActiveFilter("reviews")}
+              >
+                <Film className="w-4 h-4 mr-1.5" />
+                Review phim
+              </Button>
+              <Button
+                variant={activeFilter === "top" ? "default" : "outline"}
+                className={cn(
+                  "rounded-full px-5",
+                  activeFilter === "top"
+                    ? "bg-yellow-500 hover:bg-yellow-600 text-black font-semibold border-transparent"
+                    : "border-zinc-700 bg-zinc-900/50 hover:bg-zinc-800 text-zinc-300"
+                )}
+                onClick={() => setActiveFilter("top")}
+              >
+                <TrendingUp className="w-4 h-4 mr-1.5" />
+                Nổi bật
+              </Button>
             </div>
-          </div>
-
-          {/* Filter Tabs */}
-          <div className="flex items-center space-x-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-            <Button
-              variant={activeFilter === "newest" ? "default" : "secondary"}
-              size="sm"
-              onClick={() => setActiveFilter("newest")}
-              className={`rounded-full transition-all ${activeFilter === "newest" ? "bg-yellow-500 hover:bg-yellow-600 text-black font-semibold" : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white"}`}
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              Mới nhất
-            </Button>
-            <Button
-              variant={activeFilter === "reviews" ? "default" : "secondary"}
-              size="sm"
-              onClick={() => setActiveFilter("reviews")}
-              className={`rounded-full transition-all ${activeFilter === "reviews" ? "bg-yellow-500 hover:bg-yellow-600 text-black font-semibold" : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white"}`}
-            >
-              <MessageSquare className="w-4 h-4 mr-2" />
-              Review phim
-            </Button>
-            <Button
-              variant={activeFilter === "top" ? "default" : "secondary"}
-              size="sm"
-              onClick={() => setActiveFilter("top")}
-              className={`rounded-full transition-all ${activeFilter === "top" ? "bg-yellow-500 hover:bg-yellow-600 text-black font-semibold" : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white"}`}
-            >
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Nổi bật
-            </Button>
           </div>
 
           {/* Blog List */}

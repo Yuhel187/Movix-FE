@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Receipt } from "lucide-react";
 import { Transaction } from "@/types/subscription";
 
 interface BillingHistoryProps {
@@ -44,7 +43,6 @@ export default function BillingHistory({ transactions, isLoading = false }: Bill
               <TableHead className="text-slate-400">Phương thức</TableHead>
               <TableHead className="text-slate-400">Số tiền</TableHead>
               <TableHead className="text-slate-400">Trạng thái</TableHead>
-              <TableHead className="text-right text-slate-400">Chi tiết</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -73,11 +71,6 @@ export default function BillingHistory({ transactions, isLoading = false }: Bill
                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${status.className}`}>
                     {status.text}
                   </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" title={`Transaction ID: ${transaction.id}`}>
-                    <Receipt className="h-4 w-4" />
-                  </Button>
                 </TableCell>
               </TableRow>
               );
