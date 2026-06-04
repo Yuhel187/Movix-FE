@@ -49,6 +49,8 @@ import { MarkdownRenderer } from "./MarkdownRenderer"
 import { useAuth } from "@/contexts/AuthContext"
 import { blogService } from "@/services/blog.service"
 import { toast } from "sonner"
+import { useDebounce } from "@/hooks/useDebounce"
+import api from "@/lib/apiClient"
 
 
 const MAX_IMAGE_SIZE_MB = 5
@@ -95,8 +97,47 @@ export default function CreatePostModal({
     const [isLoading, setIsLoading] = useState(false)
     const [activeTab, setActiveTab] = useState("edit")
 
+    // For movie search
+    const [movieSearchText, setMovieSearchText] = useState("")
+    const debouncedMovieSearch = useDebounce(movieSearchText, 300)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [movieResults, setMovieResults] = useState<any[]>([])
+    const [isSearchingMovie, setIsSearchingMovie] = useState(false)
+    const [showMovieDropdown, setShowMovieDropdown] = useState(false)
+
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const imageInputRef = useRef<HTMLInputElement>(null)
+    const movieSearchRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const fetchMovies = async () => {
+            if (!debouncedMovieSearch.trim()) {
+                setMovieResults([]);
+                return;
+            }
+            setIsSearchingMovie(true);
+            try {
+                const res = await api.get(`/movies/search?q=${debouncedMovieSearch}`);
+                setMovieResults(res.data?.movies || []);
+                setShowMovieDropdown(true);
+            } catch (err) {
+                console.error("Failed to search movies", err);
+            } finally {
+                setIsSearchingMovie(false);
+            }
+        };
+        fetchMovies();
+    }, [debouncedMovieSearch]);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (movieSearchRef.current && !movieSearchRef.current.contains(e.target as Node)) {
+                setShowMovieDropdown(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     useEffect(() => {
         if (initialData) {
@@ -226,6 +267,7 @@ export default function CreatePostModal({
             setExcerpt("")
             setIsSpoiler(false)
             setMovieId("")
+            setMovieSearchText("")
             setImages([])
             setExistingThumbnail(null)
             setExistingImages([])
@@ -340,18 +382,72 @@ export default function CreatePostModal({
 
                     {/* Movie ID & Spoiler row */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 relative" ref={movieSearchRef}>
                             <Label htmlFor="post-movie" className="font-semibold flex items-center gap-1.5">
                                 <Film className="h-4 w-4" />
-                                Liên kết phim <span className="text-xs text-muted-foreground font-normal">(ID)</span>
+                                Liên kết phim <span className="text-xs text-muted-foreground font-normal">(Tìm kiếm theo tên phim)</span>
                             </Label>
-                            <Input
-                                id="post-movie"
-                                placeholder="Dán Movie ID nếu bài viết review phim"
-                                value={movieId}
-                                className="bg-zinc-950 border-zinc-700 text-white placeholder-zinc-500"
-                                onChange={(e) => setMovieId(e.target.value)}
-                            />
+                            <div className="flex gap-2">
+                                <Input
+                                    id="post-movie"
+                                    placeholder="Nhập tên phim để tìm..."
+                                    value={movieSearchText}
+                                    className="bg-zinc-950 border-zinc-700 text-white placeholder-zinc-500"
+                                    onChange={(e) => {
+                                        setMovieSearchText(e.target.value);
+                                        setShowMovieDropdown(true);
+                                        // Reset movie id nếu người dùng xóa hết chữ
+                                        if (!e.target.value.trim()) setMovieId("");
+                                    }}
+                                    onFocus={() => {
+                                        if (movieResults.length > 0) setShowMovieDropdown(true);
+                                    }}
+                                />
+                            </div>
+                            
+                            {/* Selected movie indicator */}
+                            {movieId && !movieSearchText && (
+                                <p className="text-xs text-yellow-500 mt-1">
+                                    Đã chọn ID phim: {movieId} (Xóa để bỏ chọn)
+                                </p>
+                            )}
+
+                            {/* Dropdown results */}
+                            {showMovieDropdown && movieSearchText.trim() && (
+                                <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-zinc-700 rounded-md shadow-xl z-50 max-h-60 overflow-y-auto overflow-x-hidden">
+                                    {isSearchingMovie ? (
+                                        <div className="p-3 text-center text-sm text-zinc-400">Đang tìm kiếm...</div>
+                                    ) : movieResults.length > 0 ? (
+                                        <ul className="py-1">
+                                            {movieResults.map((movie) => (
+                                                <li
+                                                    key={movie.id}
+                                                    className="px-3 py-2 hover:bg-zinc-800 cursor-pointer flex items-center gap-2"
+                                                    onClick={() => {
+                                                        setMovieId(movie.id);
+                                                        setMovieSearchText(movie.title);
+                                                        setShowMovieDropdown(false);
+                                                    }}
+                                                >
+                                                    {movie.poster_url && (
+                                                        <img
+                                                            src={movie.poster_url.startsWith('http') ? movie.poster_url : `https://image.tmdb.org/t/p/w200${movie.poster_url}`}
+                                                            alt={movie.title}
+                                                            className="w-8 h-10 object-cover rounded"
+                                                        />
+                                                    )}
+                                                    <div className="flex flex-col flex-1 min-w-0">
+                                                        <span className="text-sm text-zinc-200 truncate">{movie.title}</span>
+                                                        <span className="text-xs text-zinc-500">{new Date(movie.release_date).getFullYear() || "N/A"}</span>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <div className="p-3 text-center text-sm text-zinc-400">Không tìm thấy phim.</div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <div className="space-y-1.5">
                             <Label className="font-semibold flex items-center gap-1.5">
