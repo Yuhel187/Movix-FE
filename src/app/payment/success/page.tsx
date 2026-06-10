@@ -46,10 +46,14 @@ export default function PaymentSuccessPage() {
     const cancel = searchParams.get("cancel") ?? "";
     const status = searchParams.get("status") ?? "";
     const orderCode = searchParams.get("orderCode") ?? "";
+    const method = searchParams.get("method") ?? "";
 
     const normalizedStatus = status.toUpperCase();
+    const normalizedMethod = method.toUpperCase();
     const isCancelled = cancel === "true";
-    const isSuccess = code === "00" && !isCancelled && normalizedStatus === "PAID";
+    const isSuccess =
+      normalizedMethod === "VNPAY" ||
+      (code === "00" && !isCancelled && normalizedStatus === "PAID");
 
     let state: PaymentState = "failed";
     if (isSuccess) {
@@ -62,6 +66,7 @@ export default function PaymentSuccessPage() {
 
     return {
       orderCode,
+      method: normalizedMethod || "PAYOS",
       state,
     };
   }, [searchParams]);
@@ -147,6 +152,10 @@ export default function PaymentSuccessPage() {
             </div>
 
             <div className="grid gap-4">
+              <div className="rounded-lg border border-slate-800 bg-zinc-900 p-4">
+                <p className="text-sm text-slate-400">Cong thanh toan</p>
+                <p className="mt-2 font-semibold text-white">{formatLabel(payment.method)}</p>
+              </div>
               <div className="rounded-lg border border-slate-800 bg-zinc-900 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm text-slate-400">Mã đơn hàng</p>
