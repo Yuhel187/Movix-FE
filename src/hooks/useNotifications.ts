@@ -210,8 +210,20 @@ export const useNotifications = (isAuthenticated: boolean = false, options: UseN
         try {
             setIsLoading(true);
             const response = await notificationService.getNotifications(page, limit);
+            const fetchedNotifications = response.data.notifications;
 
-            // if (page === 1) { ... }
+            setNotifications(prev => {
+                if (page === 1) {
+                    return fetchedNotifications;
+                }
+
+                const existingIds = new Set(prev.map(notification => notification.id));
+                const newNotifications = fetchedNotifications.filter(
+                    notification => !existingIds.has(notification.id)
+                );
+
+                return [...prev, ...newNotifications];
+            });
 
             setHasMore(response.data.hasNext);
             setCurrentPage(page);
