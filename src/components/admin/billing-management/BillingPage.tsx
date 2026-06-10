@@ -156,6 +156,8 @@ export default function BillingPage() {
   
   const [isCreateRefundOpen, setIsCreateRefundOpen] = useState(false);
   const [refundReason, setRefundReason] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
   
   const [isProcessRefundOpen, setIsProcessRefundOpen] = useState(false);
   const [selectedRefund, setSelectedRefund] = useState<RefundRequest | null>(null);
@@ -252,6 +254,8 @@ export default function BillingPage() {
   const handleOpenCreateRefund = (trx: Transaction) => {
     setSelectedTransaction(trx);
     setRefundReason("");
+    setBankName("");
+    setAccountNumber("");
     setIsCreateRefundOpen(true);
   };
 
@@ -260,7 +264,9 @@ export default function BillingPage() {
         try {
             await apiClient.post("/admin/transactions/refunds", {
                 transactionId: selectedTransaction.id,
-                reason: refundReason
+                reason: refundReason,
+                bank_name: bankName,
+                account_number: accountNumber
             });
             toast.success("Tạo yêu cầu hoàn tiền thành công");
             setIsCreateRefundOpen(false);
@@ -461,21 +467,21 @@ export default function BillingPage() {
                         <span class="value">${trx.payment_method.toUpperCase()}</span>
                     </div>
                     
-                    ${trx.metadata?.reference ? `
+                    ${(trx.metadata?.reference || trx.metadata?.bankTranNo) ? `
                     <div class="row">
                         <span class="label">Mã tham chiếu Bank:</span>
-                        <span class="value" style="font-family: monospace; color: #003580;">${trx.metadata.reference}</span>
+                        <span class="value" style="font-family: monospace; color: #003580;">${trx.metadata.reference || trx.metadata.bankTranNo}</span>
                     </div>
                     ` : ''}
 
-                    ${trx.metadata?.counterAccountNumber ? `
+                    ${(trx.metadata?.counterAccountNumber || trx.metadata?.cardType || trx.metadata?.counterAccountBankName || trx.metadata?.bankCode) ? `
                     <div class="row">
-                        <span class="label">Tài khoản thanh toán:</span>
-                        <span class="value">${trx.metadata.counterAccountName || ''} (${trx.metadata.counterAccountNumber})</span>
+                        <span class="label">Tài khoản/Loại thẻ:</span>
+                        <span class="value">${trx.metadata.counterAccountName || trx.metadata.cardType || ''} ${trx.metadata.counterAccountNumber ? `(${trx.metadata.counterAccountNumber})` : ''}</span>
                     </div>
                     <div class="row">
-                        <span class="label">Ngân hàng khách:</span>
-                        <span class="value">${trx.metadata.counterAccountBankName || 'N/A'}</span>
+                        <span class="label">Ngân hàng:</span>
+                        <span class="value">${trx.metadata.counterAccountBankName || trx.metadata.counterAccountBankId || trx.metadata.bankCode || 'N/A'}</span>
                     </div>
                     ` : ''}
 
@@ -979,7 +985,7 @@ export default function BillingPage() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                                         <MetadataItem 
                                             label="Mã tham chiếu Bank" 
-                                            value={selectedTransaction.metadata.reference} 
+                                            value={selectedTransaction.metadata.reference || selectedTransaction.metadata.bankTranNo} 
                                             isCopyable 
                                         />
                                         <MetadataItem 
@@ -987,8 +993,8 @@ export default function BillingPage() {
                                             value={selectedTransaction.metadata.accountNumber} 
                                         />
                                         <MetadataItem 
-                                            label="Tên tài khoản khách" 
-                                            value={selectedTransaction.metadata.counterAccountName} 
+                                            label="Tên tài/Loại thẻ khách" 
+                                            value={selectedTransaction.metadata.counterAccountName || selectedTransaction.metadata.cardType} 
                                         />
                                         <MetadataItem 
                                             label="Số tài khoản khách" 
@@ -996,16 +1002,16 @@ export default function BillingPage() {
                                         />
                                         <MetadataItem 
                                             label="Ngân hàng khách" 
-                                            value={selectedTransaction.metadata.counterAccountBankName} 
+                                            value={selectedTransaction.metadata.counterAccountBankName || selectedTransaction.metadata.counterAccountBankId || selectedTransaction.metadata.bankCode} 
                                         />
                                         <MetadataItem 
                                             label="Thời gian giao dịch" 
-                                            value={selectedTransaction.metadata.transactionDateTime} 
+                                            value={selectedTransaction.metadata.transactionDateTime || selectedTransaction.metadata.payDate} 
                                         />
                                         <div className="sm:col-span-2 md:col-span-3 pt-2">
                                             <MetadataItem 
-                                                label="Mã Link thanh toán (PayOS)" 
-                                                value={selectedTransaction.metadata.paymentLinkId} 
+                                                label="Mã Link/Giao dịch hệ thống" 
+                                                value={selectedTransaction.metadata.paymentLinkId || selectedTransaction.metadata.transactionNo} 
                                                 className="font-mono text-[10px]"
                                             />
                                         </div>
@@ -1094,9 +1100,40 @@ export default function BillingPage() {
             </DialogHeader>
             <div className="py-4 space-y-4">
                 <div className="space-y-2">
-                    <label className="text-sm text-slate-300">Lý do hoàn tiền</label>
+                    <label className="text-sm text-slate-300">Ngân hàng</label>
+                    <Select value={bankName} onValueChange={setBankName}>
+                        <SelectTrigger className="bg-[#262626] border-slate-700 text-white w-full">
+                            <SelectValue placeholder="Chọn ngân hàng" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#262626] border-slate-700 text-white max-h-60">
+                            <SelectItem value="Vietcombank">Vietcombank</SelectItem>
+                            <SelectItem value="Techcombank">Techcombank</SelectItem>
+                            <SelectItem value="MBBank">MBBank</SelectItem>
+                            <SelectItem value="VietinBank">VietinBank</SelectItem>
+                            <SelectItem value="BIDV">BIDV</SelectItem>
+                            <SelectItem value="Agribank">Agribank</SelectItem>
+                            <SelectItem value="ACB">ACB</SelectItem>
+                            <SelectItem value="VPBank">VPBank</SelectItem>
+                            <SelectItem value="TPBank">TPBank</SelectItem>
+                            <SelectItem value="VIB">VIB</SelectItem>
+                            <SelectItem value="Sacombank">Sacombank</SelectItem>
+                            <SelectItem value="Khác">Ngân hàng khác</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm text-slate-300">Số tài khoản</label>
+                    <Input 
+                        placeholder="Nhập số tài khoản..."
+                        className="bg-[#262626] border-slate-700 text-white"
+                        value={accountNumber}
+                        onChange={(e) => setAccountNumber(e.target.value)}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm text-slate-300">Lý do hoàn tiền (Tùy chọn)</label>
                     <Textarea 
-                        placeholder="Nhập lý do hoàn tiền (tùy chọn)..."
+                        placeholder="Nhập lý do hoàn tiền..."
                         className="bg-[#262626] border-slate-700 text-white min-h-[100px]"
                         value={refundReason}
                         onChange={(e) => setRefundReason(e.target.value)}
