@@ -6,7 +6,7 @@ import PricingCard, { PricingDisplayPlan } from "@/components/account/subscripti
 import { SubscriptionPlan } from "@/types/subscription";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Landmark, QrCode } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +15,28 @@ import { useRouter } from "next/navigation";
 import { subscriptionService } from "@/services/subscription.service";
 import { UserSubscription } from "@/types/subscription";
 import Navbar from "@/components/layout/NavBar";
+
+type PaymentMethod = "PAYOS" | "VNPAY";
+
+const PAYMENT_METHODS: Array<{
+  value: PaymentMethod;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+}> = [
+  {
+    value: "PAYOS",
+    label: "PayOS",
+    description: "QR ngân hàng",
+    icon: QrCode,
+  },
+  {
+    value: "VNPAY",
+    label: "VNPay",
+    description: "Thẻ ATM, QR, ví điện tử",
+    icon: Landmark,
+  },
+];
 
 const FAQS = [
   {
@@ -89,6 +111,7 @@ export default function PricingPage() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [isPlansLoading, setIsPlansLoading] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("PAYOS");
   const { initiateCheckout, isCheckingOut } = usePayment();
 
   useEffect(() => {
@@ -177,7 +200,7 @@ export default function PricingPage() {
       return;
     }
 
-    const result = await initiateCheckout(planId);
+    const result = await initiateCheckout(planId, paymentMethod);
     if (!result) {
       toast.error("Không thể tạo phiên thanh toán");
       return;
@@ -189,7 +212,7 @@ export default function PricingPage() {
       return;
     }
 
-    toast.success("Đang chuyển đến cổng thanh toán...");
+    toast.success(`Dang chuyen den cong thanh toan ${paymentMethod}...`);
     window.location.href = paymentUrl;
   };
 
@@ -222,6 +245,47 @@ export default function PricingPage() {
               Bạn đang sử dụng gói {subscription.plan.name}. Nâng cấp để mở khóa thêm quyền lợi.
             </p>
           )}
+        </div>
+
+        <div className="mx-auto mb-10 max-w-2xl">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-300">
+              Phương thức thanh toán
+            </h2>
+            <span className="text-xs text-slate-500">Áp dụng cho gói trả phí</span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {PAYMENT_METHODS.map((method) => {
+              const Icon = method.icon;
+              const isSelected = paymentMethod === method.value;
+
+              return (
+                <button
+                  key={method.value}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => setPaymentMethod(method.value)}
+                  className={`flex min-h-20 items-center gap-3 rounded-lg border p-4 text-left transition-colors ${
+                    isSelected
+                      ? "border-primary bg-primary/10 text-white"
+                      : "border-slate-800 bg-zinc-900 text-slate-300 hover:border-slate-600 hover:bg-zinc-800"
+                  }`}
+                >
+                  <span
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${
+                      isSelected ? "bg-primary text-white" : "bg-slate-800 text-slate-300"
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold">{method.label}</span>
+                    <span className="mt-1 block text-xs text-slate-400">{method.description}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Pricing Cards */}

@@ -31,9 +31,11 @@ export default function PaymentCancelPage() {
 
   const payment = useMemo(() => {
     const orderCode = searchParams.get("orderCode") ?? "";
+    const method = searchParams.get("method") ?? "";
 
     return {
       orderCode,
+      method: method.toUpperCase() || "PAYOS",
     };
   }, [searchParams]);
 
@@ -67,6 +69,10 @@ export default function PaymentCancelPage() {
             </div>
 
             <div className="grid gap-4">
+              <div className="rounded-lg border border-slate-800 bg-zinc-900 p-4">
+                <p className="text-sm text-slate-400">Cong thanh toan</p>
+                <p className="mt-2 font-semibold text-white">{displayValue(payment.method)}</p>
+              </div>
               <div className="rounded-lg border border-slate-800 bg-zinc-900 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm text-slate-400">Mã đơn hàng</p>

@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import {
-  createCheckoutSession,
   getPaymentInfo,
   cancelPayment,
   pollPaymentStatus,
@@ -20,7 +19,7 @@ interface UsePaymentReturn {
   checkoutError: Error | null;
   paymentUrl: string | null;
   transactionId: string | null;
-  orderCode: number | null;
+  orderCode: number | string | null;
 
   // Payment status state
   paymentInfo: PaymentInfoResponse['data'] | null;
@@ -28,7 +27,7 @@ interface UsePaymentReturn {
   statusError: Error | null;
 
   // Actions
-  initiateCheckout: (planId: string) => Promise<CheckoutResponse['data'] | null>;
+  initiateCheckout: (planId: string, paymentMethod?: string) => Promise<CheckoutResponse['data'] | null>;
   checkPaymentStatus: (orderId: string) => Promise<PaymentInfoResponse['data'] | null>;
   pollPayment: (orderId: string, maxRetries?: number) => Promise<PaymentInfoResponse['data'] | null>;
   cancelCurrentPayment: (orderId: string, reason?: string) => Promise<CancelPaymentResponse['data'] | null>;
@@ -43,7 +42,7 @@ export function usePayment(): UsePaymentReturn {
   const [checkoutError, setCheckoutError] = useState<Error | null>(null);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
-  const [orderCode, setOrderCode] = useState<number | null>(null);
+  const [orderCode, setOrderCode] = useState<number | string | null>(null);
 
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfoResponse['data'] | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
@@ -66,12 +65,12 @@ export function usePayment(): UsePaymentReturn {
   }, []);
 
   const initiateCheckout = useCallback(
-    async (planId: string): Promise<CheckoutResponse['data'] | null> => {
+    async (planId: string, paymentMethod: string = 'PAYOS'): Promise<CheckoutResponse['data'] | null> => {
       try {
         clearError();
         setIsCheckingOut(true);
 
-        const result = await initiateCheckoutWithRetry(planId, 3);
+        const result = await initiateCheckoutWithRetry(planId, paymentMethod, 3);
 
         if (!result) {
           throw new Error('No checkout result returned');
@@ -85,6 +84,7 @@ export function usePayment(): UsePaymentReturn {
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('transactionId', result.transactionId);
           sessionStorage.setItem('orderCode', result.paymentData.orderCode.toString());
+          sessionStorage.setItem('paymentMethod', paymentMethod);
         }
 
         return result;
