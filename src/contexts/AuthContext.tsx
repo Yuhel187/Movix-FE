@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await checkAuth();
   };
 
-  const logout = async () => {
+    const logout = async () => {
     try {
       const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
       await apiClient.post("/auth/logout", { refreshToken });
@@ -129,6 +129,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
+      
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('wp_join_code_')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
     }
     setUser(null);
     router.push("/");
