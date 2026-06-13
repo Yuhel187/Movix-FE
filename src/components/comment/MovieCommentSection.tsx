@@ -134,7 +134,7 @@ export function MovieCommentSection({ movieId, onRatingUpdate }: MovieCommentSec
             <div className="mt-5">
               <CommentList
                 comments={comments}
-                movieId={movieId}
+                targetId={movieId}
                 onCommentUpdated={fetchComments}
               />
             </div>
