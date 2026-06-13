@@ -9,6 +9,10 @@ interface CommentListProps {
   onCommentUpdated: () => void; 
 }
 
+function sortPinnedFirst<T extends { is_pinned?: boolean }>(items: T[]) {
+  return [...items].sort((a, b) => Number(Boolean(b.is_pinned)) - Number(Boolean(a.is_pinned)));
+}
+
 export function CommentList({
   comments,
   targetId,
@@ -25,9 +29,11 @@ export function CommentList({
     );
   }
 
+  const sortedComments = sortPinnedFirst(comments);
+
   return (
     <div className="space-y-4 divide-y divide-zinc-800">
-      {comments.map((comment) => (
+      {sortedComments.map((comment) => (
         <div key={comment.id}>
           {/* Bình luận gốc */}
           <CommentItem
@@ -39,7 +45,7 @@ export function CommentList({
           {/* Các bình luận trả lời (nếu có) */}
           {comment.replies && comment.replies.length > 0 && (
             <div className="pl-10 border-l-2 border-zinc-700 ml-5">
-              {comment.replies.map((reply) => (
+              {sortPinnedFirst(comment.replies).map((reply) => (
                 <CommentItem
                   key={reply.id}
                   comment={reply}
